@@ -42,7 +42,7 @@ Follow the 4-phase systematic debugging process:
 | L4: Deploy | render.yaml, .env | Env vars, build commands |
 
 ## Common WUTT Bugs
-- **Auth redirect loop**: Token not persisting across cross-origin pages → check localStorage + Authorization header
+- **Auth redirect loop**: Token not persisting across cross-origin pages → verify: (1) token in response body, (2) localStorage.setItem, (3) Authorization header sent on API calls, (4) httpOnly cookie with SameSite=None as fallback
 - **CORS rejection**: Origin not in allow_origins → check frontend domain matches
 - **Form fields null**: File() mixed with regular params → need Form() annotation
 - **Datetime serialization**: model_dump() without mode="json" → ISO-8601 conversion fails

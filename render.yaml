@@ -1,5 +1,9 @@
 # WUTT — AI Personal Stylist (Myanmar)
 # Render.com deployment configuration
+#
+# NOTE: SQLite database is used for MVP. Render's filesystem is ephemeral —
+# data will be lost on every deploy/restart. Migrate to Render PostgreSQL
+# before production use. See CLAUDE.md: "SQLite (MVP) → PostgreSQL later"
 
 services:
   # ── FastAPI Backend ──────────────────────────────────

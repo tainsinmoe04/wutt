@@ -17,8 +17,8 @@ Continue working on the WUTT project autonomously. Follow this loop until all ta
 │  4. REVIEW  — Spawn wutt-reviewer agent         │
 │  5. FIX     — Address review findings           │
 │  6. COMMIT  — Atomic commit with clear message  │
-│  7. PUSH    — Push to main                      │
-│  8. REPEAT  — Go to 1 until done or blocked     │
+│  7. PUSH    — Push to upstream via git push     │
+│  8. REPEAT  — Go to 1 (max 5 iterations)        │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -44,13 +44,15 @@ Continue working on the WUTT project autonomously. Follow this loop until all ta
 - Message format: `type: description` (e.g., `fix:`, `feat:`, `chore:`)
 - Always include `Co-Authored-By: Claude <noreply@anthropic.com>`
 - Never commit .env files
-- Never push `git push origin main` (use `git push` for upstream)
+- Never push with `git push origin main` (use `git push` for configured upstream)
+- Autonomous loops stop after 5 iterations by default — ask user to continue if more needed
 
 ## Stop Conditions
 - All tasks in tasks.json are `done`
 - A blocker requires user input (ask clearly, don't guess)
 - Git status is clean with no pending changes
 - 3 consecutive review cycles find no issues
+- Max iteration count (5) reached — ask user to continue
 
 ## WUTT-Specific Context
 - Backend: Python FastAPI at `wutt.onrender.com`

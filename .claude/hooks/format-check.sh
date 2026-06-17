@@ -18,9 +18,12 @@ case "$FILE_PATH" in
     *) echo "✅ Format check skipped — non-source file"; exit 0 ;;
 esac
 
+# Resolve repo root dynamically — works on any machine
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$HOME/wutt")
+
 # Resolve absolute path if relative
 if [[ "$FILE_PATH" != /* ]]; then
-    FILE_PATH="/home/usertainsinmoe/wutt/$FILE_PATH"
+    FILE_PATH="${REPO_ROOT}/${FILE_PATH}"
 fi
 
 if [ ! -f "$FILE_PATH" ]; then
@@ -30,22 +33,26 @@ fi
 
 WARNINGS=0
 
-# Check for trailing whitespace
-if grep -nE '[[:space:]]+$' "$FILE_PATH" 2>/dev/null | head -5; then
+# Check for trailing whitespace (spaces/tabs only, not newlines)
+TRAILING=$(grep -nE '[[:blank:]]+$' "$FILE_PATH" 2>/dev/null | head -5)
+if [ -n "$TRAILING" ]; then
+    echo "$TRAILING"
     echo "⚠️  Trailing whitespace found in: $FILE_PATH"
     WARNINGS=$((WARNINGS + 1))
 fi
 
 # Check for tabs in Python files
 if [[ "$FILE_PATH" == *.py ]]; then
-    if grep -nP '^\t' "$FILE_PATH" 2>/dev/null | head -3; then
+    TABS=$(grep -nE '^\t' "$FILE_PATH" 2>/dev/null | head -3)
+    if [ -n "$TABS" ]; then
+        echo "$TABS"
         echo "⚠️  Tab indentation found in Python file: $FILE_PATH"
         WARNINGS=$((WARNINGS + 1))
     fi
 fi
 
-# Check for missing newline at EOF
-if [ -s "$FILE_PATH" ] && [ "$(tail -c 1 "$FILE_PATH" | wc -l)" -eq 0 ]; then
+# Check for missing newline at EOF (portable across GNU/BSD)
+if [ -s "$FILE_PATH" ] && [ -n "$(tail -c 1 "$FILE_PATH")" ]; then
     echo "⚠️  Missing newline at EOF: $FILE_PATH"
     WARNINGS=$((WARNINGS + 1))
 fi

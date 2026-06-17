@@ -39,7 +39,7 @@ Check every change against these dimensions:
 - Does CORS allow_origins match the actual frontend domain?
 - Is credentials: 'include' set on fetch calls?
 - Is the Authorization header sent for cross-origin requests?
-- Is the token stored in localStorage (not accessible cross-origin via cookie)?
+- Is the token in localStorage and sent as `Authorization: Bearer` header? (Cross-origin httpOnly cookies don't work reliably — this is by design for WUTT's split-domain deployment.)
 
 ## Review Output
 For each issue found:
@@ -48,6 +48,6 @@ For each issue found:
   Fix: Proposed change
 ```
 
-Severities: 🔴 CRITICAL (security/data loss) | 🟡 WARNING (style/pattern) | 🔵 INFO (suggestion)
+Severities: [CRITICAL] (security/data loss) | [WARNING] (style/pattern) | [INFO] (suggestion)
 
 End with: **Verdict**: ✅ APPROVED / ⚠️ APPROVED WITH NOTES / ❌ BLOCKED

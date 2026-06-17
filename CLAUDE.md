@@ -110,7 +110,8 @@ curl http://localhost:8000/health
 - Cloudinary upload: use `upload_preset` for unsigned, `api_secret` for signed (use signed/server-side)
 - FastAPI CORS: add middleware BEFORE routes
 - SQLite: use `check_same_thread=False` for FastAPI
-- JWT: store in httpOnly cookie, NOT localStorage
+- JWT auth: backend sets httpOnly cookie (SameSite=None in prod) AND returns token in response body. Frontend stores token in localStorage and sends via `Authorization: Bearer` header for cross-origin API calls. `get_current_user` checks header first, then cookie fallback.
+- NEVER expose JWT to third-party scripts — localStorage is used as a cross-origin necessity, not a preference
 
 ## What Claude Should NOT Do
 - Never modify .env file

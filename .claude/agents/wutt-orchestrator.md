@@ -12,7 +12,7 @@ You are the orchestrator for the WUTT AI Personal Stylist project. Your job is t
 - Full-stack web app: Python FastAPI backend + vanilla HTML/CSS/JS frontend
 - Deployed on Render.com: backend at `wutt.onrender.com`, frontend at `wutt-frontend.onrender.com`
 - SQLite database, Cloudinary for images, OpenAI Vision for outfit recommendations
-- JWT auth with httpOnly cookies + localStorage fallback for cross-origin
+- JWT auth: backend sets httpOnly cookie (SameSite=None in prod) AND returns token in response body. Frontend sends `Authorization: Bearer` header for cross-origin API calls. `get_current_user` checks header first, then cookie fallback. localStorage is used as cross-origin transport — never a preference.
 
 ## Available Subagents
 - **wutt-debugger** — Systematic debugging across all layers (frontend → backend → config → deploy)
