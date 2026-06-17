@@ -55,9 +55,10 @@ def health_check() -> dict[str, str]:
 from routes.auth import router as auth_router           # Task 10
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 
-# Remaining routes (Tasks 11–13):
-#   from routes.profile import router as profile_router
-#   app.include_router(profile_router, prefix="/profile", tags=["Profile"])
+from routes.profile import router as profile_router     # Task 11
+app.include_router(profile_router, prefix="/profile", tags=["Profile"])
+
+# Remaining routes (Tasks 12–13):
 #   from routes.wardrobe import router as wardrobe_router
 #   app.include_router(wardrobe_router, prefix="/wardrobe", tags=["Wardrobe"])
 #   from routes.stylist import router as stylist_router
