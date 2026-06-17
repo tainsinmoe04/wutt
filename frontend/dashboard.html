@@ -489,7 +489,11 @@
             </button>
           </form>
           <div class="wardrobe__grid" id="wardrobeGrid">
-            <div class="empty-state">အဝတ်တွေထည့်ဖို့ ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>
+            <div class="empty-state--visual" style="grid-column:1/-1;">
+              <div class="empty-state__icon">👗</div>
+              <div class="empty-state__title">ဗီရိုထဲမှာ အဝတ်မရှိသေးပါ</div>
+              <div class="empty-state__hint">ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>
+            </div>
           </div>
         </div>
 
@@ -500,7 +504,11 @@
             အကြံပေးမှတ်တမ်း
           </h2>
           <div id="historyList">
-            <div class="empty-state" id="historyEmpty">အကြံပေးမှတ်တမ်းမရှိသေးပါ</div>
+            <div class="empty-state--visual" id="historyEmpty">
+              <div class="empty-state__icon">🕐</div>
+              <div class="empty-state__title">အကြံပေးမှတ်တမ်း မရှိသေးပါ</div>
+              <div class="empty-state__hint">AI အကြံပေးချက်များ ဒီမှာတွေ့ရပါမယ်</div>
+            </div>
           </div>
         </div>
       </div>
@@ -515,12 +523,24 @@
 
   // Token persisted by index.html login/register flow.
   const AUTH_TOKEN = localStorage.getItem('wutt_token');
-  if (!AUTH_TOKEN) { window.location.href = './index.html'; }
 
   let currentUser = null;
+  let _redirected = false;  // Guard against redirect loops
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
+
+  /** Safe single-fire redirect to login page. */
+  function goToLogin() {
+    if (_redirected) return;
+    _redirected = true;
+    localStorage.removeItem('wutt_token');
+    document.cookie = 'wutt_token=; Max-Age=0; path=/;';
+    window.location.replace('./index.html');
+  }
+
+  // Defer token check to init() — never redirect before /auth/me validates
+  if (!AUTH_TOKEN) { goToLogin(); }
 
   /** Thin wrapper around fetch — injects Authorization header everywhere. */
   async function api(method, path, body, formData) {
@@ -541,11 +561,7 @@
       clearTimeout(timeout);
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        if (res.status === 401) {
-          localStorage.removeItem('wutt_token');
-          window.location.href = './index.html';
-          return;
-        }
+        if (res.status === 401) { goToLogin(); return; }
         throw new Error(data?.detail?.message || res.statusText);
       }
       return data;
@@ -582,37 +598,63 @@
     showSkeletons();
     try {
       const meData = await api('GET', '/auth/me');
-      if (meData.status !== 'success' || !meData.data?.id) {
-        localStorage.removeItem('wutt_token');
-        window.location.href = './index.html'; return;
-      }
+      if (meData.status !== 'success' || !meData.data?.id) { goToLogin(); return; }
       currentUser = { id: meData.data.id, email: meData.data.email };
       $('#dashboardUserEmail').textContent = meData.data.email;
-    } catch {
-      localStorage.removeItem('wutt_token');
-      window.location.href = './index.html'; return;
-    }
+    } catch { goToLogin(); return; }
 
     await Promise.all([loadProfile(), loadWardrobe(), loadHistory()]);
     clearSkeletons();
   }
 
   function showSkeletons() {
+    // Wardrobe skeleton
     $('#wardrobeGrid').innerHTML = `
-      <div class="skeleton skeleton--card" style="height:140px;"></div>
-      <div class="skeleton skeleton--card" style="height:140px;"></div>
-      <div class="skeleton skeleton--card" style="height:140px;"></div>`;
+      <div class="skeleton skeleton--card" style="height:160px;aspect-ratio:3/4;"></div>
+      <div class="skeleton skeleton--card" style="height:160px;aspect-ratio:3/4;"></div>
+      <div class="skeleton skeleton--card" style="height:160px;aspect-ratio:3/4;"></div>`;
+    // History skeleton
     $('#historyList').innerHTML = `
-      <div class="skeleton skeleton--text" style="width:70%;"></div>
-      <div class="skeleton skeleton--text" style="width:50%;"></div>
-      <div class="skeleton skeleton--text" style="width:60%;"></div>`;
-    // Show count badge as skeleton
+      <div style="border:1px solid var(--wutt-border);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-sm);">
+        <div class="skeleton skeleton--title" style="width:40%;margin-bottom:8px;"></div>
+        <div class="skeleton skeleton--text" style="width:70%;"></div>
+        <div class="skeleton skeleton--text" style="width:30%;height:0.75rem;margin-top:8px;"></div>
+      </div>
+      <div style="border:1px solid var(--wutt-border);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-sm);">
+        <div class="skeleton skeleton--title" style="width:50%;margin-bottom:8px;"></div>
+        <div class="skeleton skeleton--text" style="width:60%;"></div>
+        <div class="skeleton skeleton--text" style="width:25%;height:0.75rem;margin-top:8px;"></div>
+      </div>`;
+    // Profile skeleton — replace visible form with loading placeholders
+    const profileForm = $('#profileForm');
+    if (profileForm && !profileForm.querySelector('.skeleton')) {
+      profileForm.querySelectorAll('.input, button[type=submit]').forEach(el => {
+        el.style.display = 'none';
+      });
+      const skeletonHTML = `
+        <div class="skeleton skeleton--form-field"></div>
+        <div class="skeleton skeleton--form-field"></div>
+        <div class="skeleton skeleton--form-field"></div>
+        <div class="skeleton skeleton--form-field"></div>
+        <div class="skeleton skeleton--btn"></div>`;
+      profileForm.insertAdjacentHTML('beforeend', skeletonHTML);
+    }
+
+    // Hide wardrobe count badge until data loads
     const count = $('#wardrobeCount');
     if (count) { count.classList.add('u-hidden'); }
   }
 
   function clearSkeletons() {
-    // Handled by load* functions replacing innerHTML
+    // Restore profile form visibility
+    const profileForm = $('#profileForm');
+    if (profileForm) {
+      profileForm.querySelectorAll('.skeleton').forEach(s => s.remove());
+      profileForm.querySelectorAll('.input, button[type=submit]').forEach(el => {
+        el.style.display = '';
+      });
+    }
+    // Wardrobe and history are handled by load* functions replacing innerHTML
   }
 
   const uid = () => currentUser?.id;
@@ -670,10 +712,12 @@
       }
 
       if (!items.length) {
-        grid.innerHTML = `<div class="empty-state">
-          <div class="empty-state__icon">👗</div>
-          <div class="empty-state__text">အဝတ်တွေထည့်ဖို့ ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>
-        </div>`;
+        grid.innerHTML = `
+          <div class="empty-state--visual" style="grid-column:1/-1;">
+            <div class="empty-state__icon">👗</div>
+            <div class="empty-state__title">ဗီရိုထဲမှာ အဝတ်မရှိသေးပါ</div>
+            <div class="empty-state__hint">ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ။ AI က သင့်အတွက် အကောင်းဆုံးဝတ်စုံကို ရွေးပေးပါမယ်။</div>
+          </div>`;
         return;
       }
       grid.innerHTML = items.map(i => `
@@ -691,10 +735,15 @@
         b.addEventListener('click', (ev) => { ev.stopPropagation(); deleteItem(b.dataset.id); });
       });
     } catch {
-      $('#wardrobeGrid').innerHTML = `<div class="empty-state">
-        <div class="empty-state__text" style="color:var(--wutt-error);">ဗီရိုဒေတာမရယူနိုင်ပါ။</div>
-        <button class="retry-btn" onclick="loadWardrobe()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> ပြန်စမ်းမယ်</button>
-      </div>`;
+      $('#wardrobeGrid').innerHTML = `
+        <div class="error-card">
+          <div class="error-card__icon">⚠️</div>
+          <div class="error-card__text">ဗီရိုဒေတာမရယူနိုင်ပါ။ အင်တာနက်စစ်ဆေးပြီး ပြန်စမ်းကြည့်ပါ။</div>
+          <button class="error-card__retry" onclick="loadWardrobe()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            ပြန်စမ်းမယ်
+          </button>
+        </div>`;
     }
   }
 
@@ -752,21 +801,37 @@
     return null;
   }
 
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
   function showPreview(file) {
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const img = document.createElement('img');
-      img.src = ev.target.result;
-      img.className = 'upload-preview__img';
-      $('#uploadPreview').appendChild(img);
+      const container = $('#uploadPreview');
+      container.innerHTML = `
+        <div class="preview-card">
+          <img src="${ev.target.result}" alt="${file.name}" class="preview-card__img">
+          <div class="preview-card__info">
+            <div class="preview-card__name">${file.name}</div>
+            <div class="preview-card__size">${formatFileSize(file.size)}</div>
+          </div>
+          <button type="button" class="preview-card__remove" aria-label="Remove file" onclick="clearPreview()">✕</button>
+        </div>`;
     };
     reader.readAsDataURL(file);
   }
 
+  window.clearPreview = function() {
+    $('#uploadPreview').innerHTML = '';
+    $('#wardrobeFile').value = '';
+  };
+
   function handleFileSelect(file) {
     const err = validateFile(file);
     if (err) { showToast(err, 'error'); return false; }
-    $('#uploadPreview').innerHTML = '';
     showPreview(file);
     return true;
   }
@@ -823,9 +888,19 @@
       if (cat) fd.append('category', cat);
       if (col) fd.append('color', col);
       const res = await api('POST', '/wardrobe/upload', null, fd);
+      // Show success indicator before resetting form
+      const preview = $('#uploadPreview');
+      preview.innerHTML = `
+        <div class="upload-success">
+          <span class="upload-success__check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          ${res.message || 'ထည့်ပြီးပါပြီ။'}
+        </div>`;
       showToast(res.message || 'ထည့်ပြီးပါပြီ။', 'success');
       $('#wardrobeForm').reset();
-      $('#uploadPreview').innerHTML = '';
+      // Clear success indicator and reload after delay
+      setTimeout(() => { preview.innerHTML = ''; }, 2000);
       await loadWardrobe();
     } catch {} finally {
       setLoading(btn, false);
@@ -842,12 +917,13 @@
   function showThinking(itemCount) {
     const resp = $('#aiResponse');
     resp.classList.remove('u-hidden');
-    resp.className = 'thinking';
+    resp.style.cssText = '';
     resp.innerHTML = `
-      <div style="text-align:center;">
+      <div class="outfit-card" style="text-align:center;padding:var(--space-2xl);">
+        <div class="spinner spinner--lg" style="margin:0 auto var(--space-md);"></div>
         <div style="font-weight:600;margin-bottom:4px;">AI စဉ်းစားနေသည်</div>
-        <div style="font-size:12px;color:var(--wutt-text-muted);margin-bottom:8px;">ဗီရိုထဲက အဝတ် ${itemCount||'?'} ခုကို ခွဲခြမ်းစိတ်ဖြာနေပါတယ်...</div>
-        <span class="thinking__dots">
+        <div style="font-size:12px;color:var(--wutt-text-muted);">ဗီရိုထဲက အဝတ် ${itemCount||'?'} ခုကို ခွဲခြမ်းစိတ်ဖြာနေပါတယ်...</div>
+        <span class="thinking__dots" style="justify-content:center;margin-top:8px;">
           <span class="thinking__dot"></span>
           <span class="thinking__dot"></span>
           <span class="thinking__dot"></span>
@@ -874,48 +950,59 @@
 
   function renderOutfitRecommendation(data) {
     let html = '';
+    const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-    // ── Header: occasion + weather ─────────────────────
+    // ── Context card — occasion + weather ──────────────
     const occasionLabels = {wedding:'မင်္ဂလာပွဲ',work:'ရုံးသွား',party:'ပါတီ',date:'ချိန်းတွေ့',casual:'အပြင်ထွက်',interview:'အင်တာဗျူး'};
-    html += '<div class="recommend__header">';
-    html += '<div class="recommend__occasion">' + (occasionLabels[data.occasion] || data.occasion) + '</div>';
+    html += '<div class="outfit-card outfit-card--context">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-sm);">';
+    html += '<div>';
+    html += '<div style="font-weight:700;font-size:1rem;color:var(--wutt-deep);">' + (occasionLabels[data.occasion] || esc(data.occasion)) + '</div>';
     if (data.weather_desc) {
-      html += '<div class="recommend__weather">';
+      html += '<div style="font-size:var(--text-sm);color:var(--wutt-text-light);margin-top:4px;">';
       html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>';
-      html += data.weather_desc;
-      if (data.temperature_c) html += ' · ' + data.temperature_c.toFixed(0) + '°C';
-      if (data.location) html += ' · ' + data.location;
+      html += esc(data.weather_desc);
+      if (data.temperature_c != null) html += ' · ' + data.temperature_c.toFixed(0) + '°C';
+      if (data.location) html += ' · ' + esc(data.location);
       html += '</div>';
     }
     html += '</div>';
+    html += '</div></div>';
 
-    // ── Outfit items ───────────────────────────────────
+    // ── Outfit items — step cards ─────────────────────
     const outfit = data.outfit || [];
     if (outfit.length > 0) {
-      html += '<div class="recommend__outfit">';
-      html += '<div class="recommend__label">👗 ဒီနေ့ ဒါတွေဝတ်ပါ</div>';
-      html += '<ul class="outfit-list">';
+      html += '<div class="outfit-card">';
+      html += '<div style="font-weight:600;font-size:var(--text-sm);color:var(--wutt-text-muted);margin-bottom:var(--space-sm);">👗 ဒီနေ့ ဒါတွေဝတ်ပါ</div>';
       outfit.forEach((item, i) => {
-        html += '<li class="outfit-list__item">';
-        html += '<span class="outfit-list__num">' + (i + 1) + '</span>';
-        html += item.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        html += '</li>';
+        html += '<div class="outfit-card__step">';
+        html += '<span class="outfit-card__number">' + (i + 1) + '</span>';
+        html += '<span class="outfit-card__label">' + esc(item) + '</span>';
+        html += '</div>';
       });
-      html += '</ul></div>';
-    }
-
-    // ── Explanation ────────────────────────────────────
-    if (data.explanation) {
-      html += '<div class="recommend__explanation">';
-      html += data.explanation.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += '</div>';
+    } else {
+      html += '<div class="outfit-card" style="text-align:center;padding:var(--space-xl);">';
+      html += '<div style="font-size:2rem;opacity:0.5;margin-bottom:var(--space-sm);">🤷</div>';
+      html += '<div style="font-size:var(--text-sm);color:var(--wutt-text-muted);">AI က ဒီတစ်ခါ အကြံမပေးနိုင်သေးပါ။ ထပ်စမ်းကြည့်ပါ။</div>';
       html += '</div>';
     }
 
-    // ── Weather tip ────────────────────────────────────
+    // ── Explanation card ──────────────────────────────
+    if (data.explanation) {
+      html += '<div class="outfit-card">';
+      html += '<div style="font-size:var(--text-sm);color:var(--wutt-text);line-height:1.8;white-space:pre-wrap;">' + esc(data.explanation) + '</div>';
+      html += '</div>';
+    }
+
+    // ── Weather tip card ──────────────────────────────
     if (data.weather_based_tip) {
-      html += '<div class="recommend__tip">';
-      html += '<span class="recommend__tip-icon">☀️</span>';
-      html += data.weather_based_tip.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const isRainy = data.weather_desc && (data.weather_desc.includes('rain') || data.weather_desc.includes('Rain'));
+      const isHot = data.temperature_c > 30;
+      const tipIcon = isRainy ? '🌧️' : (isHot ? '☀️' : '💧');
+      html += '<div class="outfit-card outfit-card--tip">';
+      html += '<span class="tip-icon">' + tipIcon + '</span>';
+      html += '<span>' + esc(data.weather_based_tip) + '</span>';
       html += '</div>';
     }
 
@@ -946,12 +1033,22 @@
     try {
       const res = await api('POST', '/stylist/recommend', { occasion });
       const resp = $('#aiResponse');
-      resp.className = 'ai-response';
+      resp.style.cssText = '';
       resp.innerHTML = renderOutfitRecommendation(res.data);
       resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       await loadHistory();
     } catch {
-      $('#aiResponse').classList.add('u-hidden');
+      const resp = $('#aiResponse');
+      resp.style.cssText = '';
+      resp.innerHTML = `
+        <div class="error-card">
+          <div class="error-card__icon">🤖</div>
+          <div class="error-card__text">AI ဆာဗာနဲ့ချိတ်ဆက်မှုမအောင်မြင်ပါ။ ခဏနေပြီးမှ ပြန်စမ်းကြည့်ပါ။</div>
+          <button class="error-card__retry" onclick="document.getElementById('stylistForm').requestSubmit()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            ပြန်စမ်းမယ်
+          </button>
+        </div>`;
     } finally { setLoading(btn, false); }
   });
 
@@ -1008,10 +1105,12 @@
       const sessions = res?.data || [];
       const list = $('#historyList');
       if (!sessions.length) {
-        list.innerHTML = `<div class="empty-state">
-          <div class="empty-state__icon">🕐</div>
-          <div class="empty-state__text">အကြံပေးမှတ်တမ်းမရှိသေးပါ</div>
-        </div>`;
+        list.innerHTML = `
+          <div class="empty-state--visual">
+            <div class="empty-state__icon">🕐</div>
+            <div class="empty-state__title">အကြံပေးမှတ်တမ်း မရှိသေးပါ</div>
+            <div class="empty-state__hint">AI အကြံပေးချက်များ ဒီမှာတွေ့ရပါမယ်</div>
+          </div>`;
         return;
       }
       list.innerHTML = sessions.slice(0, 20).map((s,i) => `
@@ -1023,10 +1122,15 @@
         </div>
       `).join('');
     } catch {
-      $('#historyList').innerHTML = `<div class="empty-state">
-        <div class="empty-state__text" style="color:var(--wutt-error);">မှတ်တမ်းမရယူနိုင်ပါ။</div>
-        <button class="retry-btn" onclick="loadHistory()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> ပြန်စမ်းမယ်</button>
-      </div>`;
+      $('#historyList').innerHTML = `
+        <div class="error-card">
+          <div class="error-card__icon">⚠️</div>
+          <div class="error-card__text">မှတ်တမ်းမရယူနိုင်ပါ။ ပြန်စမ်းကြည့်ပါ။</div>
+          <button class="error-card__retry" onclick="loadHistory()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            ပြန်စမ်းမယ်
+          </button>
+        </div>`;
     }
   }
 
@@ -1049,11 +1153,7 @@
   // ═══════════════════════════════════════════════════════
   //  LOGOUT
   // ═══════════════════════════════════════════════════════
-  $('#logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('wutt_token');
-    document.cookie = 'wutt_token=; Max-Age=0; path=/;';
-    window.location.href = './index.html';
-  });
+  $('#logoutBtn').addEventListener('click', goToLogin);
 
   init();
   </script>
