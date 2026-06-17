@@ -61,6 +61,5 @@ app.include_router(profile_router, prefix="/profile", tags=["Profile"])
 from routes.wardrobe import router as wardrobe_router   # Task 12
 app.include_router(wardrobe_router, prefix="/wardrobe", tags=["Wardrobe"])
 
-# Remaining routes (Task 13):
-#   from routes.stylist import router as stylist_router
-#   app.include_router(stylist_router, prefix="/stylist", tags=["Stylist"])
+from routes.stylist import router as stylist_router     # Task 13
+app.include_router(stylist_router, prefix="/stylist", tags=["Stylist"])
