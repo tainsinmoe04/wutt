@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Profile, Wardrobe, StyleSession
 from routes.auth import get_current_user
-from services.weather_svc import get_current_weather
+from services.weather_svc import get_current_weather, WeatherData
 from services.openai_svc import get_outfit_recommendation
 
 router = APIRouter()
@@ -133,15 +133,20 @@ def recommend_outfit(
             },
         )
 
-    # Weather (best-effort)
+    # Weather (best-effort with Yangon fallback)
+    weather: WeatherData | None = None
     weather_desc = None
     temperature_c = None
+    humidity = None
     location = profile.location_city if profile else None
     if location:
         weather = get_current_weather(location)
         if weather:
-            weather_desc = weather["description"]
-            temperature_c = weather["temperature_c"]
+            weather_desc = weather.description
+            temperature_c = weather.temperature_c
+            humidity = weather.humidity
+            # Use the city that actually resolved (may be fallback)
+            location = weather.location
 
     # ── Prepare image list for OpenAI ──────────────────
     wardrobe_images: list[dict[str, Any]] = []
@@ -159,6 +164,7 @@ def recommend_outfit(
         occasion=body.occasion,
         weather_desc=weather_desc,
         temperature_c=temperature_c,
+        humidity=humidity,
         height_cm=profile.height_cm if profile else None,
         skin_tone=profile.skin_tone if profile else None,
         style_preference=profile.style_preference if profile else None,

@@ -23,6 +23,7 @@ def get_outfit_recommendation(
     occasion: str,
     weather_desc: str | None = None,
     temperature_c: float | None = None,
+    humidity: int | None = None,
     height_cm: float | None = None,
     skin_tone: str | None = None,
     style_preference: str | None = None,
@@ -35,6 +36,7 @@ def get_outfit_recommendation(
         occasion: What the user is dressing for.
         weather_desc: Human-readable weather (e.g. "clear sky").
         temperature_c: Temperature in Celsius.
+        humidity: Relative humidity percentage (0–100).
         height_cm: User height in cm.
         skin_tone: User skin tone.
         style_preference: Preferred style (e.g. "casual", "formal").
@@ -53,6 +55,8 @@ def get_outfit_recommendation(
         lines.append(f"Weather: {weather_desc}")
     if temperature_c is not None:
         lines.append(f"Temperature: {temperature_c:.0f}°C")
+    if humidity is not None:
+        lines.append(f"Humidity: {humidity}%")
     if height_cm is not None:
         lines.append(f"Height: {height_cm:.0f} cm")
     if skin_tone:
@@ -75,6 +79,7 @@ def get_outfit_recommendation(
         "and how the outfit suits the occasion. Write for a Myanmar audience.\n"
         '  "weather_based_tip": string — one practical tip based on today\'s weather. '
         "If it is hot (>30°C), suggest breathable fabrics or staying cool. "
+        "If humid (>70%), mention light, moisture-wicking fabrics. "
         "If cool, suggest layering. If rainy, suggest water-resistant items. "
         "Keep it under 60 characters.\n\n"
         "Rules:\n"
