@@ -362,6 +362,10 @@ async function handleLoginSubmit(e) {
     const data = await response.json();
 
     if (data.status === 'success') {
+      // Persist token so dashboard can survive cross-origin navigation
+      if (data.data?.token) {
+        localStorage.setItem('wutt_token', data.data.token);
+      }
       showToast('အကောင့်ဝင်ပြီးပါပြီ။ Dashboard သို့ခေါ်ဆောင်သွားပါမယ်။', 'success');
       closeModal(loginOverlay);
       // Redirect to dashboard
@@ -402,6 +406,10 @@ async function handleRegisterSubmit(e) {
     const data = await response.json();
 
     if (data.status === 'success') {
+      // Persist token so dashboard can survive cross-origin navigation
+      if (data.data?.token) {
+        localStorage.setItem('wutt_token', data.data.token);
+      }
       showToast('အကောင့်ဖွင့်ပြီးပါပြီ။ Dashboard သို့ခေါ်ဆောင်သွားပါမယ်။', 'success');
       closeModal(registerOverlay);
       setTimeout(() => {

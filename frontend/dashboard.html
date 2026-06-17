@@ -302,19 +302,37 @@
   <script>
   // ── WUTT Dashboard — Vanilla JS ─────────────────────
   const API = 'https://wutt.onrender.com';
+
+  // Token persisted by index.html login/register flow.
+  // Must exist BEFORE any API call — without it we redirect back.
+  const AUTH_TOKEN = localStorage.getItem('wutt_token');
+  if (!AUTH_TOKEN) { window.location.href = '/'; }
+
   let currentUser = null;
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
 
+  /** Thin wrapper around fetch — injects Authorization header everywhere. */
   async function api(method, path, body, formData) {
-    const opts = { method, credentials: 'include' };
+    const headers = { 'Authorization': 'Bearer ' + AUTH_TOKEN };
+    if (!formData) { headers['Content-Type'] = 'application/json'; }
+
+    const opts = { method, headers, credentials: 'include' };
     if (formData) { opts.body = formData; }
-    else if (body) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
+    else if (body) { opts.body = JSON.stringify(body); }
     try {
       const res = await fetch(API + path, opts);
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.detail?.message || res.statusText);
+      if (!res.ok) {
+        // If token is expired or invalid, clear it and go back to login
+        if (res.status === 401) {
+          localStorage.removeItem('wutt_token');
+          window.location.href = '/';
+          return;
+        }
+        throw new Error(data?.detail?.message || res.statusText);
+      }
       return data;
     } catch (e) {
       showToast(e.message, 'error');
@@ -338,17 +356,19 @@
 
   // ── Init ────────────────────────────────────────────
   async function init() {
-    // Discover current user from JWT cookie
+    // Confirm the token is still valid by calling /auth/me
     try {
-      const meRes = await fetch(API + '/auth/me', { credentials: 'include' });
-      if (!meRes.ok) { window.location.href = '/'; return; }
-      const meData = await meRes.json();
+      const meData = await api('GET', '/auth/me');
       if (meData.status !== 'success' || !meData.data?.id) {
+        localStorage.removeItem('wutt_token');
         window.location.href = '/'; return;
       }
       currentUser = { id: meData.data.id, email: meData.data.email };
       $('#dashboardUserEmail').textContent = meData.data.email;
-    } catch { window.location.href = '/'; return; }
+    } catch {
+      localStorage.removeItem('wutt_token');
+      window.location.href = '/'; return;
+    }
 
     await loadProfile();
     await loadWardrobe();
@@ -500,6 +520,7 @@
 
   // ── Logout ──────────────────────────────────────────
   $('#logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('wutt_token');
     document.cookie = 'wutt_token=; Max-Age=0; path=/;';
     window.location.href = '/';
   });

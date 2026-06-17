@@ -83,13 +83,18 @@ def _create_jwt(user_id: int, email: str) -> str:
 
 
 def _set_jwt_cookie(response: Response, token: str) -> None:
-    """Attach the JWT as an httpOnly cookie to *response*."""
+    """Attach the JWT as an httpOnly cookie to *response*.
+
+    In production (cross-origin), use SameSite=None + Secure so the cookie
+    reaches both the backend domain and any frontend static-site domain.
+    In local dev (debug), keep SameSite=Lax for simplicity.
+    """
     response.set_cookie(
         key="wutt_token",
         value=token,
         httponly=True,
-        secure=not settings.debug,          # secure=True in production (HTTPS only)
-        samesite="lax",
+        secure=not settings.debug,
+        samesite="none" if not settings.debug else "lax",
         max_age=int(timedelta(hours=settings.jwt_expiry_hours).total_seconds()),
     )
 
@@ -113,7 +118,11 @@ def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User:
-    """Extract and validate the JWT from the ``wutt_token`` cookie.
+    """Extract and validate the JWT from cookie OR Authorization header.
+
+    Checks the ``Authorization: Bearer <token>`` header first (for
+    cross-origin frontends that can't use httpOnly cookies), then falls
+    back to the ``wutt_token`` cookie.
 
     Returns the authenticated ``User`` ORM object.
 
@@ -124,10 +133,19 @@ def get_current_user(
             ...
 
     Raises:
-        HTTPException 401 if the cookie is missing, expired, or the user
-        no longer exists.
+        HTTPException 401 if no valid token is found.
     """
-    token = request.cookies.get("wutt_token")
+    token: str | None = None
+
+    # 1. Try Authorization header (cross-origin localStorage flow)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+
+    # 2. Fall back to httpOnly cookie (same-origin or SameSite=None)
+    if not token:
+        token = request.cookies.get("wutt_token")
+
     if not token:
         raise _err("Authentication required — please log in.", code=401)
 
@@ -188,7 +206,10 @@ def register(
         _set_jwt_cookie(response, token)
 
         return _ok(
-            data=UserData.model_validate(user).model_dump(),
+            data={
+                **UserData.model_validate(user).model_dump(),
+                "token": token,
+            },
             message="Account created successfully.",
         )
     except Exception as exc:
@@ -220,7 +241,10 @@ def login(
     _set_jwt_cookie(response, token)
 
     return _ok(
-        data=UserData.model_validate(user).model_dump(),
+        data={
+            **UserData.model_validate(user).model_dump(),
+            "token": token,
+        },
         message="Logged in successfully.",
     )
 
