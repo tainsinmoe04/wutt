@@ -1,0 +1,17 @@
+# Render Static Site — WUTT Frontend
+# https://render.com/docs/static-sites
+
+services:
+  - type: web
+    name: wutt-frontend
+    env: static
+    buildCommand: echo done
+    staticPublishPath: ./frontend
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
