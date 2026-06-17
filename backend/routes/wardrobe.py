@@ -226,14 +226,10 @@ def delete_wardrobe_item(
 
     try:
         delete_image(public_id)
-    except Exception as exc:
+    except RuntimeError as exc:
         raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "data": {},
-                "message": f"Cloudinary deletion failed — {exc}",
-            },
+            status_code=503,
+            detail={"status": "error", "data": {}, "message": str(exc)},
         )
 
     db.delete(item)

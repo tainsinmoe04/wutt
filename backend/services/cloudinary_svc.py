@@ -42,12 +42,15 @@ def upload_image(file_bytes: bytes, public_id: str) -> tuple[str, str]:
             "Configure CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET in .env."
         )
 
-    result = cloudinary.uploader.upload(
-        file_bytes,
-        public_id=public_id,
-        overwrite=False,
-        resource_type="image",
-    )
+    try:
+        result = cloudinary.uploader.upload(
+            file_bytes,
+            public_id=public_id,
+            overwrite=False,
+            resource_type="image",
+        )
+    except cloudinary.exceptions.Error as exc:
+        raise RuntimeError(f"Cloudinary upload failed — {exc}") from exc
     return result["secure_url"], result["public_id"]
 
 
@@ -67,3 +70,5 @@ def delete_image(public_id: str) -> bool:
         return result.get("result") == "ok"
     except cloudinary.exceptions.NotFound:
         return False
+    except cloudinary.exceptions.Error as exc:
+        raise RuntimeError(f"Cloudinary deletion failed — {exc}") from exc
