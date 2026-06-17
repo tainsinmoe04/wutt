@@ -40,7 +40,6 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://wutt-frontend.onrender.com",
-        "https://wutt.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -1,7 +1,6 @@
 # SECRETS — NEVER COMMIT
 .env
-.env.local
-.env.production
+.env.*
 *.env
 
 # Database

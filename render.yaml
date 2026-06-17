@@ -13,8 +13,6 @@ services:
     envVars:
       - key: DEBUG
         value: "false"
-      - key: FRONTEND_URL
-        value: "https://wutt.onrender.com"
       - key: DATABASE_URL
         value: "sqlite:///./wutt.db"
       - key: JWT_SECRET_KEY

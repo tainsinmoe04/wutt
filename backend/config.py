@@ -19,7 +19,6 @@ class Settings(BaseSettings):
     # ── App ──────────────────────────────────────────────
     app_name: str = "WUTT — AI Personal Stylist"
     debug: bool = False
-    frontend_url: str = "http://localhost:3000"
 
     # ── Database ─────────────────────────────────────────
     database_url: str = "sqlite:///./wutt.db"
