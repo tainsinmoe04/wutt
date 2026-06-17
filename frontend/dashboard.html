@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WUTT Dashboard — Manage your wardrobe and get AI outfit recommendations">
+  <meta name="theme-color" content="#253A82">
+  <title>WUTT Dashboard — AI Personal Stylist</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Dashboard-specific styles */
+    .dashboard { padding-top: 80px; min-height: 100dvh; background: var(--wutt-bg-subtle); }
+    .dashboard__grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-xl);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-lg);
+    }
+    .dashboard__section {
+      background: var(--wutt-light);
+      border: 1px solid var(--wutt-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+    }
+    .section__title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: var(--space-lg);
+      color: var(--wutt-dark);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    .wardrobe__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: var(--space-md);
+      margin-top: var(--space-md);
+    }
+    .wardrobe__item {
+      position: relative;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--wutt-border);
+      aspect-ratio: 3/4;
+      cursor: pointer;
+    }
+    .wardrobe__item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .wardrobe__item-delete {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      min-width: 32px;
+      min-height: 32px;
+      border-radius: var(--radius-full);
+      background: rgba(239, 68, 68, 0.85);
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+    .wardrobe__item:hover .wardrobe__item-delete { opacity: 1; }
+    .wardrobe__item-meta {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(10,10,10,0.7);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      font-size: var(--text-xs);
+    }
+    .ai-response {
+      background: linear-gradient(135deg, rgba(227,252,135,0.15), rgba(136,162,255,0.1));
+      border-left: 4px solid var(--wutt-energy);
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+      margin-top: var(--space-md);
+      white-space: pre-wrap;
+      line-height: 1.7;
+      animation: slideUp 0.4s ease-out;
+    }
+    .upload-preview {
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+      margin-top: var(--space-sm);
+    }
+    .upload-preview__img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--wutt-border);
+    }
+    .history__item {
+      padding: var(--space-md);
+      border: 1px solid var(--wutt-border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-sm);
+    }
+    .history__item-occasion { font-weight: 600; color: var(--wutt-deep); }
+    .history__item-preview {
+      font-size: var(--text-sm);
+      color: var(--wutt-text-light);
+      margin-top: var(--space-xs);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .history__item-date { font-size: var(--text-xs); color: var(--wutt-text-muted); margin-top: var(--space-xs); }
+    .empty-state {
+      text-align: center;
+      padding: var(--space-2xl);
+      color: var(--wutt-text-light);
+    }
+    @media (max-width: 768px) {
+      .dashboard__grid { grid-template-columns: 1fr; padding: var(--space-md); }
+    }
+  </style>
+</head>
+<body>
+
+  <a href="#dashboard-main" class="skip-link">Skip to main content</a>
+
+  <!-- Navbar -->
+  <nav class="navbar" role="navigation" aria-label="Dashboard navigation">
+    <div class="navbar__inner">
+      <a href="/" class="navbar__logo" aria-label="WUTT Home">
+        <span class="navbar__logo-icon" aria-hidden="true">W</span>
+        WUTT
+      </a>
+      <div class="navbar__nav" style="display:flex;align-items:center;gap:var(--space-md);">
+        <span id="dashboardUserEmail" style="font-size:var(--text-sm);color:var(--wutt-text-light);"></span>
+        <button type="button" class="btn btn--ghost btn--sm" id="logoutBtn">ထွက်မယ်</button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="dashboard-main" class="dashboard">
+    <div class="container" style="margin-bottom:var(--space-lg);">
+      <div id="globalAlert" class="u-hidden" role="alert"></div>
+    </div>
+
+    <div class="dashboard__grid">
+      <!-- Left column -->
+      <div>
+        <!-- Profile -->
+        <div class="dashboard__section stagger">
+          <h2 class="section__title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-primary)" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            ကိုယ်ရေးအချက်အလက်
+          </h2>
+          <form id="profileForm" novalidate>
+            <div class="input">
+              <label class="input__label" for="profileHeight">အရပ် (cm)</label>
+              <input class="input__field" type="number" id="profileHeight" name="height_cm" placeholder="ဥပမာ 170" min="50" max="250" step="0.1">
+            </div>
+            <div class="input" style="margin-top:var(--space-md);">
+              <label class="input__label" for="profileSkinTone">အသားအရောင်</label>
+              <select class="select" id="profileSkinTone" name="skin_tone">
+                <option value="">-- ရွေးပါ --</option>
+                <option value="fair">အသားဖြူ</option>
+                <option value="light">အသားညိုနု</option>
+                <option value="medium">အသားညို</option>
+                <option value="tan">အသားညိုရင့်</option>
+                <option value="dark">အသားမည်း</option>
+              </select>
+            </div>
+            <div class="input" style="margin-top:var(--space-md);">
+              <label class="input__label" for="profileStyle">ဝတ်စားဟန်</label>
+              <select class="select" id="profileStyle" name="style_preference">
+                <option value="">-- ရွေးပါ --</option>
+                <option value="casual">ပေါ့ပေါ့ပါးပါး</option>
+                <option value="formal">ဖောင်ဖေါင်မာမာ</option>
+                <option value="traditional">ရိုးရာ</option>
+                <option value="sporty">အားကစားဆန်</option>
+                <option value="streetwear">လမ်းပေါ်ကစတိုင်</option>
+              </select>
+            </div>
+            <div class="input" style="margin-top:var(--space-md);">
+              <label class="input__label" for="profileCity">မြို့</label>
+              <input class="input__field" type="text" id="profileCity" name="location_city" placeholder="ဥပမာ Yangon" maxlength="100">
+            </div>
+            <button type="submit" class="btn btn--primary btn--full" style="margin-top:var(--space-lg);">
+              <span class="btn__label">သိမ်းမယ်</span>
+              <span class="btn__spinner" aria-hidden="true"></span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Stylist -->
+        <div class="dashboard__section" style="margin-top:var(--space-xl);">
+          <h2 class="section__title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-energy)" stroke-width="2" aria-hidden="true"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.9l.5.5a4 4 0 0 1 0 5.7l-.5.5c.7.8 1.1 1.8 1.1 2.9a4 4 0 0 1-4 4"/><path d="M12 2a4 4 0 0 0-4 4c0 1.1.4 2.1 1.1 2.9l-.5.5a4 4 0 0 0 0 5.7l.5.5c-.7.8-1.1 1.8-1.1 2.9a4 4 0 0 0 4 4"/></svg>
+            AI အကြံပေး
+          </h2>
+          <form id="stylistForm" novalidate>
+            <div class="input">
+              <label class="input__label" for="occasion">ဘယ်လိုအခါအခွင့်လဲ?</label>
+              <select class="select" id="occasion" name="occasion" required>
+                <option value="">-- ရွေးပါ --</option>
+                <option value="wedding">မင်္ဂလာပွဲ</option>
+                <option value="work">ရုံးသွား</option>
+                <option value="party">ပါတီ</option>
+                <option value="date">ချိန်းတွေ့</option>
+                <option value="casual">အပြင်ထွက်</option>
+                <option value="interview">အင်တာဗျူး</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn--primary btn--full" style="margin-top:var(--space-lg);" id="recommendBtn">
+              <span class="btn__label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" style="vertical-align:middle;margin-right:6px;"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/></svg>
+                အကြံပေးပါ
+              </span>
+              <span class="btn__spinner" aria-hidden="true"></span>
+            </button>
+          </form>
+          <div id="aiResponse" class="u-hidden"></div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div>
+        <!-- Wardrobe Upload -->
+        <div class="dashboard__section">
+          <h2 class="section__title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-primary)" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            ဗီရို
+          </h2>
+          <form id="wardrobeForm" novalidate enctype="multipart/form-data">
+            <label class="upload-box" id="uploadBox" for="wardrobeFile" style="min-height:120px;">
+              <span class="upload-box__icon" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </span>
+              <span class="upload-box__text">ဓာတ်ပုံထည့်ရန်နှိပ်ပါ</span>
+              <span class="upload-box__hint">JPEG, PNG, or WebP — 10 MB max</span>
+            </label>
+            <input type="file" id="wardrobeFile" name="file" accept="image/jpeg,image/png,image/webp" style="display:none;">
+            <div class="upload-preview" id="uploadPreview"></div>
+            <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-md);">
+              <select class="select" id="wardrobeCategory" name="category" style="flex:1;">
+                <option value="">အမျိုးအစား</option>
+                <option value="top">အပေါ်အင်္ကျီ</option>
+                <option value="bottom">ဘောင်းဘီ</option>
+                <option value="dress">ဝတ်စုံ</option>
+                <option value="outerwear">အင်္ကျီအပေါ်ခံ</option>
+                <option value="shoes">ဖိနပ်</option>
+                <option value="accessory">အသုံးအဆောင်</option>
+              </select>
+              <select class="select" id="wardrobeColor" name="color" style="flex:1;">
+                <option value="">အရောင်</option>
+                <option value="black">အနက်</option><option value="white">အဖြူ</option>
+                <option value="red">အနီ</option><option value="blue">အပြာ</option>
+                <option value="green">အစိမ်း</option><option value="yellow">အဝါ</option>
+                <option value="pink">ပန်းရောင်</option><option value="purple">ခရမ်း</option>
+                <option value="brown">အညို</option><option value="grey">မီးခိုး</option>
+                <option value="navy">နေပယ်ပြာ</option><option value="beige">ဘဲဂျီ</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn--navy btn--full" style="margin-top:var(--space-md);" id="uploadBtn">
+              <span class="btn__label">ထည့်မယ်</span>
+              <span class="btn__spinner" aria-hidden="true"></span>
+            </button>
+          </form>
+          <div class="wardrobe__grid" id="wardrobeGrid">
+            <div class="empty-state">အဝတ်တွေထည့်ဖို့ ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="dashboard__section" style="margin-top:var(--space-xl);">
+          <h2 class="section__title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-lavender)" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            အကြံပေးမှတ်တမ်း
+          </h2>
+          <div id="historyList">
+            <div class="empty-state" id="historyEmpty">အကြံပေးမှတ်တမ်းမရှိသေးပါ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+  // ── WUTT Dashboard — Vanilla JS ─────────────────────
+  const API = 'http://localhost:8000';
+  let currentUser = null;
+
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  async function api(method, path, body, formData) {
+    const opts = { method, credentials: 'include' };
+    if (formData) { opts.body = formData; }
+    else if (body) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
+    try {
+      const res = await fetch(API + path, opts);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.detail?.message || res.statusText);
+      return data;
+    } catch (e) {
+      showToast(e.message, 'error');
+      throw e;
+    }
+  }
+
+  function showToast(msg, type) {
+    const t = document.createElement('div');
+    t.className = 'toast toast--' + (type||'info');
+    t.setAttribute('role', 'status');
+    t.textContent = msg;
+    t.addEventListener('animationend', (e) => { if (e.animationName==='fadeOut') t.remove(); });
+    $('#toastContainer').appendChild(t);
+  }
+
+  function setLoading(btn, loading) {
+    if (loading) { btn.classList.add('btn--loading'); btn.setAttribute('aria-disabled','true'); }
+    else { btn.classList.remove('btn--loading'); btn.removeAttribute('aria-disabled'); }
+  }
+
+  // ── Init ────────────────────────────────────────────
+  async function init() {
+    // Check auth by trying to load profile
+    const res = await fetch(API + '/auth/login', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'check-session', password: '' }),
+    }).catch(() => null);
+
+    // Load profile to verify session
+    try {
+      const r = await fetch(API + '/profile/1', { credentials: 'include' });
+      if (r.status === 401) { window.location.href = '/'; return; }
+    } catch { window.location.href = '/'; return; }
+
+    await loadProfile();
+    await loadWardrobe();
+    await loadHistory();
+  }
+
+  // ── Profile ─────────────────────────────────────────
+  async function loadProfile() {
+    try {
+      const users = await api('GET', '/profile/1');
+      if (users?.data?.id) {
+        const p = users.data;
+        $('#profileHeight').value = p.height_cm || '';
+        $('#profileSkinTone').value = p.skin_tone || '';
+        $('#profileStyle').value = p.style_preference || '';
+        $('#profileCity').value = p.location_city || '';
+        currentUser = { id: p.user_id };
+        $('#dashboardUserEmail').textContent = 'user #' + p.user_id;
+      }
+    } catch {}
+  }
+
+  $('#profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('#profileForm').querySelector('button[type=submit]');
+    setLoading(btn, true);
+    try {
+      const body = {
+        height_cm: parseFloat($('#profileHeight').value) || null,
+        skin_tone: $('#profileSkinTone').value || null,
+        style_preference: $('#profileStyle').value || null,
+        location_city: $('#profileCity').value || null,
+      };
+      const uid = currentUser?.id || 1;
+      await api('PUT', '/profile/' + uid, body);
+      showToast('Profile saved!', 'success');
+    } catch {} finally { setLoading(btn, false); }
+  });
+
+  // ── Wardrobe ────────────────────────────────────────
+  async function loadWardrobe() {
+    try {
+      const res = await api('GET', '/wardrobe/1');
+      const items = res?.data || [];
+      const grid = $('#wardrobeGrid');
+      if (!items.length) {
+        grid.innerHTML = '<div class="empty-state">အဝတ်တွေထည့်ဖို့ ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>';
+        return;
+      }
+      grid.innerHTML = items.map(i => `
+        <div class="wardrobe__item">
+          <img src="${i.cloudinary_url}" alt="${i.category||'Wardrobe item'}" loading="lazy">
+          <button class="wardrobe__item-delete" data-id="${i.id}" title="ဖျက်မယ်" aria-label="Delete item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div class="wardrobe__item-meta">${i.category||''} ${i.color?'· '+i.color:''}</div>
+        </div>
+      `).join('');
+      grid.querySelectorAll('.wardrobe__item-delete').forEach(b => {
+        b.addEventListener('click', (ev) => { ev.stopPropagation(); deleteItem(b.dataset.id); });
+      });
+    } catch {}
+  }
+
+  async function deleteItem(id) {
+    if (!confirm('ဒီအဝတ်ကိုဖျက်မှာသေချာလား?')) return;
+    try {
+      await api('DELETE', '/wardrobe/' + id);
+      showToast('Item deleted', 'success');
+      await loadWardrobe();
+    } catch {}
+  }
+
+  $('#wardrobeFile').addEventListener('change', (e) => {
+    const files = e.target.files;
+    $('#uploadPreview').innerHTML = '';
+    for (const f of files) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = document.createElement('img');
+        img.src = ev.target.result;
+        img.className = 'upload-preview__img';
+        $('#uploadPreview').appendChild(img);
+      };
+      reader.readAsDataURL(f);
+    }
+  });
+
+  $('#wardrobeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const file = $('#wardrobeFile').files[0];
+    if (!file) { showToast('Please select an image', 'error'); return; }
+    const btn = $('#uploadBtn');
+    setLoading(btn, true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const cat = $('#wardrobeCategory').value;
+      const col = $('#wardrobeColor').value;
+      if (cat) fd.append('category', cat);
+      if (col) fd.append('color', col);
+      await api('POST', '/wardrobe/upload', null, fd);
+      showToast('Item uploaded!', 'success');
+      $('#wardrobeForm').reset();
+      $('#uploadPreview').innerHTML = '';
+      await loadWardrobe();
+    } catch {} finally { setLoading(btn, false); }
+  });
+
+  // ── Stylist ─────────────────────────────────────────
+  $('#stylistForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('#recommendBtn');
+    setLoading(btn, true);
+    try {
+      const occasion = $('#occasion').value;
+      if (!occasion) { showToast('Please select an occasion', 'error'); setLoading(btn,false); return; }
+      const res = await api('POST', '/stylist/recommend', { occasion });
+      const resp = $('#aiResponse');
+      resp.classList.remove('u-hidden');
+      resp.className = 'ai-response';
+      resp.innerHTML = `<strong>Occasion: ${res.data.occasion}</strong>${res.data.weather_desc ? '<br>Weather: '+res.data.weather_desc+(res.data.temperature_c?' ('+res.data.temperature_c.toFixed(0)+'°C)':'') : ''}<br><br>${res.data.ai_response}`;
+      await loadHistory();
+    } catch { $('#aiResponse').classList.add('u-hidden'); } finally { setLoading(btn, false); }
+  });
+
+  // ── History ─────────────────────────────────────────
+  async function loadHistory() {
+    try {
+      const res = await api('GET', '/history/1');
+      const sessions = res?.data || [];
+      const list = $('#historyList');
+      if (!sessions.length) {
+        list.innerHTML = '<div class="empty-state" id="historyEmpty">အကြံပေးမှတ်တမ်းမရှိသေးပါ</div>';
+        return;
+      }
+      list.innerHTML = sessions.slice(0, 10).map(s => `
+        <div class="history__item">
+          <div class="history__item-occasion">${s.occasion||''}${s.weather_desc?' · '+s.weather_desc:''}${s.temperature_c?' · '+s.temperature_c.toFixed(0)+'°C':''}</div>
+          <div class="history__item-preview">${(s.ai_response||'').substring(0,200)}...</div>
+          <div class="history__item-date">${new Date(s.created_at).toLocaleString()}</div>
+        </div>
+      `).join('');
+    } catch {}
+  }
+
+  // ── Logout ──────────────────────────────────────────
+  $('#logoutBtn').addEventListener('click', () => {
+    document.cookie = 'wutt_token=; Max-Age=0; path=/;';
+    window.location.href = '/';
+  });
+
+  init();
+  </script>
+</body>
+</html>
