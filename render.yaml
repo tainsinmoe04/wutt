@@ -39,10 +39,12 @@ services:
   # ── Static Frontend ──────────────────────────────────
   - type: static
     name: wutt-frontend
-    rootDir: frontend
-    buildCommand: "" # No build step for vanilla HTML/CSS/JS
+    buildCommand: echo done
     staticPublishPath: frontend
     routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
       - type: rewrite
         source: /api/*
         destination: https://wutt-api.onrender.com/*
