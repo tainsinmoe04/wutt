@@ -129,6 +129,99 @@
       padding: var(--space-2xl);
       color: var(--wutt-text-light);
     }
+    .empty-state__icon {
+      font-size: 2.5rem;
+      margin-bottom: var(--space-md);
+      opacity: 0.4;
+    }
+    .empty-state__text {
+      font-size: var(--text-sm);
+      color: var(--wutt-text-light);
+    }
+    /* Thinking indicator */
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-lg);
+      color: var(--wutt-text-light);
+      font-size: var(--text-sm);
+    }
+    .thinking__dots { display: flex; gap: 4px; }
+    .thinking__dot {
+      width: 6px; height: 6px;
+      background: var(--wutt-primary);
+      border-radius: 50%;
+      animation: thinkingBounce 1.2s ease-in-out infinite;
+    }
+    .thinking__dot:nth-child(2) { animation-delay: 0.2s; }
+    .thinking__dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes thinkingBounce {
+      0%, 80%, 100% { transform: scale(0.4); opacity: 0.3; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    /* Retry button */
+    .retry-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      margin-top: var(--space-sm);
+      padding: var(--space-xs) var(--space-md);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      border: 1px solid var(--wutt-border);
+      border-radius: var(--radius-sm);
+      background: var(--wutt-light);
+      color: var(--wutt-primary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .retry-btn:hover { background: rgba(136,162,255,0.08); border-color: var(--wutt-primary); }
+    /* Expandable history */
+    .history__item {
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .history__item:hover { border-color: var(--wutt-primary); }
+    .history__item--expanded .history__item-preview {
+      -webkit-line-clamp: unset;
+      overflow: visible;
+    }
+    /* Wardrobe count badge */
+    .wardrobe__count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--wutt-light);
+      background: var(--wutt-primary);
+      border-radius: var(--radius-full);
+      margin-left: auto;
+    }
+    /* Upload progress */
+    .upload-progress {
+      width: 100%;
+      height: 4px;
+      background: var(--wutt-border-light);
+      border-radius: 2px;
+      margin-top: var(--space-sm);
+      overflow: hidden;
+    }
+    .upload-progress__bar {
+      height: 100%;
+      background: var(--wutt-primary);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+      animation: progressPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes progressPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
     @media (max-width: 768px) {
       .dashboard__grid { grid-template-columns: 1fr; padding: var(--space-md); }
     }
@@ -242,6 +335,7 @@
           <h2 class="section__title">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-primary)" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             ဗီရို
+            <span class="wardrobe__count u-hidden" id="wardrobeCount">0</span>
           </h2>
           <form id="wardrobeForm" novalidate enctype="multipart/form-data">
             <label class="upload-box" id="uploadBox" for="wardrobeFile" style="min-height:120px;">
@@ -300,11 +394,10 @@
   <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
   <script>
-  // ── WUTT Dashboard — Vanilla JS ─────────────────────
+  // ── WUTT Dashboard — Vanilla JS, fully polished ──────
   const API = 'https://wutt.onrender.com';
 
   // Token persisted by index.html login/register flow.
-  // Must exist BEFORE any API call — without it we redirect back to login.
   const AUTH_TOKEN = localStorage.getItem('wutt_token');
   if (!AUTH_TOKEN) { window.location.href = './index.html'; }
 
@@ -325,7 +418,6 @@
       const res = await fetch(API + path, opts);
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        // If token is expired or invalid, clear it and go back to login
         if (res.status === 401) {
           localStorage.removeItem('wutt_token');
           window.location.href = './index.html';
@@ -354,9 +446,12 @@
     else { btn.classList.remove('btn--loading'); btn.removeAttribute('aria-disabled'); }
   }
 
-  // ── Init ────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  //  INIT — Load all data with skeleton states
+  // ═══════════════════════════════════════════════════════
   async function init() {
-    // Confirm the token is still valid by calling /auth/me
+    // Show skeletons while loading
+    showSkeletons();
     try {
       const meData = await api('GET', '/auth/me');
       if (meData.status !== 'success' || !meData.data?.id) {
@@ -370,14 +465,33 @@
       window.location.href = './index.html'; return;
     }
 
-    await loadProfile();
-    await loadWardrobe();
-    await loadHistory();
+    await Promise.all([loadProfile(), loadWardrobe(), loadHistory()]);
+    clearSkeletons();
+  }
+
+  function showSkeletons() {
+    $('#wardrobeGrid').innerHTML = `
+      <div class="skeleton skeleton--card" style="height:140px;"></div>
+      <div class="skeleton skeleton--card" style="height:140px;"></div>
+      <div class="skeleton skeleton--card" style="height:140px;"></div>`;
+    $('#historyList').innerHTML = `
+      <div class="skeleton skeleton--text" style="width:70%;"></div>
+      <div class="skeleton skeleton--text" style="width:50%;"></div>
+      <div class="skeleton skeleton--text" style="width:60%;"></div>`;
+    // Show count badge as skeleton
+    const count = $('#wardrobeCount');
+    if (count) { count.classList.add('u-hidden'); }
+  }
+
+  function clearSkeletons() {
+    // Handled by load* functions replacing innerHTML
   }
 
   const uid = () => currentUser?.id;
 
-  // ── Profile ─────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  //  PROFILE
+  // ═══════════════════════════════════════════════════════
   async function loadProfile() {
     const id = uid(); if (!id) return;
     try {
@@ -389,7 +503,9 @@
         $('#profileStyle').value = p.style_preference || '';
         $('#profileCity').value = p.location_city || '';
       }
-    } catch {}
+    } catch {
+      // Profile might not exist yet — that's OK (404 = no profile)
+    }
   }
 
   $('#profileForm').addEventListener('submit', async (e) => {
@@ -404,20 +520,32 @@
         style_preference: $('#profileStyle').value || null,
         location_city: $('#profileCity').value || null,
       };
-      await api('PUT', '/profile/' + id, body);
-      showToast('Profile saved!', 'success');
+      const res = await api('PUT', '/profile/' + id, body);
+      showToast(res.message || 'ကိုယ်ရေးအချက်အလက်သိမ်းပြီးပါပြီ။', 'success');
     } catch {} finally { setLoading(btn, false); }
   });
 
-  // ── Wardrobe ────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  //  WARDROBE — upload, list, delete, drag-and-drop
+  // ═══════════════════════════════════════════════════════
   async function loadWardrobe() {
     const id = uid(); if (!id) return;
     try {
       const res = await api('GET', '/wardrobe/' + id);
       const items = res?.data || [];
       const grid = $('#wardrobeGrid');
+      const count = $('#wardrobeCount');
+
+      if (count) {
+        count.textContent = items.length;
+        count.classList.toggle('u-hidden', items.length === 0);
+      }
+
       if (!items.length) {
-        grid.innerHTML = '<div class="empty-state">အဝတ်တွေထည့်ဖို့ ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>';
+        grid.innerHTML = `<div class="empty-state">
+          <div class="empty-state__icon">👗</div>
+          <div class="empty-state__text">အဝတ်တွေထည့်ဖို့ ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>
+        </div>`;
         return;
       }
       grid.innerHTML = items.map(i => `
@@ -432,39 +560,101 @@
       grid.querySelectorAll('.wardrobe__item-delete').forEach(b => {
         b.addEventListener('click', (ev) => { ev.stopPropagation(); deleteItem(b.dataset.id); });
       });
-    } catch {}
+    } catch {
+      $('#wardrobeGrid').innerHTML = `<div class="empty-state">
+        <div class="empty-state__text" style="color:var(--wutt-error);">ဗီရိုဒေတာမရယူနိုင်ပါ။</div>
+        <button class="retry-btn" onclick="loadWardrobe()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> ပြန်စမ်းမယ်</button>
+      </div>`;
+    }
   }
 
   async function deleteItem(id) {
     if (!confirm('ဒီအဝတ်ကိုဖျက်မှာသေချာလား?')) return;
     try {
       await api('DELETE', '/wardrobe/' + id);
-      showToast('Item deleted', 'success');
+      showToast('ဖျက်ပြီးပါပြီ။', 'success');
       await loadWardrobe();
     } catch {}
   }
 
-  $('#wardrobeFile').addEventListener('change', (e) => {
-    const files = e.target.files;
-    $('#uploadPreview').innerHTML = '';
-    for (const f of files) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = document.createElement('img');
-        img.src = ev.target.result;
-        img.className = 'upload-preview__img';
-        $('#uploadPreview').appendChild(img);
-      };
-      reader.readAsDataURL(f);
+  // ── File input + drag-and-drop ──────────────────────
+  const ALLOWED_TYPES = ['image/jpeg','image/png','image/webp'];
+  const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  function validateFile(file) {
+    if (!file) return null;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return 'JPEG, PNG, or WebP ဖိုင်သာထည့်ပါ။';
     }
+    if (file.size > MAX_SIZE) {
+      return 'ဖိုင်ဆိုဒ် 10 MB ထက်မကျော်ပါနဲ့။';
+    }
+    return null;
+  }
+
+  function showPreview(file) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      img.className = 'upload-preview__img';
+      $('#uploadPreview').appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleFileSelect(file) {
+    const err = validateFile(file);
+    if (err) { showToast(err, 'error'); return false; }
+    $('#uploadPreview').innerHTML = '';
+    showPreview(file);
+    return true;
+  }
+
+  $('#wardrobeFile').addEventListener('change', (e) => {
+    if (e.target.files[0]) handleFileSelect(e.target.files[0]);
   });
+
+  // Drag-and-drop on the upload box
+  const uploadBox = $('#uploadBox');
+  if (uploadBox) {
+    ['dragenter','dragover'].forEach(evt => {
+      uploadBox.addEventListener(evt, (e) => {
+        e.preventDefault();
+        uploadBox.classList.add('upload-box--active');
+      });
+    });
+    ['dragleave','drop'].forEach(evt => {
+      uploadBox.addEventListener(evt, (e) => {
+        e.preventDefault();
+        uploadBox.classList.remove('upload-box--active');
+      });
+    });
+    uploadBox.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        $('#wardrobeFile').files = e.dataTransfer.files;
+        handleFileSelect(file);
+      }
+    });
+  }
 
   $('#wardrobeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const file = $('#wardrobeFile').files[0];
-    if (!file) { showToast('Please select an image', 'error'); return; }
+    if (!file) { showToast('ဓာတ်ပုံရွေးချယ်ပါ။', 'error'); return; }
+    const err = validateFile(file);
+    if (err) { showToast(err, 'error'); return; }
+
     const btn = $('#uploadBtn');
     setLoading(btn, true);
+
+    // Show upload progress bar
+    const progressHTML = '<div class="upload-progress"><div class="upload-progress__bar" style="width:60%;"></div></div>';
+    const progressEl = document.createElement('div');
+    progressEl.innerHTML = progressHTML;
+    btn.parentNode.insertBefore(progressEl.firstElementChild, btn.nextSibling);
+
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -472,32 +662,95 @@
       const col = $('#wardrobeColor').value;
       if (cat) fd.append('category', cat);
       if (col) fd.append('color', col);
-      await api('POST', '/wardrobe/upload', null, fd);
-      showToast('Item uploaded!', 'success');
+      const res = await api('POST', '/wardrobe/upload', null, fd);
+      showToast(res.message || 'ထည့်ပြီးပါပြီ။', 'success');
       $('#wardrobeForm').reset();
       $('#uploadPreview').innerHTML = '';
       await loadWardrobe();
-    } catch {} finally { setLoading(btn, false); }
+    } catch {} finally {
+      setLoading(btn, false);
+      // Remove progress bar
+      const bar = btn.parentNode.querySelector('.upload-progress');
+      if (bar) bar.remove();
+    }
   });
 
-  // ── Stylist ─────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  //  STYLIST — AI recommendation with thinking indicator
+  // ═══════════════════════════════════════════════════════
+  function formatAIResponse(text) {
+    if (!text) return '';
+    // Escape HTML, then apply formatting
+    let html = text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      // Bold: **text** or __text__
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Italic: *text*
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Line breaks become <br>
+      .replace(/\n/g, '<br>')
+      // Bullet points: lines starting with - or •
+      .replace(/(<br>|^)[-•]\s+/g, '$1• ')
+      // Numbered items: preserve formatting
+      .replace(/(<br>)(\d+[.)]\s+)/g, '$1$2');
+    return html;
+  }
+
+  function showThinking() {
+    const resp = $('#aiResponse');
+    resp.classList.remove('u-hidden');
+    resp.className = 'thinking';
+    resp.innerHTML = `
+      <span>AI စဉ်းစားနေသည်</span>
+      <span class="thinking__dots">
+        <span class="thinking__dot"></span>
+        <span class="thinking__dot"></span>
+        <span class="thinking__dot"></span>
+      </span>`;
+    // Scroll to the thinking indicator
+    resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   $('#stylistForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = $('#recommendBtn');
+    const occasion = $('#occasion').value;
+    if (!occasion) { showToast('အခါအခွင့်ရွေးချယ်ပါ။', 'error'); return; }
+
     setLoading(btn, true);
+    showThinking();
+
     try {
-      const occasion = $('#occasion').value;
-      if (!occasion) { showToast('Please select an occasion', 'error'); setLoading(btn,false); return; }
       const res = await api('POST', '/stylist/recommend', { occasion });
       const resp = $('#aiResponse');
-      resp.classList.remove('u-hidden');
       resp.className = 'ai-response';
-      resp.innerHTML = `<strong>Occasion: ${res.data.occasion}</strong>${res.data.weather_desc ? '<br>Weather: '+res.data.weather_desc+(res.data.temperature_c?' ('+res.data.temperature_c.toFixed(0)+'°C)':'') : ''}<br><br>${res.data.ai_response}`;
+
+      // Build header with context
+      let header = '<div style="margin-bottom:var(--space-md);padding-bottom:var(--space-md);border-bottom:1px solid var(--wutt-border-light);">';
+      header += '<div style="font-weight:700;font-size:1.1rem;color:var(--wutt-deep);">';
+      const occasionLabels = {wedding:'မင်္ဂလာပွဲ',work:'ရုံးသွား',party:'ပါတီ',date:'ချိန်းတွေ့',casual:'အပြင်ထွက်',interview:'အင်တာဗျူး'};
+      header += (occasionLabels[res.data.occasion] || res.data.occasion);
+      header += '</div>';
+      if (res.data.weather_desc) {
+        header += '<div style="font-size:var(--text-sm);color:var(--wutt-text-light);margin-top:4px;">';
+        header += 'ရာသီဥတု: ' + res.data.weather_desc;
+        if (res.data.temperature_c) header += ' · ' + res.data.temperature_c.toFixed(0) + '°C';
+        if (res.data.location) header += ' · ' + res.data.location;
+        header += '</div>';
+      }
+      header += '</div>';
+
+      resp.innerHTML = header + formatAIResponse(res.data.ai_response);
+      resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       await loadHistory();
-    } catch { $('#aiResponse').classList.add('u-hidden'); } finally { setLoading(btn, false); }
+    } catch {
+      $('#aiResponse').classList.add('u-hidden');
+    } finally { setLoading(btn, false); }
   });
 
-  // ── History ─────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  //  HISTORY — expandable items
+  // ═══════════════════════════════════════════════════════
   async function loadHistory() {
     const id = uid(); if (!id) return;
     try {
@@ -505,20 +758,47 @@
       const sessions = res?.data || [];
       const list = $('#historyList');
       if (!sessions.length) {
-        list.innerHTML = '<div class="empty-state" id="historyEmpty">အကြံပေးမှတ်တမ်းမရှိသေးပါ</div>';
+        list.innerHTML = `<div class="empty-state">
+          <div class="empty-state__icon">🕐</div>
+          <div class="empty-state__text">အကြံပေးမှတ်တမ်းမရှိသေးပါ</div>
+        </div>`;
         return;
       }
-      list.innerHTML = sessions.slice(0, 10).map(s => `
-        <div class="history__item">
+      list.innerHTML = sessions.slice(0, 20).map((s,i) => `
+        <div class="history__item" id="hist-${i}" onclick="toggleHistory(${i})">
           <div class="history__item-occasion">${s.occasion||''}${s.weather_desc?' · '+s.weather_desc:''}${s.temperature_c?' · '+s.temperature_c.toFixed(0)+'°C':''}</div>
-          <div class="history__item-preview">${(s.ai_response||'').substring(0,200)}...</div>
-          <div class="history__item-date">${new Date(s.created_at).toLocaleString()}</div>
+          <div class="history__item-preview">${(s.ai_response||'').substring(0,150)}${(s.ai_response||'').length>150?'...':''}</div>
+          <div class="history__item-date">${new Date(s.created_at).toLocaleString('my-MM')}</div>
+          <div class="u-hidden" id="hist-full-${i}" style="margin-top:var(--space-sm);white-space:pre-wrap;font-size:var(--text-sm);line-height:1.7;color:var(--wutt-text);">${formatAIResponse(s.ai_response||'')}</div>
         </div>
       `).join('');
-    } catch {}
+    } catch {
+      $('#historyList').innerHTML = `<div class="empty-state">
+        <div class="empty-state__text" style="color:var(--wutt-error);">မှတ်တမ်းမရယူနိုင်ပါ။</div>
+        <button class="retry-btn" onclick="loadHistory()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> ပြန်စမ်းမယ်</button>
+      </div>`;
+    }
   }
 
-  // ── Logout ──────────────────────────────────────────
+  // Exposed globally for onclick handler
+  window.toggleHistory = function(i) {
+    const item = $('#hist-' + i);
+    const full = $('#hist-full-' + i);
+    const preview = item?.querySelector('.history__item-preview');
+    if (!item || !full) return;
+    const isOpen = item.classList.toggle('history__item--expanded');
+    if (isOpen) {
+      full.classList.remove('u-hidden');
+      if (preview) preview.style.display = 'none';
+    } else {
+      full.classList.add('u-hidden');
+      if (preview) preview.style.display = '';
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════
+  //  LOGOUT
+  // ═══════════════════════════════════════════════════════
   $('#logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('wutt_token');
     document.cookie = 'wutt_token=; Max-Age=0; path=/;';
