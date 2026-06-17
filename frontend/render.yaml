@@ -1,5 +1,5 @@
 # Render Static Site — WUTT Frontend
-# Standalone config. For Blueprint deploy, use root render.yaml instead.
+# Standalone config for static site deploy.
 # https://render.com/docs/static-sites
 
 services:
@@ -8,12 +8,8 @@ services:
     env: static
     buildCommand: echo done
     staticPublishPath: .
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
     autoDeploy: true
     headers:
       - path: /*
         name: Cache-Control
-        value: public, max-age=3600
+        value: no-cache

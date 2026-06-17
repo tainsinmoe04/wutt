@@ -304,9 +304,9 @@
   const API = 'https://wutt.onrender.com';
 
   // Token persisted by index.html login/register flow.
-  // Must exist BEFORE any API call — without it we redirect back.
+  // Must exist BEFORE any API call — without it we redirect back to login.
   const AUTH_TOKEN = localStorage.getItem('wutt_token');
-  if (!AUTH_TOKEN) { window.location.href = '/'; }
+  if (!AUTH_TOKEN) { window.location.href = './index.html'; }
 
   let currentUser = null;
 
@@ -328,7 +328,7 @@
         // If token is expired or invalid, clear it and go back to login
         if (res.status === 401) {
           localStorage.removeItem('wutt_token');
-          window.location.href = '/';
+          window.location.href = './index.html';
           return;
         }
         throw new Error(data?.detail?.message || res.statusText);
@@ -361,13 +361,13 @@
       const meData = await api('GET', '/auth/me');
       if (meData.status !== 'success' || !meData.data?.id) {
         localStorage.removeItem('wutt_token');
-        window.location.href = '/'; return;
+        window.location.href = './index.html'; return;
       }
       currentUser = { id: meData.data.id, email: meData.data.email };
       $('#dashboardUserEmail').textContent = meData.data.email;
     } catch {
       localStorage.removeItem('wutt_token');
-      window.location.href = '/'; return;
+      window.location.href = './index.html'; return;
     }
 
     await loadProfile();
@@ -522,7 +522,7 @@
   $('#logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('wutt_token');
     document.cookie = 'wutt_token=; Max-Age=0; path=/;';
-    window.location.href = '/';
+    window.location.href = './index.html';
   });
 
   init();

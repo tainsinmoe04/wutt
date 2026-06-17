@@ -362,15 +362,20 @@ async function handleLoginSubmit(e) {
     const data = await response.json();
 
     if (data.status === 'success') {
-      // Persist token so dashboard can survive cross-origin navigation
-      if (data.data?.token) {
-        localStorage.setItem('wutt_token', data.data.token);
+      // Defensive token extraction — try every common field name
+      const token = data?.data?.token || data?.token || data?.access_token;
+      if (!token) {
+        toggleHidden(loginFormError, false);
+        loginFormError.textContent = 'Server returned success but no token. Please try again.';
+        setButtonLoading(loginSubmitBtn, false);
+        return;
       }
+      localStorage.setItem('wutt_token', token);
       showToast('အကောင့်ဝင်ပြီးပါပြီ။ Dashboard သို့ခေါ်ဆောင်သွားပါမယ်။', 'success');
       closeModal(loginOverlay);
-      // Redirect to dashboard
+      // Explicit relative redirect — Render serves real files, no SPA rewrite
       setTimeout(() => {
-        window.location.href = '/dashboard.html';
+        window.location.href = './dashboard.html';
       }, 800);
     } else {
       toggleHidden(loginFormError, false);
@@ -406,14 +411,19 @@ async function handleRegisterSubmit(e) {
     const data = await response.json();
 
     if (data.status === 'success') {
-      // Persist token so dashboard can survive cross-origin navigation
-      if (data.data?.token) {
-        localStorage.setItem('wutt_token', data.data.token);
+      // Defensive token extraction — try every common field name
+      const token = data?.data?.token || data?.token || data?.access_token;
+      if (!token) {
+        toggleHidden(registerFormError, false);
+        registerFormError.textContent = 'Server returned success but no token. Please try again.';
+        setButtonLoading(registerSubmitBtn, false);
+        return;
       }
+      localStorage.setItem('wutt_token', token);
       showToast('အကောင့်ဖွင့်ပြီးပါပြီ။ Dashboard သို့ခေါ်ဆောင်သွားပါမယ်။', 'success');
       closeModal(registerOverlay);
       setTimeout(() => {
-        window.location.href = '/dashboard.html';
+        window.location.href = './dashboard.html';
       }, 800);
     } else {
       toggleHidden(registerFormError, false);
