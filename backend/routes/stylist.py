@@ -7,6 +7,7 @@ Endpoints
 Requires authentication on both endpoints.
 """
 
+import json
 from datetime import datetime
 from typing import Any
 
@@ -29,11 +30,36 @@ router = APIRouter()
 class RecommendRequest(BaseModel):
     """Payload for POST /stylist/recommend."""
 
-    occasion: str = Field(..., min_length=1, max_length=100, description="e.g. wedding, work, party, dinner date")
+    occasion: str = Field(
+        ..., min_length=1, max_length=100,
+        description="e.g. wedding, work, party, dinner date",
+    )
+
+
+class OutfitData(BaseModel):
+    """Structured outfit recommendation returned in API responses."""
+
+    outfit: list[str] = Field(default_factory=list, description="2–5 items to wear, ordered")
+    explanation: str = Field(default="", description="Why this outfit works, Myanmar-friendly")
+    weather_based_tip: str = Field(default="", description="One practical weather tip")
+
+
+class RecommendResponse(BaseModel):
+    """Full recommendation response including context."""
+
+    id: int
+    occasion: str | None
+    weather_desc: str | None
+    temperature_c: float | None
+    location: str | None
+    outfit: list[str]
+    explanation: str
+    weather_based_tip: str
+    created_at: str
 
 
 class StyleSessionData(BaseModel):
-    """Style session returned in API responses."""
+    """Style session returned in history API responses."""
 
     id: int
     occasion: str | None
@@ -59,6 +85,17 @@ def _isoformat(dt) -> str:
     return dt.isoformat()
 
 
+def _extract_outfit_fields(ai_result: dict[str, Any]) -> tuple[list[str], str, str]:
+    """Safely extract outfit, explanation, and weather_based_tip from AI result."""
+    if not ai_result:
+        return [], "", ""
+    return (
+        ai_result.get("outfit") or [],
+        ai_result.get("explanation") or "",
+        ai_result.get("weather_based_tip") or "",
+    )
+
+
 # ── Routes ─────────────────────────────────────────────
 
 
@@ -73,7 +110,8 @@ def recommend_outfit(
     Fetches the user's profile + wardrobe, current weather (by profile city),
     then asks GPT-4o Vision to pick the best outfit for the occasion.
 
-    Returns the AI response and saves the session to history.
+    Returns a structured recommendation with outfit items, explanation,
+    and a weather-based tip.
     """
     user_id = current_user.id
 
@@ -116,7 +154,7 @@ def recommend_outfit(
         })
 
     # ── Call AI ────────────────────────────────────────
-    ai_response = get_outfit_recommendation(
+    ai_result = get_outfit_recommendation(
         wardrobe_items=wardrobe_images,
         occasion=body.occasion,
         weather_desc=weather_desc,
@@ -126,7 +164,7 @@ def recommend_outfit(
         style_preference=profile.style_preference if profile else None,
     )
 
-    if ai_response is None:
+    if ai_result is None:
         raise HTTPException(
             status_code=503,
             detail={
@@ -136,6 +174,8 @@ def recommend_outfit(
             },
         )
 
+    outfit, explanation, weather_based_tip = _extract_outfit_fields(ai_result)
+
     # ── Save session ───────────────────────────────────
     session = StyleSession(
         user_id=user_id,
@@ -143,7 +183,7 @@ def recommend_outfit(
         weather_desc=weather_desc,
         temperature_c=temperature_c,
         location=location,
-        ai_response=ai_response,
+        ai_response=json.dumps(ai_result, ensure_ascii=False),
     )
     db.add(session)
     db.commit()
@@ -157,7 +197,9 @@ def recommend_outfit(
             "weather_desc": session.weather_desc,
             "temperature_c": session.temperature_c,
             "location": session.location,
-            "ai_response": session.ai_response,
+            "outfit": outfit,
+            "explanation": explanation,
+            "weather_based_tip": weather_based_tip,
             "created_at": _isoformat(session.created_at),
         },
         "message": "Recommendation generated successfully.",

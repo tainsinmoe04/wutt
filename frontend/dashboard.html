@@ -90,9 +90,83 @@
       border-radius: var(--radius-md);
       padding: var(--space-lg);
       margin-top: var(--space-md);
-      white-space: pre-wrap;
       line-height: 1.7;
       animation: slideUp 0.4s ease-out;
+    }
+    /* Structured outfit blocks */
+    .recommend__header {
+      margin-bottom: var(--space-md);
+      padding-bottom: var(--space-md);
+      border-bottom: 1px solid var(--wutt-border-light);
+    }
+    .recommend__occasion {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--wutt-deep);
+    }
+    .recommend__weather {
+      font-size: var(--text-sm);
+      color: var(--wutt-text-light);
+      margin-top: 4px;
+    }
+    .recommend__outfit {
+      margin-bottom: var(--space-md);
+    }
+    .recommend__label {
+      font-weight: 600;
+      font-size: var(--text-sm);
+      color: var(--wutt-deep);
+      margin-bottom: var(--space-sm);
+    }
+    .outfit-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .outfit-list__item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: rgba(136,162,255,0.08);
+      border-radius: var(--radius-sm);
+      margin-bottom: 4px;
+      font-size: var(--text-sm);
+      font-weight: 500;
+    }
+    .outfit-list__num {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--wutt-primary);
+      color: var(--wutt-light);
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .recommend__explanation {
+      font-size: var(--text-sm);
+      color: var(--wutt-text);
+      line-height: 1.7;
+      margin-bottom: var(--space-md);
+    }
+    .recommend__tip {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: rgba(227,252,135,0.2);
+      border-radius: var(--radius-sm);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: #4D7C0F;
+    }
+    .recommend__tip-icon {
+      flex-shrink: 0;
+      font-size: 1rem;
     }
     .upload-preview {
       display: flex;
@@ -762,25 +836,8 @@
   });
 
   // ═══════════════════════════════════════════════════════
-  //  STYLIST — AI recommendation with thinking indicator
+  //  STYLIST — AI recommendation with structured output
   // ═══════════════════════════════════════════════════════
-  function formatAIResponse(text) {
-    if (!text) return '';
-    // Escape HTML, then apply formatting
-    let html = text
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      // Bold: **text** or __text__
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      // Italic: *text*
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      // Line breaks become <br>
-      .replace(/\n/g, '<br>')
-      // Bullet points: lines starting with - or •
-      .replace(/(<br>|^)[-•]\s+/g, '$1• ')
-      // Numbered items: preserve formatting
-      .replace(/(<br>)(\d+[.)]\s+)/g, '$1$2');
-    return html;
-  }
 
   function showThinking(itemCount) {
     const resp = $('#aiResponse');
@@ -815,6 +872,56 @@
     return `${y} ${m} ${d} · ${ampm} ${h12}:${min}`;
   }
 
+  function renderOutfitRecommendation(data) {
+    let html = '';
+
+    // ── Header: occasion + weather ─────────────────────
+    const occasionLabels = {wedding:'မင်္ဂလာပွဲ',work:'ရုံးသွား',party:'ပါတီ',date:'ချိန်းတွေ့',casual:'အပြင်ထွက်',interview:'အင်တာဗျူး'};
+    html += '<div class="recommend__header">';
+    html += '<div class="recommend__occasion">' + (occasionLabels[data.occasion] || data.occasion) + '</div>';
+    if (data.weather_desc) {
+      html += '<div class="recommend__weather">';
+      html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>';
+      html += data.weather_desc;
+      if (data.temperature_c) html += ' · ' + data.temperature_c.toFixed(0) + '°C';
+      if (data.location) html += ' · ' + data.location;
+      html += '</div>';
+    }
+    html += '</div>';
+
+    // ── Outfit items ───────────────────────────────────
+    const outfit = data.outfit || [];
+    if (outfit.length > 0) {
+      html += '<div class="recommend__outfit">';
+      html += '<div class="recommend__label">👗 ဒီနေ့ ဒါတွေဝတ်ပါ</div>';
+      html += '<ul class="outfit-list">';
+      outfit.forEach((item, i) => {
+        html += '<li class="outfit-list__item">';
+        html += '<span class="outfit-list__num">' + (i + 1) + '</span>';
+        html += item.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        html += '</li>';
+      });
+      html += '</ul></div>';
+    }
+
+    // ── Explanation ────────────────────────────────────
+    if (data.explanation) {
+      html += '<div class="recommend__explanation">';
+      html += data.explanation.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += '</div>';
+    }
+
+    // ── Weather tip ────────────────────────────────────
+    if (data.weather_based_tip) {
+      html += '<div class="recommend__tip">';
+      html += '<span class="recommend__tip-icon">☀️</span>';
+      html += data.weather_based_tip.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += '</div>';
+    }
+
+    return html;
+  }
+
   $('#stylistForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = $('#recommendBtn');
@@ -840,23 +947,7 @@
       const res = await api('POST', '/stylist/recommend', { occasion });
       const resp = $('#aiResponse');
       resp.className = 'ai-response';
-
-      // Build header with context
-      let header = '<div style="margin-bottom:var(--space-md);padding-bottom:var(--space-md);border-bottom:1px solid var(--wutt-border-light);">';
-      header += '<div style="font-weight:700;font-size:1.1rem;color:var(--wutt-deep);">';
-      const occasionLabels = {wedding:'မင်္ဂလာပွဲ',work:'ရုံးသွား',party:'ပါတီ',date:'ချိန်းတွေ့',casual:'အပြင်ထွက်',interview:'အင်တာဗျူး'};
-      header += (occasionLabels[res.data.occasion] || res.data.occasion);
-      header += '</div>';
-      if (res.data.weather_desc) {
-        header += '<div style="font-size:var(--text-sm);color:var(--wutt-text-light);margin-top:4px;">';
-        header += 'ရာသီဥတု: ' + res.data.weather_desc;
-        if (res.data.temperature_c) header += ' · ' + res.data.temperature_c.toFixed(0) + '°C';
-        if (res.data.location) header += ' · ' + res.data.location;
-        header += '</div>';
-      }
-      header += '</div>';
-
-      resp.innerHTML = header + formatAIResponse(res.data.ai_response);
+      resp.innerHTML = renderOutfitRecommendation(res.data);
       resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       await loadHistory();
     } catch {
@@ -865,8 +956,51 @@
   });
 
   // ═══════════════════════════════════════════════════════
-  //  HISTORY — expandable items
+  //  HISTORY — expandable items, structured-response aware
   // ═══════════════════════════════════════════════════════
+
+  function parseStoredResponse(aiResponse) {
+    // Try parsing structured JSON from the stored ai_response
+    if (!aiResponse) return { outfit: [], explanation: '', weather_based_tip: '' };
+    try {
+      const parsed = JSON.parse(aiResponse);
+      return {
+        outfit: parsed.outfit || [],
+        explanation: parsed.explanation || '',
+        weather_based_tip: parsed.weather_based_tip || '',
+      };
+    } catch {
+      // Legacy free-text response
+      return { outfit: [], explanation: aiResponse, weather_based_tip: '' };
+    }
+  }
+
+  function historyPreview(aiResponse) {
+    const { explanation } = parseStoredResponse(aiResponse);
+    return explanation.substring(0, 150) + (explanation.length > 150 ? '...' : '');
+  }
+
+  function historyFullHTML(aiResponse) {
+    const data = parseStoredResponse(aiResponse);
+    const outfit = data.outfit || [];
+    let html = '';
+    if (outfit.length > 0) {
+      html += '<div style="font-weight:600;margin-bottom:4px;color:var(--wutt-deep);">ဝတ်ဆင်ရန်အကြံပြုချက်</div>';
+      html += '<ul style="padding-left:20px;margin:4px 0 12px;">';
+      outfit.forEach(item => {
+        html += '<li>' + item.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</li>';
+      });
+      html += '</ul>';
+    }
+    if (data.explanation) {
+      html += '<div style="white-space:pre-wrap;line-height:1.7;">' + data.explanation.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+    }
+    if (data.weather_based_tip) {
+      html += '<div style="margin-top:8px;padding:8px 12px;background:rgba(227,252,135,0.2);border-radius:8px;font-size:13px;">☀️ ' + data.weather_based_tip.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+    }
+    return html;
+  }
+
   async function loadHistory() {
     const id = uid(); if (!id) return;
     try {
@@ -883,9 +1017,9 @@
       list.innerHTML = sessions.slice(0, 20).map((s,i) => `
         <div class="history__item" id="hist-${i}" onclick="toggleHistory(${i})">
           <div class="history__item-occasion">${s.occasion||''}${s.weather_desc?' · '+s.weather_desc:''}${s.temperature_c?' · '+s.temperature_c.toFixed(0)+'°C':''}</div>
-          <div class="history__item-preview">${(s.ai_response||'').substring(0,150)}${(s.ai_response||'').length>150?'...':''}</div>
+          <div class="history__item-preview">${historyPreview(s.ai_response)}</div>
           <div class="history__item-date">${formatDateMyanmar(s.created_at)}</div>
-          <div class="u-hidden" id="hist-full-${i}" style="margin-top:var(--space-sm);white-space:pre-wrap;font-size:var(--text-sm);line-height:1.7;color:var(--wutt-text);">${formatAIResponse(s.ai_response||'')}</div>
+          <div class="u-hidden" id="hist-full-${i}" style="margin-top:var(--space-sm);font-size:var(--text-sm);color:var(--wutt-text);">${historyFullHTML(s.ai_response)}</div>
         </div>
       `).join('');
     } catch {
