@@ -1,0 +1,55 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /home/claude/wutt/.claude/hooks/safety-check.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command", 
+            "command": "bash /home/claude/wutt/.claude/hooks/format-check.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Write(frontend/**)",
+      "Write(backend/**)",
+      "Write(.claude/**)",
+      "Bash(pip install*)",
+      "Bash(uvicorn*)",
+      "Bash(python*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(ls*)",
+      "Bash(mkdir*)",
+      "Bash(cat*)",
+      "Bash(echo*)",
+      "Bash(curl http://localhost*)"
+    ],
+    "deny": [
+      "Write(.env)",
+      "Bash(rm -rf*)",
+      "Bash(rm -f .env*)",
+      "Bash(git push origin main*)",
+      "Bash(DROP TABLE*)",
+      "Bash(sudo rm*)"
+    ]
+  }
+}
