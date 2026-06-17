@@ -1,7 +1,8 @@
 """OpenAI GPT-4o Vision service — outfit recommendation engine.
 
 Key rule (CLAUDE.md): send images as base64 **or** url — not both.
-We send as base64 so no external image URLs leak.
+We send images as Cloudinary HTTPS URLs (not base64 data URIs) to avoid
+hitting API payload size limits while keeping the implementation simple.
 """
 
 from typing import Any

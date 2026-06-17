@@ -169,7 +169,20 @@ def get_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AuthResponse:
-    """Return all past style sessions for *user_id*, newest first."""
+    """Return all past style sessions for *user_id*, newest first.
+
+    Raises:
+        403 if the current user does not own this history.
+    """
+    if current_user.id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "error",
+                "data": {},
+                "message": "You can only access your own style history.",
+            },
+        )
     sessions = (
         db.query(StyleSession)
         .filter(StyleSession.user_id == user_id)

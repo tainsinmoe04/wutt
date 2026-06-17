@@ -64,6 +64,19 @@ def _get_profile_or_404(user_id: int, db: Session) -> Profile:
     return profile
 
 
+def _require_ownership(user_id: int, current_user: User) -> None:
+    """Raise 403 if *current_user* does not own *user_id*."""
+    if current_user.id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "error",
+                "data": {},
+                "message": "You can only access your own profile.",
+            },
+        )
+
+
 # ── Routes ─────────────────────────────────────────────
 
 
@@ -76,8 +89,10 @@ def get_profile(
     """Return the profile for *user_id*.
 
     Raises:
+        403 if the current user does not own this profile.
         404 if no profile exists for this user.
     """
+    _require_ownership(user_id, current_user)
     profile = _get_profile_or_404(user_id, db)
     return {
         "status": "success",
@@ -99,8 +114,10 @@ def update_profile(
     yet, one is created automatically.
 
     Raises:
+        403 if the current user does not own this profile.
         400 if validation fails (handled by Pydantic).
     """
+    _require_ownership(user_id, current_user)
     profile = db.query(Profile).filter(Profile.user_id == user_id).first()
 
     if profile is None:

@@ -89,6 +89,32 @@ def _get_item_or_404(item_id: int, db: Session) -> Wardrobe:
     return item
 
 
+def _require_wardrobe_ownership(user_id: int, current_user: User) -> None:
+    """Raise 403 if *current_user* does not own wardrobe of *user_id*."""
+    if current_user.id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "error",
+                "data": {},
+                "message": "You can only access your own wardrobe.",
+            },
+        )
+
+
+def _require_item_ownership(item: Wardrobe, current_user: User) -> None:
+    """Raise 403 if *current_user* does not own *item*."""
+    if item.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "error",
+                "data": {},
+                "message": "You can only delete your own items.",
+            },
+        )
+
+
 def _isoformat(dt) -> str:
     """Return *dt* as ISO-8601 string or empty string."""
     if dt is None:
@@ -158,7 +184,12 @@ def list_wardrobe(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AuthResponse:
-    """Return all wardrobe items for *user_id*."""
+    """Return all wardrobe items for *user_id*.
+
+    Raises:
+        403 if the current user does not own this wardrobe.
+    """
+    _require_wardrobe_ownership(user_id, current_user)
     items = (
         db.query(Wardrobe)
         .filter(Wardrobe.user_id == user_id)
@@ -183,9 +214,14 @@ def delete_wardrobe_item(
 ) -> AuthResponse:
     """Delete a wardrobe item from Cloudinary then the database.
 
+    Raises:
+        403 if the current user does not own this item.
+        404 if the item is not found.
+
     Returns 204-style success with no data payload.
     """
     item = _get_item_or_404(item_id, db)
+    _require_item_ownership(item, current_user)
     public_id = item.cloudinary_public_id
 
     try:

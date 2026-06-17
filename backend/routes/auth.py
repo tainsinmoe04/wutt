@@ -223,3 +223,18 @@ def login(
         data=UserData.model_validate(user).model_dump(),
         message="Logged in successfully.",
     )
+
+
+@router.get("/me")
+def get_me(
+    current_user: User = Depends(get_current_user),
+) -> AuthResponse:
+    """Return the currently authenticated user (from JWT cookie).
+
+    Useful for the frontend to discover the logged-in user's ID
+    without hardcoding it.
+    """
+    return _ok(
+        data=UserData.model_validate(current_user).model_dump(),
+        message="",
+    )

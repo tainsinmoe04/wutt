@@ -338,18 +338,16 @@
 
   // ── Init ────────────────────────────────────────────
   async function init() {
-    // Check auth by trying to load profile
-    const res = await fetch(API + '/auth/login', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'check-session', password: '' }),
-    }).catch(() => null);
-
-    // Load profile to verify session
+    // Discover current user from JWT cookie
     try {
-      const r = await fetch(API + '/profile/1', { credentials: 'include' });
-      if (r.status === 401) { window.location.href = '/'; return; }
+      const meRes = await fetch(API + '/auth/me', { credentials: 'include' });
+      if (!meRes.ok) { window.location.href = '/'; return; }
+      const meData = await meRes.json();
+      if (meData.status !== 'success' || !meData.data?.id) {
+        window.location.href = '/'; return;
+      }
+      currentUser = { id: meData.data.id, email: meData.data.email };
+      $('#dashboardUserEmail').textContent = meData.data.email;
     } catch { window.location.href = '/'; return; }
 
     await loadProfile();
@@ -357,24 +355,26 @@
     await loadHistory();
   }
 
+  const uid = () => currentUser?.id;
+
   // ── Profile ─────────────────────────────────────────
   async function loadProfile() {
+    const id = uid(); if (!id) return;
     try {
-      const users = await api('GET', '/profile/1');
+      const users = await api('GET', '/profile/' + id);
       if (users?.data?.id) {
         const p = users.data;
         $('#profileHeight').value = p.height_cm || '';
         $('#profileSkinTone').value = p.skin_tone || '';
         $('#profileStyle').value = p.style_preference || '';
         $('#profileCity').value = p.location_city || '';
-        currentUser = { id: p.user_id };
-        $('#dashboardUserEmail').textContent = 'user #' + p.user_id;
       }
     } catch {}
   }
 
   $('#profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const id = uid(); if (!id) return;
     const btn = $('#profileForm').querySelector('button[type=submit]');
     setLoading(btn, true);
     try {
@@ -384,16 +384,16 @@
         style_preference: $('#profileStyle').value || null,
         location_city: $('#profileCity').value || null,
       };
-      const uid = currentUser?.id || 1;
-      await api('PUT', '/profile/' + uid, body);
+      await api('PUT', '/profile/' + id, body);
       showToast('Profile saved!', 'success');
     } catch {} finally { setLoading(btn, false); }
   });
 
   // ── Wardrobe ────────────────────────────────────────
   async function loadWardrobe() {
+    const id = uid(); if (!id) return;
     try {
-      const res = await api('GET', '/wardrobe/1');
+      const res = await api('GET', '/wardrobe/' + id);
       const items = res?.data || [];
       const grid = $('#wardrobeGrid');
       if (!items.length) {
@@ -479,8 +479,9 @@
 
   // ── History ─────────────────────────────────────────
   async function loadHistory() {
+    const id = uid(); if (!id) return;
     try {
-      const res = await api('GET', '/history/1');
+      const res = await api('GET', '/stylist/history/' + id);
       const sessions = res?.data || [];
       const list = $('#historyList');
       if (!sessions.length) {
