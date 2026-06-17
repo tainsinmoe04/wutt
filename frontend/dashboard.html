@@ -222,6 +222,48 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
     }
+    /* Lightbox overlay */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: var(--z-modal);
+      background: rgba(10,10,10,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 90dvh;
+      object-fit: contain;
+      border-radius: var(--radius-md);
+      box-shadow: 0 0 80px rgba(136,162,255,0.15);
+    }
+    .lightbox__meta {
+      position: absolute;
+      bottom: var(--space-lg);
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      background: rgba(0,0,0,0.5);
+      padding: var(--space-sm) var(--space-lg);
+      border-radius: var(--radius-full);
+    }
+    /* Image load error fallback */
+    .wardrobe__item-error {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: var(--wutt-bg-subtle);
+      color: var(--wutt-text-muted);
+      font-size: 2rem;
+    }
     @media (max-width: 768px) {
       .dashboard__grid { grid-template-columns: 1fr; padding: var(--space-md); }
     }
@@ -414,8 +456,15 @@
     const opts = { method, headers, credentials: 'include' };
     if (formData) { opts.body = formData; }
     else if (body) { opts.body = JSON.stringify(body); }
+
+    // 15-second timeout — show feedback if request hangs
+    const controller = new AbortController();
+    opts.signal = controller.signal;
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     try {
       const res = await fetch(API + path, opts);
+      clearTimeout(timeout);
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         if (res.status === 401) {
@@ -427,7 +476,12 @@
       }
       return data;
     } catch (e) {
-      showToast(e.message, 'error');
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        showToast('ဆာဗာချိတ်ဆက်မှုကြာနေပါတယ်။ ပြန်စမ်းကြည့်ပါ။', 'error');
+      } else {
+        showToast(e.message, 'error');
+      }
       throw e;
     }
   }
@@ -549,8 +603,10 @@
         return;
       }
       grid.innerHTML = items.map(i => `
-        <div class="wardrobe__item">
-          <img src="${i.cloudinary_url}" alt="${i.category||'Wardrobe item'}" loading="lazy">
+        <div class="wardrobe__item" onclick="openLightbox('${i.cloudinary_url}','${(i.category||'')} ${i.color?'· '+i.color:''}')">
+          <img src="${i.cloudinary_url}" alt="${i.category||'Wardrobe item'}" loading="lazy"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <div class="wardrobe__item-error" style="display:none;">👗</div>
           <button class="wardrobe__item-delete" data-id="${i.id}" title="ဖျက်မယ်" aria-label="Delete item">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -569,13 +625,43 @@
   }
 
   async function deleteItem(id) {
-    if (!confirm('ဒီအဝတ်ကိုဖျက်မှာသေချာလား?')) return;
+    // Use toast-based confirmation instead of browser confirm()
+    const toastId = 'del-confirm-' + Date.now();
+    const t = document.createElement('div');
+    t.className = 'toast toast--warning';
+    t.id = toastId;
+    t.setAttribute('role', 'alert');
+    t.innerHTML = `<span style="flex:1;">ဒီအဝတ်ကိုဖျက်မှာသေချာလား?</span>
+      <button onclick="confirmDelete(${id},'${toastId}')" style="background:var(--wutt-error);color:white;border:none;padding:4px 12px;border-radius:4px;font-weight:600;cursor:pointer;font-family:inherit;">ဖျက်မယ်</button>
+      <button onclick="dismissToast('${toastId}')" style="background:transparent;border:1px solid var(--wutt-border);padding:4px 12px;border-radius:4px;cursor:pointer;font-family:inherit;">မဖျက်ပါ</button>`;
+    $('#toastContainer').appendChild(t);
+  }
+
+  window.confirmDelete = async function(id, toastId) {
+    dismissToast(toastId);
     try {
       await api('DELETE', '/wardrobe/' + id);
       showToast('ဖျက်ပြီးပါပြီ။', 'success');
       await loadWardrobe();
     } catch {}
-  }
+  };
+
+  window.dismissToast = function(id) {
+    const t = document.getElementById(id);
+    if (t) { t.style.opacity = '0'; t.style.transform = 'translateY(-8px)'; setTimeout(() => t.remove(), 300); }
+  };
+
+  // ── Lightbox ─────────────────────────────────────────
+  window.openLightbox = function(url, meta) {
+    const lb = document.createElement('div');
+    lb.className = 'lightbox';
+    lb.onclick = () => lb.remove();
+    lb.innerHTML = `<img src="${url}" alt="${meta||'Wardrobe item'}" onclick="event.stopPropagation();">${meta ? '<div class="lightbox__meta">'+meta+'</div>' : ''}`;
+    document.body.appendChild(lb);
+    // Close on Escape
+    const onKey = (e) => { if (e.key === 'Escape') { lb.remove(); document.removeEventListener('keydown', onKey); } };
+    document.addEventListener('keydown', onKey);
+  };
 
   // ── File input + drag-and-drop ──────────────────────
   const ALLOWED_TYPES = ['image/jpeg','image/png','image/webp'];
@@ -696,19 +782,37 @@
     return html;
   }
 
-  function showThinking() {
+  function showThinking(itemCount) {
     const resp = $('#aiResponse');
     resp.classList.remove('u-hidden');
     resp.className = 'thinking';
     resp.innerHTML = `
-      <span>AI စဉ်းစားနေသည်</span>
-      <span class="thinking__dots">
-        <span class="thinking__dot"></span>
-        <span class="thinking__dot"></span>
-        <span class="thinking__dot"></span>
-      </span>`;
-    // Scroll to the thinking indicator
+      <div style="text-align:center;">
+        <div style="font-weight:600;margin-bottom:4px;">AI စဉ်းစားနေသည်</div>
+        <div style="font-size:12px;color:var(--wutt-text-muted);margin-bottom:8px;">ဗီရိုထဲက အဝတ် ${itemCount||'?'} ခုကို ခွဲခြမ်းစိတ်ဖြာနေပါတယ်...</div>
+        <span class="thinking__dots">
+          <span class="thinking__dot"></span>
+          <span class="thinking__dot"></span>
+          <span class="thinking__dot"></span>
+        </span>
+      </div>`;
     resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  /** Myanmar-friendly date formatting */
+  function formatDateMyanmar(isoStr) {
+    if (!isoStr) return '';
+    const date = new Date(isoStr);
+    if (isNaN(date.getTime())) return isoStr;
+    const months = ['ဇန်နဝါရီ','ဖေဖော်ဝါရီ','မတ်','ဧပြီ','မေ','ဇွန်','ဇူလိုင်','သြဂုတ်','စက်တင်ဘာ','အောက်တိုဘာ','နိုဝင်ဘာ','ဒီဇင်ဘာ'];
+    const y = date.getFullYear();
+    const m = months[date.getMonth()];
+    const d = date.getDate();
+    const h = date.getHours();
+    const min = String(date.getMinutes()).padStart(2,'0');
+    const ampm = h >= 12 ? 'ညနေ' : 'မနက်';
+    const h12 = h % 12 || 12;
+    return `${y} ${m} ${d} · ${ampm} ${h12}:${min}`;
   }
 
   $('#stylistForm').addEventListener('submit', async (e) => {
@@ -717,8 +821,20 @@
     const occasion = $('#occasion').value;
     if (!occasion) { showToast('အခါအခွင့်ရွေးချယ်ပါ။', 'error'); return; }
 
+    // Pre-check: verify wardrobe has items before waiting on AI
+    const id = uid(); if (!id) return;
+    let itemCount = 0;
+    try {
+      const wRes = await api('GET', '/wardrobe/' + id);
+      itemCount = (wRes?.data || []).length;
+    } catch { /* proceed anyway */ }
+    if (itemCount === 0) {
+      showToast('အဝတ်တွေအရင် upload လုပ်ပါ။ ဗီရိုထဲမှာတစ်ခုမှမရှိသေးပါ။', 'error');
+      return;
+    }
+
     setLoading(btn, true);
-    showThinking();
+    showThinking(itemCount);
 
     try {
       const res = await api('POST', '/stylist/recommend', { occasion });
@@ -768,7 +884,7 @@
         <div class="history__item" id="hist-${i}" onclick="toggleHistory(${i})">
           <div class="history__item-occasion">${s.occasion||''}${s.weather_desc?' · '+s.weather_desc:''}${s.temperature_c?' · '+s.temperature_c.toFixed(0)+'°C':''}</div>
           <div class="history__item-preview">${(s.ai_response||'').substring(0,150)}${(s.ai_response||'').length>150?'...':''}</div>
-          <div class="history__item-date">${new Date(s.created_at).toLocaleString('my-MM')}</div>
+          <div class="history__item-date">${formatDateMyanmar(s.created_at)}</div>
           <div class="u-hidden" id="hist-full-${i}" style="margin-top:var(--space-sm);white-space:pre-wrap;font-size:var(--text-sm);line-height:1.7;color:var(--wutt-text);">${formatAIResponse(s.ai_response||'')}</div>
         </div>
       `).join('');
