@@ -576,6 +576,12 @@
     }
   }
 
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   function showToast(msg, type) {
     const t = document.createElement('div');
     t.className = 'toast toast--' + (type||'info');
@@ -1037,13 +1043,17 @@
       resp.innerHTML = renderOutfitRecommendation(res.data);
       resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       await loadHistory();
-    } catch {
+    } catch (err) {
       const resp = $('#aiResponse');
       resp.style.cssText = '';
+      // Show the real error message, not a misleading generic one.
+      // err.message comes from api() which extracts data.detail.message
+      // (e.g. "AI recommendation is unavailable…" → missing API key).
+      const msg = err?.message || 'AI ဆာဗာနဲ့ချိတ်ဆက်မှုမအောင်မြင်ပါ။';
       resp.innerHTML = `
         <div class="error-card">
           <div class="error-card__icon">🤖</div>
-          <div class="error-card__text">AI ဆာဗာနဲ့ချိတ်ဆက်မှုမအောင်မြင်ပါ။ ခဏနေပြီးမှ ပြန်စမ်းကြည့်ပါ။</div>
+          <div class="error-card__text">${escapeHtml(msg)}</div>
           <button class="error-card__retry" onclick="document.getElementById('stylistForm').requestSubmit()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             ပြန်စမ်းမယ်
