@@ -52,9 +52,10 @@ def health_check() -> dict[str, str]:
 
 
 # ── Route registration ─────────────────────────────────
-# Routes will be registered as they are built (Tasks 10–13):
-#   from routes.auth import router as auth_router
-#   app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+from routes.auth import router as auth_router           # Task 10
+app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+
+# Remaining routes (Tasks 11–13):
 #   from routes.profile import router as profile_router
 #   app.include_router(profile_router, prefix="/profile", tags=["Profile"])
 #   from routes.wardrobe import router as wardrobe_router
