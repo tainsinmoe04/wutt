@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WUTT — Myanmar's first AI outfit advisor. ဒီနေ့ ဘာဝတ်ရမလဲ?">
+  <title>WUTT — AI Personal Stylist (Myanmar)</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+
+  <!-- ============================================================
+       Navbar
+       ============================================================ -->
+  <nav class="navbar">
+    <div class="navbar__inner">
+      <a href="/" class="navbar__logo">
+        <span class="navbar__logo-icon">W</span>
+        WUTT
+      </a>
+      <div class="navbar__nav" id="navbarNav">
+        <a href="#features" class="navbar__link">အင်္ဂါရပ်များ</a>
+        <a href="#" class="navbar__link" id="navLoginBtn">ဝင်မယ်</a>
+        <a href="#" class="btn btn--primary btn--sm" id="navGetStartedBtn">စတင်မယ်</a>
+      </div>
+      <button class="navbar__toggle" id="navbarToggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ============================================================
+       Hero Section
+       ============================================================ -->
+  <section class="hero">
+    <div class="hero__content">
+      <span class="hero__badge">🇲🇲 Myanmar's First AI Stylist</span>
+      <h1 class="hero__tagline">ဒီနေ့ ဘာဝတ်ရမလဲ?</h1>
+      <p class="hero__subtitle">
+        မင်္ဂလာပွဲလား? ရုံးသွားမလား? ရုပ်ရှင်လား?
+        သင့်ဗီရိုထဲကအဝတ်တွေကိုဓာတ်ပုံရိုက်ပြီး AI ရဲ့အကြံပေးချက်ကိုရယူလိုက်ပါ။
+      </p>
+      <div class="hero__actions">
+        <button class="btn btn--primary btn--lg" id="heroGetStartedBtn">
+          စတင်မယ်
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <button class="btn btn--outline btn--lg" id="heroLearnMoreBtn">
+          ပိုမိုလေ့လာမယ်
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Features Section
+       ============================================================ -->
+  <section class="features" id="features">
+    <div class="features__heading">
+      <h2>ဘာတွေလုပ်ပေးနိုင်လဲ?</h2>
+      <p>WUTT က သင့်အတွက် အကောင်းဆုံးဝတ်စားဆင်ယင်မှုကို AI နဲ့ အကြံပေးပါတယ်</p>
+    </div>
+    <div class="features__grid">
+      <!-- Feature 1: Upload -->
+      <div class="card feature-card animate--slide-up">
+        <div class="feature-card__icon feature-card__icon--periwinkle">
+          📸
+        </div>
+        <h3 class="feature-card__title">အဝတ်တွေကိုဓာတ်ပုံရိုက်မယ်</h3>
+        <p class="feature-card__desc">
+          ဗီရိုထဲကအဝတ်တွေကို ဓာတ်ပုံရိုက်ပြီး WUTT မှာ သိမ်းထားလိုက်ပါ။
+          AI က သင့်ရဲ့အ၀တ်တွေကို ခွဲခြမ်းစိတ်ဖြာပေးပါမယ်။
+        </p>
+      </div>
+
+      <!-- Feature 2: Occasion -->
+      <div class="card feature-card animate--slide-up">
+        <div class="feature-card__icon feature-card__icon--pink">
+          🎯
+        </div>
+        <h3 class="feature-card__title">အခါအခွင့်နဲ့ကိုက်ညီတဲ့အကြံပေး</h3>
+        <p class="feature-card__desc">
+          မင်္ဂလာပွဲ၊ ရုံးသွား၊ ပါတီ၊ ချိန်းတွေ့ — ဘယ်အခါအခွင့်အတွက်မဆို
+          အကောင်းဆုံးဝတ်စားဆင်ယင်မှုကို အကြံပေးပါတယ်။
+        </p>
+      </div>
+
+      <!-- Feature 3: AI -->
+      <div class="card feature-card animate--slide-up">
+        <div class="feature-card__icon feature-card__icon--green">
+          ✨
+        </div>
+        <h3 class="feature-card__title">AI ရဲ့ Smart အကြံပေးချက်</h3>
+        <p class="feature-card__desc">
+          ရာသီဥတု၊ ခန္ဓာကိုယ်အချိုးအစား၊ အရောင်နဲ့စတိုင်တွေကို
+          တွက်ချက်ပြီး အကောင်းဆုံးအကြံပေးပါတယ်။
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Footer
+       ============================================================ -->
+  <footer class="footer">
+    <p>&copy; 2026 WUTT — AI Personal Stylist. Made with ❤️ in Myanmar.</p>
+  </footer>
+
+  <!-- ============================================================
+       Login Modal
+       ============================================================ -->
+  <div class="modal-overlay" id="loginModalOverlay">
+    <div class="modal" id="loginModal">
+      <div class="modal__header">
+        <h2 class="modal__title">အကောင့်ဝင်မယ်</h2>
+        <button class="modal__close" id="loginModalClose" aria-label="Close modal">&times;</button>
+      </div>
+      <form id="loginForm" novalidate>
+        <div class="modal__body">
+          <div class="input">
+            <label class="input__label" for="loginEmail">အီးမေးလ်</label>
+            <input
+              class="input__field"
+              type="email"
+              id="loginEmail"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            >
+          </div>
+          <div class="input">
+            <label class="input__label" for="loginPassword">စကားဝှက်</label>
+            <input
+              class="input__field"
+              type="password"
+              id="loginPassword"
+              name="password"
+              placeholder="သင့်စကားဝှက်ထည့်ပါ"
+              autocomplete="current-password"
+              required
+              minlength="6"
+            >
+          </div>
+        </div>
+        <div class="modal__footer">
+          <button type="submit" class="btn btn--primary btn--full">
+            ဝင်မယ်
+          </button>
+          <p class="modal__switch">
+            အကောင့်မရှိသေးဘူးလား?
+            <a id="switchToRegister">အကောင့်အသစ်ဖွင့်မယ်</a>
+          </p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       Register Modal
+       ============================================================ -->
+  <div class="modal-overlay" id="registerModalOverlay">
+    <div class="modal" id="registerModal">
+      <div class="modal__header">
+        <h2 class="modal__title">အကောင့်အသစ်ဖွင့်မယ်</h2>
+        <button class="modal__close" id="registerModalClose" aria-label="Close modal">&times;</button>
+      </div>
+      <form id="registerForm" novalidate>
+        <div class="modal__body">
+          <div class="input">
+            <label class="input__label" for="registerEmail">အီးမေးလ်</label>
+            <input
+              class="input__field"
+              type="email"
+              id="registerEmail"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            >
+          </div>
+          <div class="input">
+            <label class="input__label" for="registerPassword">စကားဝှက်</label>
+            <input
+              class="input__field"
+              type="password"
+              id="registerPassword"
+              name="password"
+              placeholder="အနည်းဆုံး ၆ လုံး"
+              autocomplete="new-password"
+              required
+              minlength="6"
+            >
+          </div>
+          <div class="input">
+            <label class="input__label" for="registerConfirmPassword">စကားဝှက်အတည်ပြု</label>
+            <input
+              class="input__field"
+              type="password"
+              id="registerConfirmPassword"
+              name="confirmPassword"
+              placeholder="စကားဝှက်ပြန်ထည့်ပါ"
+              autocomplete="new-password"
+              required
+              minlength="6"
+            >
+          </div>
+        </div>
+        <div class="modal__footer">
+          <button type="submit" class="btn btn--primary btn--full">
+            အကောင့်ဖွင့်မယ်
+          </button>
+          <p class="modal__switch">
+            အကောင့်ရှိပြီးသားလား?
+            <a id="switchToLogin">ဝင်မယ်</a>
+          </p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
