@@ -7,6 +7,7 @@ Endpoints
 Requires authentication on both endpoints.
 """
 
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -40,7 +41,7 @@ class StyleSessionData(BaseModel):
     temperature_c: float | None
     location: str | None
     ai_response: str | None
-    created_at: str
+    created_at: datetime | None  # Serialized to ISO-8601 via model_dump(mode='json')
 
     model_config = {"from_attributes": True}
 
@@ -192,8 +193,6 @@ def get_history(
 
     data = []
     for s in sessions:
-        d = StyleSessionData.model_validate(s).model_dump()
-        d["created_at"] = _isoformat(s.created_at)
-        data.append(d)
+        data.append(StyleSessionData.model_validate(s).model_dump(mode="json"))
 
     return {"status": "success", "data": data, "message": ""}

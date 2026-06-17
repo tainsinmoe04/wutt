@@ -9,10 +9,11 @@ All endpoints require authentication via ``get_current_user``.
 Image uploads use server-side signed Cloudinary (secret never hits the client).
 """
 
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -42,7 +43,7 @@ class WardrobeItemData(BaseModel):
     category: str | None
     color: str | None
     description: str | None
-    uploaded_at: str  # ISO-8601 string
+    uploaded_at: datetime | None  # Serialized to ISO-8601 via model_dump(mode='json')
 
     model_config = {"from_attributes": True}
 
@@ -128,9 +129,9 @@ def _isoformat(dt) -> str:
 @router.post("/upload", status_code=201)
 async def upload_wardrobe_item(
     file: UploadFile = File(...),
-    category: str | None = None,
-    color: str | None = None,
-    description: str | None = None,
+    category: str | None = Form(None),
+    color: str | None = Form(None),
+    description: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AuthResponse:
@@ -172,8 +173,7 @@ async def upload_wardrobe_item(
     db.commit()
     db.refresh(item)
 
-    data = WardrobeItemData.model_validate(item).model_dump()
-    data["uploaded_at"] = _isoformat(item.uploaded_at)
+    data = WardrobeItemData.model_validate(item).model_dump(mode="json")
 
     return {"status": "success", "data": data, "message": "Item uploaded successfully."}
 
@@ -199,9 +199,7 @@ def list_wardrobe(
 
     data = []
     for item in items:
-        d = WardrobeItemData.model_validate(item).model_dump()
-        d["uploaded_at"] = _isoformat(item.uploaded_at)
-        data.append(d)
+        data.append(WardrobeItemData.model_validate(item).model_dump(mode="json"))
 
     return {"status": "success", "data": data, "message": ""}
 
