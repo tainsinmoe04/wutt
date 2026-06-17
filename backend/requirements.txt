@@ -1,0 +1,27 @@
+# WUTT — AI Personal Stylist (Myanmar) — Backend Dependencies
+# FastAPI + Uvicorn
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Database
+sqlalchemy==2.0.36
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# File uploads
+python-multipart==0.0.18
+
+# Cloudinary (image storage)
+cloudinary==1.42.2
+
+# OpenAI Vision API
+openai==1.58.1
+
+# HTTP client (OpenWeatherMap)
+httpx==0.28.1
+
+# Settings management
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
