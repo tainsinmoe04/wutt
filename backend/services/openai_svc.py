@@ -5,15 +5,19 @@ We send images as Cloudinary HTTPS URLs (not base64 data URIs) to avoid
 hitting API payload size limits while keeping the implementation simple.
 """
 
+import logging
 from typing import Any
 
 from openai import OpenAI
 from config import settings
 
+logger = logging.getLogger(__name__)
+
 
 def _build_client() -> OpenAI | None:
     """Return an OpenAI client or None if the key is not configured."""
     if not settings.openai_api_key:
+        logger.warning("OPENAI_API_KEY is not set — AI recommendations disabled")
         return None
     return OpenAI(api_key=settings.openai_api_key)
 
@@ -142,5 +146,19 @@ def get_outfit_recommendation(
             "explanation": parsed.get("explanation", ""),
             "weather_based_tip": parsed.get("weather_based_tip", ""),
         }
-    except Exception:
+    except Exception as exc:
+        # ── Safe server-side logging — never log the API key ──
+        cls = type(exc).__qualname__
+        mod = type(exc).__module__
+        status = getattr(exc, "status_code", None)
+        code = getattr(exc, "code", None)
+        body = getattr(exc, "body", None)
+        msg = getattr(exc, "message", None) or str(exc)
+
+        logger.error(
+            "OpenAI API call failed: %s.%s | status=%s code=%s message=%s",
+            mod, cls, status, code, msg,
+        )
+        if body is not None:
+            logger.error("OpenAI error body: %s", body)
         return None
