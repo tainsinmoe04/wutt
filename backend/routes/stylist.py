@@ -8,6 +8,7 @@ Requires authentication on both endpoints.
 """
 
 import json
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -20,6 +21,9 @@ from models import User, Profile, Wardrobe, StyleSession
 from routes.auth import get_current_user
 from services.weather_svc import get_current_weather, WeatherData
 from services.openai_svc import get_outfit_recommendation
+from config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -115,6 +119,11 @@ def recommend_outfit(
     """
     user_id = current_user.id
 
+    logger.info(
+        "POST /stylist/recommend — user_id=%d occasion=%r key_configured=%s",
+        user_id, body.occasion, bool(settings.openai_api_key),
+    )
+
     # ── Fetch context ─────────────────────────────────
     profile = db.query(Profile).filter(Profile.user_id == user_id).first()
     items = (
@@ -124,6 +133,10 @@ def recommend_outfit(
     )
 
     if not items:
+        logger.info(
+            "POST /stylist/recommend — user_id=%d no wardrobe items → 400",
+            user_id,
+        )
         raise HTTPException(
             status_code=400,
             detail={
@@ -132,6 +145,11 @@ def recommend_outfit(
                 "message": "No wardrobe items found. Please upload some clothes first.",
             },
         )
+
+    logger.info(
+        "POST /stylist/recommend — user_id=%d item_count=%d calling OpenAI",
+        user_id, len(items),
+    )
 
     # Weather (best-effort with Yangon fallback)
     weather: WeatherData | None = None
@@ -171,6 +189,11 @@ def recommend_outfit(
     )
 
     if ai_result is None:
+        logger.warning(
+            "POST /stylist/recommend — user_id=%d OpenAI returned None → 503 "
+            "(key_configured=%s)",
+            user_id, bool(settings.openai_api_key),
+        )
         raise HTTPException(
             status_code=503,
             detail={
@@ -179,6 +202,11 @@ def recommend_outfit(
                 "message": "AI recommendation is unavailable right now. Please try again later.",
             },
         )
+
+    logger.info(
+        "POST /stylist/recommend — user_id=%d outfit_items=%d → 200",
+        user_id, len(ai_result.get("outfit", [])),
+    )
 
     outfit, explanation, weather_based_tip = _extract_outfit_fields(ai_result)
 
