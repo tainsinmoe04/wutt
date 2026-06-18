@@ -3,513 +3,474 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="WUTT Dashboard — Manage your wardrobe and get AI outfit recommendations">
-  <meta name="theme-color" content="#253A82">
-  <title>WUTT Dashboard — AI Personal Stylist</title>
+  <meta name="description" content="WUTT Dashboard — Your AI style advisor">
+  <meta name="theme-color" content="#FFFFFF">
+  <title>WUTT — စတိုင်အကြံပြုချက်</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    /* Dashboard-specific styles */
-    .dashboard { padding-top: 80px; min-height: 100dvh; background: var(--wutt-bg-subtle); }
+    /* ── Dashboard layout ── */
+    .dashboard {
+      display: flex;
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: var(--wutt-bg-subtle);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--wutt-light);
+      border-right: 1px solid var(--wutt-border-light);
+      padding: var(--space-xl) 0;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: var(--z-sidebar);
+    }
+    .sidebar__brand {
+      padding: 0 var(--space-xl) var(--space-xl);
+      border-bottom: 1px solid var(--wutt-border-light);
+      margin-bottom: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: var(--text-lg);
+      font-weight: 700;
+      color: var(--wutt-dark);
+      letter-spacing: -0.5px;
+    }
+    .sidebar__brand-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--wutt-primary), var(--wutt-lavender));
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--wutt-light);
+      font-size: 1.1rem; font-weight: 700;
+    }
+    .sidebar__nav { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 var(--space-md); }
+    .sidebar__link {
+      display: flex; align-items: center; gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      font-size: var(--text-sm); font-weight: 500;
+      color: var(--wutt-text-light);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      background: none; border: none;
+      font-family: inherit;
+      text-align: left;
+      width: 100%;
+    }
+    .sidebar__link:hover { background: rgba(136,162,255,0.06); color: var(--wutt-dark); }
+    .sidebar__link--active { background: rgba(136,162,255,0.1); color: var(--wutt-dark); font-weight: 600; }
+    .sidebar__link svg { flex-shrink: 0; }
+    .sidebar__footer {
+      padding: var(--space-lg) var(--space-xl) 0;
+      border-top: 1px solid var(--wutt-border-light);
+      margin: var(--space-lg) var(--space-md) 0;
+    }
+    .sidebar__user {
+      font-size: var(--text-xs); color: var(--wutt-text-muted);
+      margin-bottom: var(--space-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .sidebar__logout {
+      display: flex; align-items: center; gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-sm);
+      font-size: var(--text-xs); font-weight: 500;
+      color: var(--wutt-text-muted); background: none; border: none;
+      border-radius: var(--radius-sm); cursor: pointer;
+      font-family: inherit; width: 100%; text-align: left;
+      transition: all var(--transition-fast);
+    }
+    .sidebar__logout:hover { background: var(--wutt-error-bg); color: var(--wutt-error); }
+
+    /* ── Main content area ── */
+    .dashboard__main {
+      flex: 1;
+      margin-left: 240px;
+      padding: var(--space-xl);
+      max-width: calc(100% - 240px);
+    }
     .dashboard__grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: var(--space-xl);
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: var(--space-lg);
     }
-    .dashboard__section {
+
+    /* ── Section card (clean) ── */
+    .section-card {
       background: var(--wutt-light);
-      border: 1px solid var(--wutt-border);
-      border-radius: var(--radius-lg);
+      border: 1px solid var(--wutt-border-light);
+      border-radius: var(--radius-xl);
       padding: var(--space-xl);
+      box-shadow: var(--shadow-xs);
     }
-    .section__title {
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: var(--space-lg);
-      color: var(--wutt-dark);
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
+    .section-card__header {
+      display: flex; align-items: center; gap: var(--space-sm);
+      margin-bottom: var(--space-xl);
+      padding-bottom: var(--space-md);
+      border-bottom: 1px solid var(--wutt-border-light);
     }
+    .section-card__title {
+      font-size: var(--text-base); font-weight: 700;
+      color: var(--wutt-dark); flex: 1;
+    }
+    .section-card__count {
+      font-size: var(--text-xs); font-weight: 600;
+      color: var(--wutt-text-muted);
+      background: var(--wutt-bg-subtle);
+      padding: 2px 10px; border-radius: var(--radius-full);
+    }
+
+    /* ── Wardrobe grid ── */
     .wardrobe__grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
       gap: var(--space-md);
-      margin-top: var(--space-md);
     }
     .wardrobe__item {
       position: relative;
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       overflow: hidden;
-      border: 1px solid var(--wutt-border);
+      border: 1px solid var(--wutt-border-light);
       aspect-ratio: 3/4;
       cursor: pointer;
+      transition: all var(--transition-base);
     }
-    .wardrobe__item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+    .wardrobe__item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .wardrobe__item img { width: 100%; height: 100%; object-fit: cover; }
     .wardrobe__item-delete {
       position: absolute;
-      top: 4px;
-      right: 4px;
-      min-width: 32px;
-      min-height: 32px;
-      border-radius: var(--radius-full);
-      background: rgba(239, 68, 68, 0.85);
-      color: white;
-      border: none;
+      top: 6px; right: 6px;
+      min-width: 28px; min-height: 28px; border-radius: var(--radius-full);
+      background: rgba(10,10,10,0.6); color: white; border: none;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
       opacity: 0;
       transition: opacity var(--transition-fast);
     }
     .wardrobe__item:hover .wardrobe__item-delete { opacity: 1; }
     .wardrobe__item-meta {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(10,10,10,0.7);
-      color: white;
-      padding: 0.25rem 0.5rem;
-      font-size: var(--text-xs);
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(10,10,10,0.65); color: white;
+      padding: 0.2rem 0.5rem;
+      font-size: 11px; font-weight: 500;
     }
+
+    /* ── Stylist response area ── */
     .ai-response {
-      background: linear-gradient(135deg, rgba(227,252,135,0.15), rgba(136,162,255,0.1));
-      border-left: 4px solid var(--wutt-energy);
-      border-radius: var(--radius-md);
-      padding: var(--space-lg);
-      margin-top: var(--space-md);
-      line-height: 1.7;
+      margin-top: var(--space-lg);
       animation: slideUp 0.4s ease-out;
     }
-    /* Structured outfit blocks */
-    .recommend__header {
-      margin-bottom: var(--space-md);
-      padding-bottom: var(--space-md);
-      border-bottom: 1px solid var(--wutt-border-light);
-    }
-    .recommend__occasion {
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: var(--wutt-deep);
-    }
-    .recommend__weather {
-      font-size: var(--text-sm);
-      color: var(--wutt-text-light);
-      margin-top: 4px;
-    }
-    .recommend__outfit {
-      margin-bottom: var(--space-md);
-    }
-    .recommend__label {
-      font-weight: 600;
-      font-size: var(--text-sm);
-      color: var(--wutt-deep);
-      margin-bottom: var(--space-sm);
-    }
-    .outfit-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .outfit-list__item {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      padding: var(--space-sm) var(--space-md);
-      background: rgba(136,162,255,0.08);
-      border-radius: var(--radius-sm);
-      margin-bottom: 4px;
-      font-size: var(--text-sm);
-      font-weight: 500;
-    }
-    .outfit-list__num {
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--wutt-primary);
-      color: var(--wutt-light);
-      border-radius: 50%;
-      font-size: 11px;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-    .recommend__explanation {
-      font-size: var(--text-sm);
-      color: var(--wutt-text);
-      line-height: 1.7;
-      margin-bottom: var(--space-md);
-    }
-    .recommend__tip {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-sm);
-      padding: var(--space-sm) var(--space-md);
-      background: rgba(227,252,135,0.2);
-      border-radius: var(--radius-sm);
-      font-size: var(--text-sm);
-      font-weight: 500;
-      color: #4D7C0F;
-    }
-    .recommend__tip-icon {
-      flex-shrink: 0;
-      font-size: 1rem;
-    }
-    .upload-preview {
-      display: flex;
-      gap: var(--space-sm);
-      flex-wrap: wrap;
-      margin-top: var(--space-sm);
-    }
-    .upload-preview__img {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--wutt-border);
-    }
+
+    /* ── History list ── */
     .history__item {
       padding: var(--space-md);
-      border: 1px solid var(--wutt-border);
+      border: 1px solid var(--wutt-border-light);
       border-radius: var(--radius-md);
       margin-bottom: var(--space-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
     }
-    .history__item-occasion { font-weight: 600; color: var(--wutt-deep); }
+    .history__item:hover { border-color: var(--wutt-primary); box-shadow: var(--shadow-xs); }
+    .history__item-occasion { font-weight: 600; color: var(--wutt-dark); font-size: var(--text-sm); }
     .history__item-preview {
-      font-size: var(--text-sm);
-      color: var(--wutt-text-light);
-      margin-top: var(--space-xs);
+      font-size: var(--text-xs); color: var(--wutt-text-muted); margin-top: 4px;
       display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .history__item-date { font-size: var(--text-xs); color: var(--wutt-text-muted); margin-top: var(--space-xs); }
-    .empty-state {
-      text-align: center;
-      padding: var(--space-2xl);
-      color: var(--wutt-text-light);
+    .history__item-date {
+      font-size: 11px; color: var(--wutt-text-muted); margin-top: 6px; opacity: 0.7;
     }
-    .empty-state__icon {
-      font-size: 2.5rem;
-      margin-bottom: var(--space-md);
-      opacity: 0.4;
+    .history__item--expanded .history__item-preview {
+      -webkit-line-clamp: unset; overflow: visible;
     }
-    .empty-state__text {
-      font-size: var(--text-sm);
-      color: var(--wutt-text-light);
+
+    /* ── Wardrobe count badge ── */
+    .wardrobe__count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 20px; height: 20px; padding: 0 6px;
+      font-size: 11px; font-weight: 700;
+      color: var(--wutt-light); background: var(--wutt-dark);
+      border-radius: var(--radius-full);
     }
-    /* Thinking indicator */
+
+    /* ── Upload progress ── */
+    .upload-progress {
+      width: 100%; height: 3px;
+      background: var(--wutt-border-light); border-radius: 2px;
+      margin-top: var(--space-sm); overflow: hidden;
+    }
+    .upload-progress__bar {
+      height: 100%; background: var(--wutt-dark); border-radius: 2px;
+      transition: width 0.3s ease;
+      animation: progressPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes progressPulse {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.5; }
+    }
+
+    /* ── Lightbox ── */
+    .lightbox {
+      position: fixed; inset: 0; z-index: var(--z-modal);
+      background: rgba(10,10,10,0.9);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; animation: fadeIn 0.2s ease-out;
+    }
+    .lightbox img {
+      max-width: 90vw; max-height: 90dvh; object-fit: contain;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 0 80px rgba(136,162,255,0.1);
+    }
+    .lightbox__meta {
+      position: absolute; bottom: var(--space-lg); left: 50%;
+      transform: translateX(-50%);
+      color: white; font-size: var(--text-sm); font-weight: 500;
+      background: rgba(0,0,0,0.5); padding: var(--space-sm) var(--space-lg);
+      border-radius: var(--radius-full);
+    }
+
+    /* ── Image error fallback ── */
+    .wardrobe__item-error {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%; background: var(--wutt-bg-subtle);
+      color: var(--wutt-text-muted); font-size: 2rem;
+    }
+
+    /* ── Thinking indicator ── */
     .thinking {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      padding: var(--space-lg);
-      color: var(--wutt-text-light);
+      display: flex; align-items: center; gap: var(--space-sm);
+      padding: var(--space-lg); color: var(--wutt-text-muted);
       font-size: var(--text-sm);
     }
     .thinking__dots { display: flex; gap: 4px; }
     .thinking__dot {
-      width: 6px; height: 6px;
-      background: var(--wutt-primary);
+      width: 5px; height: 5px;
+      background: var(--wutt-dark);
       border-radius: 50%;
       animation: thinkingBounce 1.2s ease-in-out infinite;
     }
     .thinking__dot:nth-child(2) { animation-delay: 0.2s; }
     .thinking__dot:nth-child(3) { animation-delay: 0.4s; }
     @keyframes thinkingBounce {
-      0%, 80%, 100% { transform: scale(0.4); opacity: 0.3; }
+      0%, 80%, 100% { transform: scale(0.4); opacity: 0.2; }
       40% { transform: scale(1); opacity: 1; }
     }
-    /* Retry button */
-    .retry-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xs);
-      margin-top: var(--space-sm);
-      padding: var(--space-xs) var(--space-md);
-      font-size: var(--text-xs);
-      font-weight: 600;
-      border: 1px solid var(--wutt-border);
-      border-radius: var(--radius-sm);
-      background: var(--wutt-light);
-      color: var(--wutt-primary);
-      cursor: pointer;
-      transition: all var(--transition-fast);
+
+    /* ── Mobile ── */
+    @media (max-width: 840px) {
+      .sidebar {
+        position: fixed; top: 0; left: -100%;
+        width: 260px; height: 100dvh;
+        transition: left var(--transition-base);
+        z-index: var(--z-sidebar);
+      }
+      .sidebar--open { left: 0; }
+      .dashboard__main { margin-left: 0; max-width: 100%; padding: var(--space-md); }
+      .dashboard__grid { grid-template-columns: 1fr; }
+
+      /* Mobile top bar */
+      .mobile-bar {
+        display: flex;
+        align-items: center; justify-content: space-between;
+        padding: var(--space-sm) var(--space-md);
+        background: var(--wutt-light);
+        border-bottom: 1px solid var(--wutt-border-light);
+        position: sticky; top: 0; z-index: var(--z-sticky);
+        margin: calc(-1 * var(--space-md)); margin-bottom: var(--space-md);
+      }
     }
-    .retry-btn:hover { background: rgba(136,162,255,0.08); border-color: var(--wutt-primary); }
-    /* Expandable history */
-    .history__item {
-      cursor: pointer;
-      transition: all var(--transition-fast);
-    }
-    .history__item:hover { border-color: var(--wutt-primary); }
-    .history__item--expanded .history__item-preview {
-      -webkit-line-clamp: unset;
-      overflow: visible;
-    }
-    /* Wardrobe count badge */
-    .wardrobe__count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 22px;
-      height: 22px;
-      padding: 0 6px;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--wutt-light);
-      background: var(--wutt-primary);
-      border-radius: var(--radius-full);
-      margin-left: auto;
-    }
-    /* Upload progress */
-    .upload-progress {
-      width: 100%;
-      height: 4px;
-      background: var(--wutt-border-light);
-      border-radius: 2px;
-      margin-top: var(--space-sm);
-      overflow: hidden;
-    }
-    .upload-progress__bar {
-      height: 100%;
-      background: var(--wutt-primary);
-      border-radius: 2px;
-      transition: width 0.3s ease;
-      animation: progressPulse 1.5s ease-in-out infinite;
-    }
-    @keyframes progressPulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
-    }
-    /* Lightbox overlay */
-    .lightbox {
-      position: fixed;
-      inset: 0;
-      z-index: var(--z-modal);
-      background: rgba(10,10,10,0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      animation: fadeIn 0.2s ease-out;
-    }
-    .lightbox img {
-      max-width: 90vw;
-      max-height: 90dvh;
-      object-fit: contain;
-      border-radius: var(--radius-md);
-      box-shadow: 0 0 80px rgba(136,162,255,0.15);
-    }
-    .lightbox__meta {
-      position: absolute;
-      bottom: var(--space-lg);
-      left: 50%;
-      transform: translateX(-50%);
-      color: white;
-      font-size: var(--text-sm);
-      font-weight: 500;
-      background: rgba(0,0,0,0.5);
-      padding: var(--space-sm) var(--space-lg);
-      border-radius: var(--radius-full);
-    }
-    /* Image load error fallback */
-    .wardrobe__item-error {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      background: var(--wutt-bg-subtle);
-      color: var(--wutt-text-muted);
-      font-size: 2rem;
-    }
-    @media (max-width: 768px) {
-      .dashboard__grid { grid-template-columns: 1fr; padding: var(--space-md); }
-    }
+    @media (min-width: 841px) { .mobile-bar { display: none; } }
   </style>
 </head>
 <body>
 
   <a href="#dashboard-main" class="skip-link">Skip to main content</a>
 
-  <!-- Navbar -->
-  <nav class="navbar" role="navigation" aria-label="Dashboard navigation">
-    <div class="navbar__inner">
-      <a href="/" class="navbar__logo" aria-label="WUTT Home">
-        <span class="navbar__logo-icon" aria-hidden="true">W</span>
-        WUTT
+  <!-- Mobile top bar -->
+  <div class="mobile-bar">
+    <button type="button" id="mobileMenuBtn" style="background:none;border:none;cursor:pointer;padding:8px;border-radius:8px;display:flex;align-items:center;color:var(--wutt-text);" aria-label="Open menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <span style="font-weight:700;font-size:var(--text-lg);color:var(--wutt-dark);letter-spacing:-0.5px;">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:linear-gradient(135deg,var(--wutt-primary),var(--wutt-lavender));border-radius:6px;color:white;font-size:12px;font-weight:700;margin-right:6px;">W</span>WUTT
+    </span>
+    <span id="dashboardUserEmail" style="font-size:11px;color:var(--wutt-text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <span class="sidebar__brand-icon" aria-hidden="true">W</span>
+      WUTT
+    </div>
+    <nav class="sidebar__nav" role="navigation" aria-label="Dashboard navigation">
+      <a href="#" class="sidebar__link sidebar__link--active" data-section="stylist">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.9l.5.5a4 4 0 0 1 0 5.7l-.5.5c.7.8 1.1 1.8 1.1 2.9a4 4 0 0 1-4 4"/><path d="M12 2a4 4 0 0 0-4 4c0 1.1.4 2.1 1.1 2.9l-.5.5a4 4 0 0 0 0 5.7l.5.5c-.7.8-1.1 1.8-1.1 2.9a4 4 0 0 0 4 4"/></svg>
+        စတိုင်အကြံပြုချက်
       </a>
-      <div class="navbar__nav" style="display:flex;align-items:center;gap:var(--space-md);">
-        <span id="dashboardUserEmail" style="font-size:var(--text-sm);color:var(--wutt-text-light);"></span>
-        <button type="button" class="btn btn--ghost btn--sm" id="logoutBtn">ထွက်မယ်</button>
-      </div>
+      <a href="#" class="sidebar__link" data-section="wardrobe">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        ကျွန်ုပ်၏ဗီရို
+        <span class="wardrobe__count u-hidden" id="wardrobeCount" style="margin-left:auto;">0</span>
+      </a>
+      <a href="#" class="sidebar__link" data-section="history">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        စတိုင်မှတ်တမ်း
+      </a>
+    </nav>
+    <div class="sidebar__footer">
+      <div class="sidebar__user" id="sidebarEmail"></div>
+      <button type="button" class="sidebar__logout" id="logoutBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        ထွက်မယ်
+      </button>
     </div>
-  </nav>
+  </aside>
 
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(10,10,10,0.3);z-index:calc(var(--z-sidebar) - 1);" onclick="closeSidebar()"></div>
+
+  <!-- Main -->
   <main id="dashboard-main" class="dashboard">
-    <div class="container" style="margin-bottom:var(--space-lg);">
-      <div id="globalAlert" class="u-hidden" role="alert"></div>
-    </div>
+    <div class="dashboard__main">
+      <div id="globalAlert" class="u-hidden" role="alert" style="margin-bottom:var(--space-lg);"></div>
 
-    <div class="dashboard__grid">
-      <!-- Left column -->
-      <div>
-        <!-- Profile -->
-        <div class="dashboard__section stagger">
-          <h2 class="section__title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-primary)" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            ကိုယ်ရေးအချက်အလက်
-          </h2>
-          <form id="profileForm" novalidate>
-            <div class="input">
-              <label class="input__label" for="profileHeight">အရပ် (cm)</label>
-              <input class="input__field" type="number" id="profileHeight" name="height_cm" placeholder="ဥပမာ 170" min="50" max="250" step="0.1">
+      <div class="dashboard__grid">
+        <!-- Left column: Profile + Stylist -->
+        <div>
+          <!-- Profile -->
+          <div class="section-card stagger">
+            <div class="section-card__header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-primary)" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span class="section-card__title">ကိုယ်ရေးအချက်အလက်</span>
             </div>
-            <div class="input" style="margin-top:var(--space-md);">
-              <label class="input__label" for="profileSkinTone">အသားအရောင်</label>
-              <select class="select" id="profileSkinTone" name="skin_tone">
-                <option value="">-- ရွေးပါ --</option>
-                <option value="fair">အသားဖြူ</option>
-                <option value="light">အသားညိုနု</option>
-                <option value="medium">အသားညို</option>
-                <option value="tan">အသားညိုရင့်</option>
-                <option value="dark">အသားမည်း</option>
-              </select>
-            </div>
-            <div class="input" style="margin-top:var(--space-md);">
-              <label class="input__label" for="profileStyle">ဝတ်စားဟန်</label>
-              <select class="select" id="profileStyle" name="style_preference">
-                <option value="">-- ရွေးပါ --</option>
-                <option value="casual">ပေါ့ပေါ့ပါးပါး</option>
-                <option value="formal">ဖောင်ဖေါင်မာမာ</option>
-                <option value="traditional">ရိုးရာ</option>
-                <option value="sporty">အားကစားဆန်</option>
-                <option value="streetwear">လမ်းပေါ်ကစတိုင်</option>
-              </select>
-            </div>
-            <div class="input" style="margin-top:var(--space-md);">
-              <label class="input__label" for="profileCity">မြို့</label>
-              <input class="input__field" type="text" id="profileCity" name="location_city" placeholder="ဥပမာ Yangon" maxlength="100">
-            </div>
-            <button type="submit" class="btn btn--primary btn--full" style="margin-top:var(--space-lg);">
-              <span class="btn__label">သိမ်းမယ်</span>
-              <span class="btn__spinner" aria-hidden="true"></span>
-            </button>
-          </form>
-        </div>
+            <form id="profileForm" novalidate>
+              <div class="input">
+                <label class="input__label" for="profileHeight">အရပ် (cm)</label>
+                <input class="input__field" type="number" id="profileHeight" name="height_cm" placeholder="ဥပမာ 170" min="50" max="250" step="0.1">
+              </div>
+              <div class="input" style="margin-top:var(--space-md);">
+                <label class="input__label" for="profileSkinTone">အသားအရောင်</label>
+                <select class="select" id="profileSkinTone" name="skin_tone">
+                  <option value="">-- ရွေးပါ --</option>
+                  <option value="fair">အသားဖြူ</option>
+                  <option value="light">အသားညိုနု</option>
+                  <option value="medium">အသားညို</option>
+                  <option value="tan">အသားညိုရင့်</option>
+                  <option value="dark">အသားမည်း</option>
+                </select>
+              </div>
+              <div class="input" style="margin-top:var(--space-md);">
+                <label class="input__label" for="profileStyle">ဝတ်စားဟန်</label>
+                <select class="select" id="profileStyle" name="style_preference">
+                  <option value="">-- ရွေးပါ --</option>
+                  <option value="casual">ပေါ့ပေါ့ပါးပါး</option>
+                  <option value="formal">သပ်သပ်ရပ်ရပ်</option>
+                  <option value="traditional">ရိုးရာ</option>
+                  <option value="sporty">အားကစားဆန်</option>
+                  <option value="streetwear">လမ်းပေါ်ကစတိုင်</option>
+                </select>
+              </div>
+              <div class="input" style="margin-top:var(--space-md);">
+                <label class="input__label" for="profileCity">မြို့</label>
+                <input class="input__field" type="text" id="profileCity" name="location_city" placeholder="ဥပမာ Yangon" maxlength="100">
+              </div>
+              <button type="submit" class="btn btn--primary btn--full" style="margin-top:var(--space-lg);">
+                <span class="btn__label">သိမ်းမယ်</span>
+                <span class="btn__spinner" aria-hidden="true"></span>
+              </button>
+            </form>
+          </div>
 
-        <!-- Stylist -->
-        <div class="dashboard__section" style="margin-top:var(--space-xl);">
-          <h2 class="section__title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-energy)" stroke-width="2" aria-hidden="true"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.9l.5.5a4 4 0 0 1 0 5.7l-.5.5c.7.8 1.1 1.8 1.1 2.9a4 4 0 0 1-4 4"/><path d="M12 2a4 4 0 0 0-4 4c0 1.1.4 2.1 1.1 2.9l-.5.5a4 4 0 0 0 0 5.7l.5.5c-.7.8-1.1 1.8-1.1 2.9a4 4 0 0 0 4 4"/></svg>
-            AI အကြံပေး
-          </h2>
-          <form id="stylistForm" novalidate>
-            <div class="input">
-              <label class="input__label" for="occasion">ဘယ်လိုအခါအခွင့်လဲ?</label>
-              <select class="select" id="occasion" name="occasion" required>
-                <option value="">-- ရွေးပါ --</option>
-                <option value="wedding">မင်္ဂလာပွဲ</option>
-                <option value="work">ရုံးသွား</option>
-                <option value="party">ပါတီ</option>
-                <option value="date">ချိန်းတွေ့</option>
-                <option value="casual">အပြင်ထွက်</option>
-                <option value="interview">အင်တာဗျူး</option>
-              </select>
+          <!-- Stylist -->
+          <div class="section-card" style="margin-top:var(--space-xl);" id="stylistSection">
+            <div class="section-card__header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-lavender)" stroke-width="2" aria-hidden="true"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.9l.5.5a4 4 0 0 1 0 5.7l-.5.5c.7.8 1.1 1.8 1.1 2.9a4 4 0 0 1-4 4"/><path d="M12 2a4 4 0 0 0-4 4c0 1.1.4 2.1 1.1 2.9l-.5.5a4 4 0 0 0 0 5.7l.5.5c-.7.8-1.1 1.8-1.1 2.9a4 4 0 0 0 4 4"/></svg>
+              <span class="section-card__title">စတိုင်အကြံပြုချက်</span>
             </div>
-            <button type="submit" class="btn btn--primary btn--full" style="margin-top:var(--space-lg);" id="recommendBtn">
-              <span class="btn__label">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" style="vertical-align:middle;margin-right:6px;"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/></svg>
-                အကြံပေးပါ
-              </span>
-              <span class="btn__spinner" aria-hidden="true"></span>
-            </button>
-          </form>
-          <div id="aiResponse" class="u-hidden"></div>
-        </div>
-      </div>
-
-      <!-- Right column -->
-      <div>
-        <!-- Wardrobe Upload -->
-        <div class="dashboard__section">
-          <h2 class="section__title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-primary)" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            ဗီရို
-            <span class="wardrobe__count u-hidden" id="wardrobeCount">0</span>
-          </h2>
-          <form id="wardrobeForm" novalidate enctype="multipart/form-data">
-            <label class="upload-box" id="uploadBox" for="wardrobeFile" style="min-height:120px;">
-              <span class="upload-box__icon" aria-hidden="true">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              </span>
-              <span class="upload-box__text">ဓာတ်ပုံထည့်ရန်နှိပ်ပါ</span>
-              <span class="upload-box__hint">JPEG, PNG, or WebP — 10 MB max</span>
-            </label>
-            <input type="file" id="wardrobeFile" name="file" accept="image/jpeg,image/png,image/webp" style="display:none;">
-            <div class="upload-preview" id="uploadPreview"></div>
-            <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-md);">
-              <select class="select" id="wardrobeCategory" name="category" style="flex:1;">
-                <option value="">အမျိုးအစား</option>
-                <option value="top">အပေါ်အင်္ကျီ</option>
-                <option value="bottom">ဘောင်းဘီ</option>
-                <option value="dress">ဝတ်စုံ</option>
-                <option value="outerwear">အင်္ကျီအပေါ်ခံ</option>
-                <option value="shoes">ဖိနပ်</option>
-                <option value="accessory">အသုံးအဆောင်</option>
-              </select>
-              <select class="select" id="wardrobeColor" name="color" style="flex:1;">
-                <option value="">အရောင်</option>
-                <option value="black">အနက်</option><option value="white">အဖြူ</option>
-                <option value="red">အနီ</option><option value="blue">အပြာ</option>
-                <option value="green">အစိမ်း</option><option value="yellow">အဝါ</option>
-                <option value="pink">ပန်းရောင်</option><option value="purple">ခရမ်း</option>
-                <option value="brown">အညို</option><option value="grey">မီးခိုး</option>
-                <option value="navy">နေပယ်ပြာ</option><option value="beige">ဘဲဂျီ</option>
-              </select>
-            </div>
-            <div class="alert alert--error u-hidden" id="uploadError" role="alert" style="margin-top:var(--space-sm);"></div>
-            <button type="submit" class="btn btn--navy btn--full" style="margin-top:var(--space-md);" id="uploadBtn">
-              <span class="btn__label">ထည့်မယ်</span>
-              <span class="btn__spinner" aria-hidden="true"></span>
-            </button>
-          </form>
-          <div class="wardrobe__grid" id="wardrobeGrid">
-            <div class="empty-state--visual" style="grid-column:1/-1;">
-              <div class="empty-state__icon">👗</div>
-              <div class="empty-state__title">ဗီရိုထဲမှာ အဝတ်မရှိသေးပါ</div>
-              <div class="empty-state__hint">ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>
-            </div>
+            <form id="stylistForm" novalidate>
+              <div class="input">
+                <label class="input__label" for="occasion">ဘယ်အတွက်ဝတ်မလဲ?</label>
+                <select class="select" id="occasion" name="occasion" required>
+                  <option value="">-- ရွေးပါ --</option>
+                  <option value="wedding">မင်္ဂလာပွဲ</option>
+                  <option value="work">ရုံးသွား</option>
+                  <option value="party">ပါတီ</option>
+                  <option value="date">ချိန်းတွေ့</option>
+                  <option value="casual">အပြင်ထွက်</option>
+                  <option value="interview">အင်တာဗျူး</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn--primary btn--full" style="margin-top:var(--space-lg);" id="recommendBtn">
+                <span class="btn__label">အကြံပြုပါ</span>
+                <span class="btn__spinner" aria-hidden="true"></span>
+              </button>
+            </form>
+            <div id="aiResponse" class="ai-response u-hidden"></div>
           </div>
         </div>
 
-        <!-- History -->
-        <div class="dashboard__section" style="margin-top:var(--space-xl);">
-          <h2 class="section__title">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-lavender)" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            အကြံပေးမှတ်တမ်း
-          </h2>
-          <div id="historyList">
-            <div class="empty-state--visual" id="historyEmpty">
-              <div class="empty-state__icon">🕐</div>
-              <div class="empty-state__title">အကြံပေးမှတ်တမ်း မရှိသေးပါ</div>
-              <div class="empty-state__hint">AI အကြံပေးချက်များ ဒီမှာတွေ့ရပါမယ်</div>
+        <!-- Right column: Wardrobe + History -->
+        <div>
+          <!-- Wardrobe -->
+          <div class="section-card" id="wardrobeSection">
+            <div class="section-card__header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-primary)" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span class="section-card__title">ကျွန်ုပ်၏ဗီရို</span>
             </div>
+            <form id="wardrobeForm" novalidate enctype="multipart/form-data">
+              <label class="upload-box" id="uploadBox" for="wardrobeFile" style="min-height:120px;">
+                <span class="upload-box__icon" aria-hidden="true">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </span>
+                <span class="upload-box__text">ဓာတ်ပုံထည့်ရန်နှိပ်ပါ</span>
+                <span class="upload-box__hint">JPEG, PNG, or WebP — 10 MB max</span>
+              </label>
+              <input type="file" id="wardrobeFile" name="file" accept="image/jpeg,image/png,image/webp" style="display:none;">
+              <div class="upload-preview" id="uploadPreview" style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-top:var(--space-sm);"></div>
+              <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-md);">
+                <select class="select" id="wardrobeCategory" name="category" style="flex:1;">
+                  <option value="">အမျိုးအစား</option>
+                  <option value="top">အပေါ်ဝတ်</option>
+                  <option value="bottom">အောက်ဝတ်</option>
+                  <option value="dress">တစ်ဆက်တည်းဝတ်စုံ</option>
+                  <option value="outerwear">အပေါ်ထပ်</option>
+                  <option value="shoes">ဖိနပ်</option>
+                  <option value="accessory">အသုံးအဆောင်</option>
+                </select>
+                <select class="select" id="wardrobeColor" name="color" style="flex:1;">
+                  <option value="">အရောင်</option>
+                  <option value="black">အနက်</option><option value="white">အဖြူ</option>
+                  <option value="red">အနီ</option><option value="blue">အပြာ</option>
+                  <option value="green">အစိမ်း</option><option value="yellow">အဝါ</option>
+                  <option value="pink">ပန်းရောင်</option><option value="purple">ခရမ်း</option>
+                  <option value="brown">အညို</option><option value="grey">မီးခိုး</option>
+                  <option value="navy">နေပယ်ပြာ</option><option value="beige">ဘဲဂျီ</option>
+                </select>
+              </div>
+              <div class="alert alert--error u-hidden" id="uploadError" role="alert" style="margin-top:var(--space-sm);"></div>
+              <button type="submit" class="btn btn--primary btn--full" style="margin-top:var(--space-md);" id="uploadBtn">
+                <span class="btn__label">ထည့်မယ်</span>
+                <span class="btn__spinner" aria-hidden="true"></span>
+              </button>
+            </form>
+            <div class="wardrobe__grid" id="wardrobeGrid" style="margin-top:var(--space-lg);"></div>
+          </div>
+
+          <!-- History -->
+          <div class="section-card" style="margin-top:var(--space-xl);" id="historySection">
+            <div class="section-card__header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--wutt-lavender)" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span class="section-card__title">စတိုင်မှတ်တမ်း</span>
+            </div>
+            <div id="historyList"></div>
           </div>
         </div>
       </div>
@@ -519,19 +480,15 @@
   <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
   <script>
-  // ── WUTT Dashboard — Vanilla JS, fully polished ──────
+  // ── WUTT Dashboard — Inline JS ──
   const API = 'https://wutt-api.onrender.com';
-
-  // Token persisted by index.html login/register flow.
   const AUTH_TOKEN = localStorage.getItem('wutt_token');
-
   let currentUser = null;
-  let _redirected = false;  // Guard against redirect loops
+  let _redirected = false;
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
 
-  /** Safe single-fire redirect to login page. */
   function goToLogin() {
     if (_redirected) return;
     _redirected = true;
@@ -540,19 +497,15 @@
     window.location.replace('./index.html');
   }
 
-  // Defer token check to init() — never redirect before /auth/me validates
   if (!AUTH_TOKEN) { goToLogin(); }
 
-  /** Thin wrapper around fetch — injects Authorization header everywhere. */
   async function api(method, path, body, formData) {
     const headers = { 'Authorization': 'Bearer ' + AUTH_TOKEN };
     if (!formData) { headers['Content-Type'] = 'application/json'; }
-
     const opts = { method, headers, credentials: 'include' };
     if (formData) { opts.body = formData; }
     else if (body) { opts.body = JSON.stringify(body); }
 
-    // 15-second timeout — show feedback if request hangs
     const controller = new AbortController();
     opts.signal = controller.signal;
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -597,78 +550,102 @@
     else { btn.classList.remove('btn--loading'); btn.removeAttribute('aria-disabled'); }
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  INIT — Load all data with skeleton states
-  // ═══════════════════════════════════════════════════════
+  // ── Sidebar (mobile) ──
+  function openSidebar() {
+    $('#sidebar').classList.add('sidebar--open');
+    $('#sidebarOverlay').style.display = 'block';
+  }
+  function closeSidebar() {
+    $('#sidebar').classList.remove('sidebar--open');
+    $('#sidebarOverlay').style.display = 'none';
+  }
+  document.getElementById('mobileMenuBtn')?.addEventListener('click', openSidebar);
+  document.querySelectorAll('.sidebar__link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const section = link.dataset.section;
+      document.querySelectorAll('.sidebar__link').forEach(l => l.classList.remove('sidebar__link--active'));
+      link.classList.add('sidebar__link--active');
+      if (section === 'stylist') $('#stylistSection').scrollIntoView({behavior:'smooth'});
+      if (section === 'wardrobe') $('#wardrobeSection').scrollIntoView({behavior:'smooth'});
+      if (section === 'history') $('#historySection').scrollIntoView({behavior:'smooth'});
+      closeSidebar();
+    });
+  });
+
+  // ── INIT ──
   async function init() {
-    // Show skeletons while loading
     showSkeletons();
     try {
       const meData = await api('GET', '/auth/me');
       if (meData.status !== 'success' || !meData.data?.id) { goToLogin(); return; }
       currentUser = { id: meData.data.id, email: meData.data.email };
       $('#dashboardUserEmail').textContent = meData.data.email;
+      $('#sidebarEmail').textContent = meData.data.email;
     } catch { goToLogin(); return; }
-
     await Promise.all([loadProfile(), loadWardrobe(), loadHistory()]);
     clearSkeletons();
   }
 
   function showSkeletons() {
-    // Wardrobe skeleton
     $('#wardrobeGrid').innerHTML = `
-      <div class="skeleton skeleton--card" style="height:160px;aspect-ratio:3/4;"></div>
-      <div class="skeleton skeleton--card" style="height:160px;aspect-ratio:3/4;"></div>
-      <div class="skeleton skeleton--card" style="height:160px;aspect-ratio:3/4;"></div>`;
-    // History skeleton
+      <div class="skeleton skeleton--card" style="height:140px;aspect-ratio:3/4;"></div>
+      <div class="skeleton skeleton--card" style="height:140px;aspect-ratio:3/4;"></div>
+      <div class="skeleton skeleton--card" style="height:140px;aspect-ratio:3/4;"></div>`;
     $('#historyList').innerHTML = `
-      <div style="border:1px solid var(--wutt-border);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-sm);">
-        <div class="skeleton skeleton--title" style="width:40%;margin-bottom:8px;"></div>
-        <div class="skeleton skeleton--text" style="width:70%;"></div>
-        <div class="skeleton skeleton--text" style="width:30%;height:0.75rem;margin-top:8px;"></div>
-      </div>
-      <div style="border:1px solid var(--wutt-border);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-sm);">
-        <div class="skeleton skeleton--title" style="width:50%;margin-bottom:8px;"></div>
+      <div style="border:1px solid var(--wutt-border-light);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-sm);">
+        <div class="skeleton skeleton--text" style="width:40%;margin-bottom:8px;"></div>
         <div class="skeleton skeleton--text" style="width:60%;"></div>
         <div class="skeleton skeleton--text" style="width:25%;height:0.75rem;margin-top:8px;"></div>
+      </div>
+      <div style="border:1px solid var(--wutt-border-light);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-sm);">
+        <div class="skeleton skeleton--text" style="width:50%;margin-bottom:8px;"></div>
+        <div class="skeleton skeleton--text" style="width:55%;"></div>
+        <div class="skeleton skeleton--text" style="width:20%;height:0.75rem;margin-top:8px;"></div>
       </div>`;
-    // Profile skeleton — replace visible form with loading placeholders
     const profileForm = $('#profileForm');
     if (profileForm && !profileForm.querySelector('.skeleton')) {
-      profileForm.querySelectorAll('.input, button[type=submit]').forEach(el => {
-        el.style.display = 'none';
-      });
-      const skeletonHTML = `
+      profileForm.querySelectorAll('.input, button[type=submit]').forEach(el => { el.style.display = 'none'; });
+      const skel = `
         <div class="skeleton skeleton--form-field"></div>
         <div class="skeleton skeleton--form-field"></div>
         <div class="skeleton skeleton--form-field"></div>
         <div class="skeleton skeleton--form-field"></div>
         <div class="skeleton skeleton--btn"></div>`;
-      profileForm.insertAdjacentHTML('beforeend', skeletonHTML);
+      profileForm.insertAdjacentHTML('beforeend', skel);
     }
-
-    // Hide wardrobe count badge until data loads
     const count = $('#wardrobeCount');
     if (count) { count.classList.add('u-hidden'); }
   }
 
   function clearSkeletons() {
-    // Restore profile form visibility
     const profileForm = $('#profileForm');
     if (profileForm) {
       profileForm.querySelectorAll('.skeleton').forEach(s => s.remove());
-      profileForm.querySelectorAll('.input, button[type=submit]').forEach(el => {
-        el.style.display = '';
-      });
+      profileForm.querySelectorAll('.input, button[type=submit]').forEach(el => { el.style.display = ''; });
     }
-    // Wardrobe and history are handled by load* functions replacing innerHTML
+    // Default empty state if no items loaded
+    if (!$('#wardrobeGrid').children.length || $('#wardrobeGrid').querySelector('.skeleton')) {
+      $('#wardrobeGrid').innerHTML = `
+        <div class="empty-state--visual" style="grid-column:1/-1;">
+          <div class="empty-state__icon">👗</div>
+          <div class="empty-state__title">ဗီရိုထဲမှာ အဝတ်မရှိသေးပါ</div>
+          <div class="empty-state__hint">ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>
+        </div>`;
+    }
+    if (!$('#historyList').children.length || $('#historyList').querySelector('.skeleton')) {
+      $('#historyList').innerHTML = `
+        <div class="empty-state--visual">
+          <div class="empty-state__icon">🕐</div>
+          <div class="empty-state__title">စတိုင်မှတ်တမ်း မရှိသေးပါ</div>
+          <div class="empty-state__hint">အကြံပြုချက်များ ဒီမှာတွေ့ရပါမယ်</div>
+        </div>`;
+    }
   }
 
   const uid = () => currentUser?.id;
 
-  // ═══════════════════════════════════════════════════════
-  //  PROFILE
-  // ═══════════════════════════════════════════════════════
+  // ── PROFILE ──
   async function loadProfile() {
     const id = uid(); if (!id) return;
     try {
@@ -680,9 +657,7 @@
         $('#profileStyle').value = p.style_preference || '';
         $('#profileCity').value = p.location_city || '';
       }
-    } catch {
-      // Profile might not exist yet — that's OK (404 = no profile)
-    }
+    } catch { /* OK — profile may not exist yet */ }
   }
 
   $('#profileForm').addEventListener('submit', async (e) => {
@@ -698,13 +673,11 @@
         location_city: $('#profileCity').value || null,
       };
       const res = await api('PUT', '/profile/' + id, body);
-      showToast(res.message || 'ကိုယ်ရေးအချက်အလက်သိမ်းပြီးပါပြီ။', 'success');
+      showToast(res.message || 'သိမ်းပြီးပါပြီ။', 'success');
     } catch {} finally { setLoading(btn, false); }
   });
 
-  // ═══════════════════════════════════════════════════════
-  //  WARDROBE — upload, list, delete, drag-and-drop
-  // ═══════════════════════════════════════════════════════
+  // ── WARDROBE ──
   async function loadWardrobe() {
     const id = uid(); if (!id) return;
     try {
@@ -712,31 +685,25 @@
       const items = res?.data || [];
       const grid = $('#wardrobeGrid');
       const count = $('#wardrobeCount');
-
-      if (count) {
-        count.textContent = items.length;
-        count.classList.toggle('u-hidden', items.length === 0);
-      }
-
+      if (count) { count.textContent = items.length; count.classList.toggle('u-hidden', items.length === 0); }
       if (!items.length) {
         grid.innerHTML = `
           <div class="empty-state--visual" style="grid-column:1/-1;">
             <div class="empty-state__icon">👗</div>
             <div class="empty-state__title">ဗီရိုထဲမှာ အဝတ်မရှိသေးပါ</div>
-            <div class="empty-state__hint">ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ။ AI က သင့်အတွက် အကောင်းဆုံးဝတ်စုံကို ရွေးပေးပါမယ်။</div>
+            <div class="empty-state__hint">ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ</div>
           </div>`;
         return;
       }
+      const labelMy = {
+        dress:'တစ်ဆက်တည်းဝတ်စုံ',gown:'တစ်ဆက်တည်းဝတ်စုံ',
+        top:'အပေါ်ဝတ်',shirt:'အပေါ်ဝတ်',blouse:'အပေါ်ဝတ်','t-shirt':'အပေါ်ဝတ်',
+        bottom:'အောက်ဝတ်',trousers:'အောက်ဝတ်',pants:'အောက်ဝတ်',jeans:'အောက်ဝတ်',skirt:'အောက်ဝတ်',
+        traditional:'မြန်မာဝတ်စုံ',longyi:'လုံချည်',
+        outerwear:'အပေါ်ထပ်',jacket:'အပေါ်ထပ်',blazer:'အပေါ်ထပ်',coat:'အပေါ်ထပ်',
+        shoes:'ဖိနပ်',accessory:'အသုံးအဆောင်',
+      };
       grid.innerHTML = items.map(i => {
-        // Map English categories to clean Myanmar labels — no duplication
-        const labelMy = {
-          dress: 'တစ်ဆက်တည်းဝတ်စုံ', gown: 'တစ်ဆက်တည်းဝတ်စုံ',
-          top: 'အပေါ်ဝတ်', shirt: 'အပေါ်ဝတ်', blouse: 'အပေါ်ဝတ်', 't-shirt': 'အပေါ်ဝတ်',
-          bottom: 'အောက်ဝတ်', trousers: 'အောက်ဝတ်', pants: 'အောက်ဝတ်', jeans: 'အောက်ဝတ်', skirt: 'အောက်ဝတ်',
-          traditional: 'မြန်မာဝတ်စုံ', longyi: 'လုံချည်',
-          outerwear: 'အပေါ်ထပ်', jacket: 'အပေါ်ထပ်', blazer: 'အပေါ်ထပ်', coat: 'အပေါ်ထပ်',
-          shoes: 'ဖိနပ်', accessory: 'အသုံးအဆောင်',
-        };
         const rawCat = (i.category || '').toLowerCase().trim();
         const catLabel = labelMy[rawCat] || (i.category || '');
         const meta = catLabel + (i.color ? ' · ' + i.color : '');
@@ -746,7 +713,7 @@
             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
           <div class="wardrobe__item-error" style="display:none;">👗</div>
           <button class="wardrobe__item-delete" data-id="${i.id}" title="ဖျက်မယ်" aria-label="Delete item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <div class="wardrobe__item-meta">${meta}</div>
         </div>
@@ -758,22 +725,16 @@
       $('#wardrobeGrid').innerHTML = `
         <div class="error-card">
           <div class="error-card__icon">⚠️</div>
-          <div class="error-card__text">ဗီရိုဒေတာမရယူနိုင်ပါ။ အင်တာနက်စစ်ဆေးပြီး ပြန်စမ်းကြည့်ပါ။</div>
-          <button class="error-card__retry" onclick="loadWardrobe()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            ပြန်စမ်းမယ်
-          </button>
+          <div class="error-card__text">ဗီရိုဒေတာမရယူနိုင်ပါ။</div>
+          <button class="error-card__retry" onclick="loadWardrobe()">ပြန်စမ်းမယ်</button>
         </div>`;
     }
   }
 
   async function deleteItem(id) {
-    // Use toast-based confirmation instead of browser confirm()
     const toastId = 'del-confirm-' + Date.now();
     const t = document.createElement('div');
-    t.className = 'toast toast--warning';
-    t.id = toastId;
-    t.setAttribute('role', 'alert');
+    t.className = 'toast toast--warning'; t.id = toastId; t.setAttribute('role', 'alert');
     t.innerHTML = `<span style="flex:1;">ဒီအဝတ်ကိုဖျက်မှာသေချာလား?</span>
       <button onclick="confirmDelete(${id},'${toastId}')" style="background:var(--wutt-error);color:white;border:none;padding:4px 12px;border-radius:4px;font-weight:600;cursor:pointer;font-family:inherit;">ဖျက်မယ်</button>
       <button onclick="dismissToast('${toastId}')" style="background:transparent;border:1px solid var(--wutt-border);padding:4px 12px;border-radius:4px;cursor:pointer;font-family:inherit;">မဖျက်ပါ</button>`;
@@ -782,42 +743,30 @@
 
   window.confirmDelete = async function(id, toastId) {
     dismissToast(toastId);
-    try {
-      await api('DELETE', '/wardrobe/' + id);
-      showToast('ဖျက်ပြီးပါပြီ။', 'success');
-      await loadWardrobe();
-    } catch {}
+    try { await api('DELETE', '/wardrobe/' + id); showToast('ဖျက်ပြီးပါပြီ။', 'success'); await loadWardrobe(); } catch {}
   };
-
   window.dismissToast = function(id) {
     const t = document.getElementById(id);
     if (t) { t.style.opacity = '0'; t.style.transform = 'translateY(-8px)'; setTimeout(() => t.remove(), 300); }
   };
 
-  // ── Lightbox ─────────────────────────────────────────
   window.openLightbox = function(url, meta) {
     const lb = document.createElement('div');
     lb.className = 'lightbox';
     lb.onclick = () => lb.remove();
-    lb.innerHTML = `<img src="${url}" alt="${meta||'Wardrobe item'}" onclick="event.stopPropagation();">${meta ? '<div class="lightbox__meta">'+meta+'</div>' : ''}`;
+    lb.innerHTML = `<img src="${url}" alt="${meta||''}" onclick="event.stopPropagation();">${meta ? '<div class="lightbox__meta">'+meta+'</div>' : ''}`;
     document.body.appendChild(lb);
-    // Close on Escape
     const onKey = (e) => { if (e.key === 'Escape') { lb.remove(); document.removeEventListener('keydown', onKey); } };
     document.addEventListener('keydown', onKey);
   };
 
-  // ── File input + drag-and-drop ──────────────────────
   const ALLOWED_TYPES = ['image/jpeg','image/png','image/webp'];
-  const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+  const MAX_SIZE = 10 * 1024 * 1024;
 
   function validateFile(file) {
     if (!file) return null;
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return 'JPEG, PNG, or WebP ဖိုင်သာထည့်ပါ။';
-    }
-    if (file.size > MAX_SIZE) {
-      return 'ဖိုင်ဆိုဒ် 10 MB ထက်မကျော်ပါနဲ့။';
-    }
+    if (!ALLOWED_TYPES.includes(file.type)) return 'JPEG, PNG, or WebP ဖိုင်သာထည့်ပါ။';
+    if (file.size > MAX_SIZE) return 'ဖိုင်ဆိုဒ် 10 MB ထက်မကျော်ပါနဲ့။';
     return null;
   }
 
@@ -856,31 +805,19 @@
     return true;
   }
 
-  $('#wardrobeFile').addEventListener('change', (e) => {
-    if (e.target.files[0]) handleFileSelect(e.target.files[0]);
-  });
+  $('#wardrobeFile').addEventListener('change', (e) => { if (e.target.files[0]) handleFileSelect(e.target.files[0]); });
 
-  // Drag-and-drop on the upload box
   const uploadBox = $('#uploadBox');
   if (uploadBox) {
     ['dragenter','dragover'].forEach(evt => {
-      uploadBox.addEventListener(evt, (e) => {
-        e.preventDefault();
-        uploadBox.classList.add('upload-box--active');
-      });
+      uploadBox.addEventListener(evt, (e) => { e.preventDefault(); uploadBox.classList.add('upload-box--active'); });
     });
     ['dragleave','drop'].forEach(evt => {
-      uploadBox.addEventListener(evt, (e) => {
-        e.preventDefault();
-        uploadBox.classList.remove('upload-box--active');
-      });
+      uploadBox.addEventListener(evt, (e) => { e.preventDefault(); uploadBox.classList.remove('upload-box--active'); });
     });
     uploadBox.addEventListener('drop', (e) => {
       const file = e.dataTransfer.files[0];
-      if (file) {
-        $('#wardrobeFile').files = e.dataTransfer.files;
-        handleFileSelect(file);
-      }
+      if (file) { $('#wardrobeFile').files = e.dataTransfer.files; handleFileSelect(file); }
     });
   }
 
@@ -890,25 +827,19 @@
     if (!file) { showToast('ဓာတ်ပုံရွေးချယ်ပါ။', 'error'); return; }
     const err = validateFile(file);
     if (err) { showToast(err, 'error'); return; }
-
-    const btn = $('#uploadBtn');
-    setLoading(btn, true);
-
-    // Show upload progress bar
+    const btn = $('#uploadBtn'); setLoading(btn, true);
     const progressHTML = '<div class="upload-progress"><div class="upload-progress__bar" style="width:60%;"></div></div>';
     const progressEl = document.createElement('div');
     progressEl.innerHTML = progressHTML;
     btn.parentNode.insertBefore(progressEl.firstElementChild, btn.nextSibling);
-
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const cat = $('#wardrobeCategory').value;
-      const col = $('#wardrobeColor').value;
+      const fd = new FormData(); fd.append('file', file);
+      const cat = $('#wardrobeCategory').value; const col = $('#wardrobeColor').value;
       if (cat) fd.append('category', cat);
       if (col) fd.append('color', col);
       const res = await api('POST', '/wardrobe/upload', null, fd);
-      // Show success indicator before resetting form
+      const uploadErr = $('#uploadError');
+      if (uploadErr) { uploadErr.classList.add('u-hidden'); uploadErr.textContent = ''; }
       const preview = $('#uploadPreview');
       preview.innerHTML = `
         <div class="upload-success">
@@ -919,11 +850,9 @@
         </div>`;
       showToast(res.message || 'ထည့်ပြီးပါပြီ။', 'success');
       $('#wardrobeForm').reset();
-      // Clear success indicator and reload after delay
       setTimeout(() => { preview.innerHTML = ''; }, 2000);
       await loadWardrobe();
     } catch (uploadErr) {
-      // Show error in-place (do NOT clear token — only 401 triggers logout)
       const errEl = $('#uploadError');
       if (errEl) {
         errEl.textContent = uploadErr?.message || 'Upload မအောင်မြင်ပါ။ ပြန်စမ်းကြည့်ပါ။';
@@ -931,103 +860,69 @@
       }
     } finally {
       setLoading(btn, false);
-      // Remove progress bar
       const bar = btn.parentNode.querySelector('.upload-progress');
       if (bar) bar.remove();
     }
   });
 
-  // ═══════════════════════════════════════════════════════
-  //  STYLIST — AI recommendation with structured output
-  // ═══════════════════════════════════════════════════════
-
+  // ── STYLIST ──
   function showThinking(itemCount) {
     const resp = $('#aiResponse');
-    resp.classList.remove('u-hidden');
-    resp.style.cssText = '';
+    resp.classList.remove('u-hidden'); resp.style.cssText = '';
     resp.innerHTML = `
       <div class="outfit-card" style="text-align:center;padding:var(--space-2xl);">
         <div class="spinner spinner--lg" style="margin:0 auto var(--space-md);"></div>
-        <div style="font-weight:600;margin-bottom:4px;">AI စဉ်းစားနေသည်</div>
+        <div style="font-weight:600;margin-bottom:4px;">စဉ်းစားနေသည်</div>
         <div style="font-size:12px;color:var(--wutt-text-muted);">ဗီရိုထဲက အဝတ် ${itemCount||'?'} ခုကို ခွဲခြမ်းစိတ်ဖြာနေပါတယ်...</div>
         <span class="thinking__dots" style="justify-content:center;margin-top:8px;">
-          <span class="thinking__dot"></span>
-          <span class="thinking__dot"></span>
-          <span class="thinking__dot"></span>
+          <span class="thinking__dot"></span><span class="thinking__dot"></span><span class="thinking__dot"></span>
         </span>
       </div>`;
     resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  /** Myanmar-friendly date formatting — always renders in Asia/Yangon timezone. */
   function formatDateMyanmar(isoStr) {
     if (!isoStr) return '';
     const date = new Date(isoStr);
     if (isNaN(date.getTime())) return isoStr;
-
-    // Always format in Myanmar Standard Time (UTC+6:30)
-    const opts = {
-      timeZone: 'Asia/Yangon',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    };
-    const mmMonths = {
-      January: 'ဇန်နဝါရီ', February: 'ဖေဖော်ဝါရီ', March: 'မတ်', April: 'ဧပြီ',
-      May: 'မေ', June: 'ဇွန်', July: 'ဇူလိုင်', August: 'သြဂုတ်',
-      September: 'စက်တင်ဘာ', October: 'အောက်တိုဘာ', November: 'နိုဝင်ဘာ', December: 'ဒီဇင်ဘာ',
-    };
-
-    // Build ISO-like parts from the Intl formatter, then replace month
     const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Yangon',
-      year: 'numeric', month: 'long', day: 'numeric',
+      timeZone: 'Asia/Yangon', year: 'numeric', month: 'long', day: 'numeric',
       hour: 'numeric', minute: '2-digit', hour12: true,
     }).formatToParts(date);
-
     const vals = {};
-    for (const p of parts) {
-      if (p.type !== 'literal') vals[p.type] = p.value;
-    }
-    const y = vals.year;
-    const m = mmMonths[vals.month] || vals.month;
-    const d = vals.day;
-    const h = vals.hour;
-    const min = vals.minute;
-    const ampm = vals.dayPeriod === 'AM' ? 'မနက်' : 'ညနေ';
-
-    return `${y} ${m} ${d} · ${ampm} ${h}:${min}`;
+    for (const p of parts) { if (p.type !== 'literal') vals[p.type] = p.value; }
+    const mmMonths = {
+      January:'ဇန်နဝါရီ',February:'ဖေဖော်ဝါရီ',March:'မတ်',April:'ဧပြီ',
+      May:'မေ',June:'ဇွန်',July:'ဇူလိုင်',August:'သြဂုတ်',
+      September:'စက်တင်ဘာ',October:'အောက်တိုဘာ',November:'နိုဝင်ဘာ',December:'ဒီဇင်ဘា',
+    };
+    const y = vals.year; const m = mmMonths[vals.month] || vals.month;
+    const d = vals.day; const ampm = vals.dayPeriod === 'AM' ? 'မနက်' : 'ညနေ';
+    return `${y} ${m} ${d} · ${ampm} ${vals.hour}:${vals.minute}`;
   }
 
   function renderOutfitRecommendation(data) {
     let html = '';
     const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-    // ── Context card — occasion + weather ──────────────
     const occasionLabels = {wedding:'မင်္ဂလာပွဲ',work:'ရုံးသွား',party:'ပါတီ',date:'ချိန်းတွေ့',casual:'အပြင်ထွက်',interview:'အင်တာဗျူး'};
     html += '<div class="outfit-card outfit-card--context">';
     html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-sm);">';
     html += '<div>';
-    html += '<div style="font-weight:700;font-size:1rem;color:var(--wutt-deep);">' + (occasionLabels[data.occasion] || esc(data.occasion)) + '</div>';
+    html += '<div style="font-weight:700;font-size:1rem;color:var(--wutt-dark);">' + (occasionLabels[data.occasion] || esc(data.occasion)) + '</div>';
     if (data.weather_desc) {
-      html += '<div style="font-size:var(--text-sm);color:var(--wutt-text-light);margin-top:4px;">';
+      html += '<div style="font-size:var(--text-sm);color:var(--wutt-text-muted);margin-top:4px;">';
       html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>';
       html += esc(data.weather_desc);
       if (data.temperature_c != null) html += ' · ' + data.temperature_c.toFixed(0) + '°C';
       if (data.location) html += ' · ' + esc(data.location);
       html += '</div>';
     }
-    html += '</div>';
-    html += '</div></div>';
+    html += '</div></div></div>';
 
-    // ── Outfit items — step cards ─────────────────────
     const outfit = data.outfit || [];
     if (outfit.length > 0) {
       html += '<div class="outfit-card">';
-      html += '<div style="font-weight:600;font-size:var(--text-sm);color:var(--wutt-text-muted);margin-bottom:var(--space-sm);">👗 ဒီနေ့ ဒါတွေဝတ်ပါ</div>';
+      html += '<div style="font-weight:600;font-size:var(--text-xs);color:var(--wutt-text-muted);margin-bottom:var(--space-sm);">👗 ဒီနေ့ ဒါတွေဝတ်ပါ</div>';
       outfit.forEach((item, i) => {
         html += '<div class="outfit-card__step">';
         html += '<span class="outfit-card__number">' + (i + 1) + '</span>';
@@ -1035,21 +930,12 @@
         html += '</div>';
       });
       html += '</div>';
-    } else {
-      html += '<div class="outfit-card" style="text-align:center;padding:var(--space-xl);">';
-      html += '<div style="font-size:2rem;opacity:0.5;margin-bottom:var(--space-sm);">🤷</div>';
-      html += '<div style="font-size:var(--text-sm);color:var(--wutt-text-muted);">AI က ဒီတစ်ခါ အကြံမပေးနိုင်သေးပါ။ ထပ်စမ်းကြည့်ပါ။</div>';
-      html += '</div>';
     }
-
-    // ── Explanation card ──────────────────────────────
     if (data.explanation) {
       html += '<div class="outfit-card">';
       html += '<div style="font-size:var(--text-sm);color:var(--wutt-text);line-height:1.8;white-space:pre-wrap;">' + esc(data.explanation) + '</div>';
       html += '</div>';
     }
-
-    // ── Weather tip card ──────────────────────────────
     if (data.weather_based_tip) {
       const isRainy = data.weather_desc && (data.weather_desc.includes('rain') || data.weather_desc.includes('Rain'));
       const isHot = data.temperature_c > 30;
@@ -1059,7 +945,6 @@
       html += '<span>' + esc(data.weather_based_tip) + '</span>';
       html += '</div>';
     }
-
     return html;
   }
 
@@ -1067,72 +952,44 @@
     e.preventDefault();
     const btn = $('#recommendBtn');
     const occasion = $('#occasion').value;
-    if (!occasion) { showToast('အခါအခွင့်ရွေးချယ်ပါ။', 'error'); return; }
-
-    // Pre-check: verify wardrobe has items before waiting on AI
+    if (!occasion) { showToast('ဘယ်အတွက်ဝတ်မလဲ ရွေးပါ။', 'error'); return; }
     const id = uid(); if (!id) return;
     let itemCount = 0;
-    try {
-      const wRes = await api('GET', '/wardrobe/' + id);
-      itemCount = (wRes?.data || []).length;
-    } catch { /* proceed anyway */ }
-    if (itemCount === 0) {
-      showToast('အဝတ်တွေအရင် upload လုပ်ပါ။ ဗီရိုထဲမှာတစ်ခုမှမရှိသေးပါ။', 'error');
-      return;
-    }
-
-    setLoading(btn, true);
-    showThinking(itemCount);
-
+    try { const wRes = await api('GET', '/wardrobe/' + id); itemCount = (wRes?.data || []).length; } catch {}
+    if (itemCount === 0) { showToast('အဝတ်တွေအရင် upload လုပ်ပါ။', 'error'); return; }
+    setLoading(btn, true); showThinking(itemCount);
     try {
       const res = await api('POST', '/stylist/recommend', { occasion });
-      const resp = $('#aiResponse');
-      resp.style.cssText = '';
+      const resp = $('#aiResponse'); resp.style.cssText = '';
       resp.innerHTML = renderOutfitRecommendation(res.data);
       resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       await loadHistory();
     } catch (err) {
-      const resp = $('#aiResponse');
-      resp.style.cssText = '';
-      // Show the real error message, not a misleading generic one.
-      // err.message comes from api() which extracts data.detail.message
-      // (e.g. "AI recommendation is unavailable…" → missing API key).
-      const msg = err?.message || 'AI ဆာဗာနဲ့ချိတ်ဆက်မှုမအောင်မြင်ပါ။';
+      const resp = $('#aiResponse'); resp.style.cssText = '';
+      const msg = err?.message || 'ဆာဗာနဲ့ချိတ်ဆက်မှုမအောင်မြင်ပါ။';
       resp.innerHTML = `
         <div class="error-card">
           <div class="error-card__icon">🤖</div>
           <div class="error-card__text">${escapeHtml(msg)}</div>
-          <button class="error-card__retry" onclick="document.getElementById('stylistForm').requestSubmit()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            ပြန်စမ်းမယ်
-          </button>
+          <button class="error-card__retry" onclick="document.getElementById('stylistForm').requestSubmit()">ပြန်စမ်းမယ်</button>
         </div>`;
     } finally { setLoading(btn, false); }
   });
 
-  // ═══════════════════════════════════════════════════════
-  //  HISTORY — expandable items, structured-response aware
-  // ═══════════════════════════════════════════════════════
-
+  // ── HISTORY ──
   function parseStoredResponse(aiResponse) {
-    // Try parsing structured JSON from the stored ai_response
     if (!aiResponse) return { outfit: [], explanation: '', weather_based_tip: '' };
     try {
       const parsed = JSON.parse(aiResponse);
-      return {
-        outfit: parsed.outfit || [],
-        explanation: parsed.explanation || '',
-        weather_based_tip: parsed.weather_based_tip || '',
-      };
+      return { outfit: parsed.outfit || [], explanation: parsed.explanation || '', weather_based_tip: parsed.weather_based_tip || '' };
     } catch {
-      // Legacy free-text response
       return { outfit: [], explanation: aiResponse, weather_based_tip: '' };
     }
   }
 
   function historyPreview(aiResponse) {
     const { explanation } = parseStoredResponse(aiResponse);
-    return explanation.substring(0, 150) + (explanation.length > 150 ? '...' : '');
+    return explanation.substring(0, 120) + (explanation.length > 120 ? '...' : '');
   }
 
   function historyFullHTML(aiResponse) {
@@ -1140,18 +997,16 @@
     const outfit = data.outfit || [];
     let html = '';
     if (outfit.length > 0) {
-      html += '<div style="font-weight:600;margin-bottom:4px;color:var(--wutt-deep);">ဝတ်ဆင်ရန်အကြံပြုချက်</div>';
+      html += '<div style="font-weight:600;margin-bottom:4px;color:var(--wutt-dark);">ဝတ်ဆင်ရန်အကြံပြုချက်</div>';
       html += '<ul style="padding-left:20px;margin:4px 0 12px;">';
-      outfit.forEach(item => {
-        html += '<li>' + item.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</li>';
-      });
+      outfit.forEach(item => { html += '<li>' + item.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</li>'; });
       html += '</ul>';
     }
     if (data.explanation) {
       html += '<div style="white-space:pre-wrap;line-height:1.7;">' + data.explanation.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
     }
     if (data.weather_based_tip) {
-      html += '<div style="margin-top:8px;padding:8px 12px;background:rgba(227,252,135,0.2);border-radius:8px;font-size:13px;">☀️ ' + data.weather_based_tip.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+      html += '<div style="margin-top:8px;padding:8px 12px;background:rgba(227,252,135,0.1);border-radius:8px;font-size:13px;">☀️ ' + data.weather_based_tip.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
     }
     return html;
   }
@@ -1166,8 +1021,8 @@
         list.innerHTML = `
           <div class="empty-state--visual">
             <div class="empty-state__icon">🕐</div>
-            <div class="empty-state__title">အကြံပေးမှတ်တမ်း မရှိသေးပါ</div>
-            <div class="empty-state__hint">AI အကြံပေးချက်များ ဒီမှာတွေ့ရပါမယ်</div>
+            <div class="empty-state__title">စတိုင်မှတ်တမ်း မရှိသေးပါ</div>
+            <div class="empty-state__hint">အကြံပြုချက်များ ဒီမှာတွေ့ရပါမယ်</div>
           </div>`;
         return;
       }
@@ -1176,41 +1031,30 @@
           <div class="history__item-occasion">${s.occasion||''}${s.weather_desc?' · '+s.weather_desc:''}${s.temperature_c?' · '+s.temperature_c.toFixed(0)+'°C':''}</div>
           <div class="history__item-preview">${historyPreview(s.ai_response)}</div>
           <div class="history__item-date">${formatDateMyanmar(s.created_at)}</div>
-          <div class="u-hidden" id="hist-full-${i}" style="margin-top:var(--space-sm);font-size:var(--text-sm);color:var(--wutt-text);">${historyFullHTML(s.ai_response)}</div>
+          <div class="u-hidden" id="hist-full-${i}" style="margin-top:var(--space-sm);font-size:var(--text-xs);color:var(--wutt-text-light);">${historyFullHTML(s.ai_response)}</div>
         </div>
       `).join('');
     } catch {
       $('#historyList').innerHTML = `
         <div class="error-card">
           <div class="error-card__icon">⚠️</div>
-          <div class="error-card__text">မှတ်တမ်းမရယူနိုင်ပါ။ ပြန်စမ်းကြည့်ပါ။</div>
-          <button class="error-card__retry" onclick="loadHistory()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            ပြန်စမ်းမယ်
-          </button>
+          <div class="error-card__text">မှတ်တမ်းမရယူနိုင်ပါ။</div>
+          <button class="error-card__retry" onclick="loadHistory()">ပြန်စမ်းမယ်</button>
         </div>`;
     }
   }
 
-  // Exposed globally for onclick handler
   window.toggleHistory = function(i) {
     const item = $('#hist-' + i);
     const full = $('#hist-full-' + i);
     const preview = item?.querySelector('.history__item-preview');
     if (!item || !full) return;
     const isOpen = item.classList.toggle('history__item--expanded');
-    if (isOpen) {
-      full.classList.remove('u-hidden');
-      if (preview) preview.style.display = 'none';
-    } else {
-      full.classList.add('u-hidden');
-      if (preview) preview.style.display = '';
-    }
+    if (isOpen) { full.classList.remove('u-hidden'); if (preview) preview.style.display = 'none'; }
+    else { full.classList.add('u-hidden'); if (preview) preview.style.display = ''; }
   };
 
-  // ═══════════════════════════════════════════════════════
-  //  LOGOUT
-  // ═══════════════════════════════════════════════════════
+  // ── LOGOUT ──
   $('#logoutBtn').addEventListener('click', goToLogin);
 
   init();

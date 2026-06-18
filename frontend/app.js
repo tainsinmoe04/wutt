@@ -212,13 +212,8 @@ navLoginBtn?.addEventListener('click', openLoginModal);
 navGetStartedBtn?.addEventListener('click', openRegisterModal);
 heroGetStartedBtn?.addEventListener('click', openRegisterModal);
 
-// "Learn more" scrolls to features
-heroLearnMoreBtn?.addEventListener('click', () => {
-  const features = $('#features');
-  if (features) {
-    features.scrollIntoView({ behavior: 'smooth' });
-  }
-});
+// "Learn more" → open login modal (used to scroll to features)
+heroLearnMoreBtn?.addEventListener('click', openLoginModal);
 
 /* --------------------------------------------------------
    Password Visibility Toggle
@@ -494,46 +489,4 @@ setupLiveValidation($('#registerConfirmPassword'), $('#registerConfirmPasswordEr
 loginForm?.addEventListener('submit', handleLoginSubmit);
 registerForm?.addEventListener('submit', handleRegisterSubmit);
 
-/* --------------------------------------------------------
-   Intersection Observer — Animate feature cards on scroll
-   -------------------------------------------------------- */
-if ('IntersectionObserver' in window) {
-  const featureCards = $$('.feature-card');
-  if (featureCards.length) {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.style.opacity = '1';
-            entry.target.style.transform = 'translateY(0)';
-          }
-        });
-      },
-      { threshold: 0.2 }
-    );
-
-    featureCards.forEach((card) => {
-      card.style.opacity = '0';
-      card.style.transform = 'translateY(24px)';
-      card.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
-      observer.observe(card);
-    });
-  }
-}
-
-/* --------------------------------------------------------
-   Smooth scroll for all anchor links
-   -------------------------------------------------------- */
-$$('a[href^="#"]').forEach((anchor) => {
-  anchor.addEventListener('click', function (e) {
-    const targetId = this.getAttribute('href');
-    if (targetId === '#') return;
-    const target = document.querySelector(targetId);
-    if (target) {
-      e.preventDefault();
-      target.scrollIntoView({ behavior: 'smooth' });
-    }
-  });
-});
-
-console.log('WUTT — AI Personal Stylist ready 💫');
+console.log('WUTT — Your city. Your weather. Your look. 💫');
