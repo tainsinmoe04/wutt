@@ -190,7 +190,7 @@ def get_outfit_recommendation(
     if is_proxy_mode:
         # Text-only: describe wardrobe items, do NOT send images.
         # Many OpenAI-compatible proxies don't support vision/image_url.
-        logger.info("Proxy mode detected — using text-only stylist prompt")
+        logger.info("PROXY_TEXT_ONLY_MODE model=%s", settings.openai_model)
         user_prompt = _build_text_only_user_prompt(
             wardrobe_items=wardrobe_items,
             occasion=occasion,
@@ -201,7 +201,8 @@ def get_outfit_recommendation(
             skin_tone=skin_tone,
             style_preference=style_preference,
         )
-        content: list[dict[str, Any]] = [{"type": "text", "text": user_prompt}]
+        # Plain string — many OpenAI-compatible proxies reject content-as-array
+        content = user_prompt
     else:
         # Vision mode: send wardrobe images as Cloudinary URLs.
         lines = [f"Occasion: {occasion}"]
