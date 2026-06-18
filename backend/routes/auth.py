@@ -190,7 +190,7 @@ def register(
 
     # ── Check uniqueness ──────────────────────────────
     if db.query(User).filter(User.email == email).first():
-        raise _err("An account with this email already exists.")
+        raise _err("ဒီအီးမေးလ်နဲ့ အကောင့်ရှိပြီးသားပါ", code=409)
 
     # ── Create user ───────────────────────────────────
     try:

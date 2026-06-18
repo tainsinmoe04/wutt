@@ -483,6 +483,7 @@
                 <option value="navy">နေပယ်ပြာ</option><option value="beige">ဘဲဂျီ</option>
               </select>
             </div>
+            <div class="alert alert--error u-hidden" id="uploadError" role="alert" style="margin-top:var(--space-sm);"></div>
             <button type="submit" class="btn btn--navy btn--full" style="margin-top:var(--space-md);" id="uploadBtn">
               <span class="btn__label">ထည့်မယ်</span>
               <span class="btn__spinner" aria-hidden="true"></span>
@@ -908,7 +909,14 @@
       // Clear success indicator and reload after delay
       setTimeout(() => { preview.innerHTML = ''; }, 2000);
       await loadWardrobe();
-    } catch {} finally {
+    } catch (uploadErr) {
+      // Show error in-place (do NOT clear token — only 401 triggers logout)
+      const errEl = $('#uploadError');
+      if (errEl) {
+        errEl.textContent = uploadErr?.message || 'Upload မအောင်မြင်ပါ။ ပြန်စမ်းကြည့်ပါ။';
+        errEl.classList.remove('u-hidden');
+      }
+    } finally {
       setLoading(btn, false);
       // Remove progress bar
       const bar = btn.parentNode.querySelector('.upload-progress');

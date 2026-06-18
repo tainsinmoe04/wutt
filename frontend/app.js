@@ -379,7 +379,7 @@ async function handleLoginSubmit(e) {
       }, 800);
     } else {
       toggleHidden(loginFormError, false);
-      loginFormError.textContent = data.message || 'အကောင့်ဝင်မှုမအောင်မြင်ပါ။ ထပ်စမ်းကြည့်ပါ။';
+      loginFormError.textContent = data.message || data?.detail?.message || 'အကောင့်ဝင်မှုမအောင်မြင်ပါ။ ထပ်စမ်းကြည့်ပါ။';
     }
   } catch (err) {
     toggleHidden(loginFormError, false);
@@ -427,7 +427,7 @@ async function handleRegisterSubmit(e) {
       }, 800);
     } else {
       toggleHidden(registerFormError, false);
-      registerFormError.textContent = data.message || 'အကောင့်ဖွင့်မှုမအောင်မြင်ပါ။ ထပ်စမ်းကြည့်ပါ။';
+      registerFormError.textContent = data.message || data?.detail?.message || 'အကောင့်ဖွင့်မှုမအောင်မြင်ပါ။ ထပ်စမ်းကြည့်ပါ။';
     }
   } catch (err) {
     toggleHidden(registerFormError, false);

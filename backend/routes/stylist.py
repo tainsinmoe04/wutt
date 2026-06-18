@@ -101,73 +101,180 @@ def _extract_outfit_fields(ai_result: dict[str, Any]) -> tuple[list[str], str, s
 
 
 # ── Fallback Stylist — Rule-Based Recommendation ────────
+#
+#  Design principles
+#  • Valid outfits only — never dress+dress, top+top, or dress+top+bottom.
+#  • Occasion-aware — interview/wedding/casual each have distinct rules.
+#  • Honest suitability — if nothing fits, say so clearly.
+#  • Natural Myanmar language — no awkward mixed English.
 
 
-# Occasion → preferred categories (most-relevant first)
-_OCCASION_CATEGORIES: dict[str, list[str]] = {
-    "wedding":   ["traditional", "formal", "dress", "blazer", "jacket", "longyi"],
-    "work":      ["formal", "shirt", "blazer", "trousers", "longyi", "smart casual"],
-    "party":     ["dress", "jacket", "party", "smart casual", "top", "skirt"],
-    "date":      ["smart casual", "dress", "shirt", "top", "skirt", "trousers"],
-    "casual":    ["casual", "t-shirt", "shirt", "jeans", "shorts", "trousers"],
-    "interview": ["formal", "shirt", "blazer", "trousers", "longyi", "smart casual"],
-    "sport":     ["sportswear", "activewear", "t-shirt", "shorts", "athletic"],
-    "temple":    ["traditional", "longyi", "formal", "shirt", "shawl"],
+# ── Category classification maps ─────────────────────────
+
+# Keywords that identify an item as a one-piece (dress / gown / jumpsuit).
+_DRESS_KEYWORDS: tuple[str, ...] = (
+    "dress", "gown", "jumpsuit", "one-piece", "one piece", "onepiece",
+    "ဂါဝန်", "တစ်ဆက်တည်းဝတ်စုံ",
+)
+
+# Keywords that identify a top (shirt, blouse, t-shirt, blazer worn on top).
+_TOP_KEYWORDS: tuple[str, ...] = (
+    "top", "shirt", "blouse", "t-shirt", "tshirt", "sweater",
+    "hoodie", "blazer", "jacket", "အပေါ်ဝတ်", "အင်္ကျီ",
+)
+
+# Keywords that identify a bottom (trousers, pants, jeans, shorts, skirt).
+_BOTTOM_KEYWORDS: tuple[str, ...] = (
+    "bottom", "trouser", "pant", "jeans", "short", "skirt",
+    "ဘောင်းဘီ", "အောက်ဝတ်", "လုံချည်",
+)
+
+# Keywords that identify traditional/Myanmar/longyi items.
+_TRADITIONAL_KEYWORDS: tuple[str, ...] = (
+    "traditional", "myanmar", "longyi", "မြန်မာ", "ရိုးရာ",
+    "လုံချည်", "ထဘီ",
+)
+
+# Keywords that identify outerwear / layering items.
+_OUTERWEAR_KEYWORDS: tuple[str, ...] = (
+    "outerwear", "coat", "cardigan", "shawl", "jacket",
+    "အင်္ကျီအပေါ်ခံ",
+)
+
+# Keywords that identify accessories.
+_ACCESSORY_KEYWORDS: tuple[str, ...] = (
+    "accessory", "bag", "belt", "jewelry", "scarf", "hat",
+    "အသုံးအဆောင်",
+)
+
+# Keywords that identify shoes.
+_SHOES_KEYWORDS: tuple[str, ...] = (
+    "shoes", "sandal", "heel", "ဖိနပ်",
+)
+
+
+# ── Occasion-specific colours ────────────────────────────
+
+_INTERVIEW_COLORS: set[str] = {
+    "navy", "white", "beige", "black", "gray", "grey", "နေပယ်ပြာ",
+    "အဖြူ", "ဘဲဂျီ", "အနက်", "မီးခိုး",
 }
 
-# Weather → fabric / style hints
-_WEATHER_HINTS: dict[str, str] = {
-    "hot":     "Choose light, breathable fabrics like cotton or linen.",
-    "cool":    "Add a light layer — a jacket, cardigan, or shawl.",
-    "rain":    "Pick darker colours that hide splashes. Avoid long hems.",
-    "humid":   "Stick to moisture-wicking, non-clingy fabrics.",
-    "default": "Dress comfortably for the current weather.",
+_WEDDING_COLORS: set[str] = {
+    "red", "gold", "pink", "purple", "navy", "green", "cream",
+    "အနီ", "ပန်းရောင်", "ခရမ်း", "နေပယ်ပြာ", "အစိမ်း",
 }
 
-# Skin-tone → colour families
-_SKIN_TONE_COLORS: dict[str, list[str]] = {
-    "fair":       ["navy", "burgundy", "emerald", "blush", "lavender", "white"],
-    "medium":     ["olive", "mustard", "coral", "teal", "cream", "warm brown"],
-    "tan":        ["gold", "orange", "deep green", "white", "bright blue", "rust"],
-    "dark":       ["jewel tones", "white", "yellow", "fuchsia", "royal blue", "emerald"],
-    "olive":      ["warm earth tones", "cream", "peach", "turquoise", "gold", "coral"],
+_BRIGHT_ACCENT_COLORS: set[str] = {
+    "yellow", "orange", "neon", "အဝါ",
 }
 
-# Myanmar-friendly template strings
-_FALLBACK_EXPLANATIONS: list[str] = [
-    "ဒီ outfit က {occasion} အတွက် အဆင်ပြေပါတယ်။ {color_note} {weather_note}",
-    "{occasion} အတွက် ဒီပုံစံက လိုက်ဖက်ပါတယ်။ {color_note} {weather_note}",
-    "ဒီနေ့ {occasion} သွားဖို့ ဒီဝတ်စုံက သင့်တော်ပါတယ်။ {color_note} {weather_note}",
-]
+
+# ── Weather tips in natural Myanmar ──────────────────────
 
 _WEATHER_TIPS: dict[str, str] = {
-    "hot":   "ပူတဲ့ရာသီမို့ ချည်သားပါးပါးလေးတွေ ဝတ်ပါ။ ရေများများသောက်ပါ။",
-    "cool":  "အေးနေလို့ အပေါ်ထပ်တစ်ခု ဆောင်းသွားပါ။",
-    "rain":  "မိုးရွာနိုင်လို့ ထီးယူဖို့ မမေ့ပါနဲ့။",
-    "humid": "စိုစွတ်နေလို့ ချွေးစုပ်တဲ့အထည်တွေ ရွေးပါ။",
+    "hot": (
+        "ရာသီဥတုပူလို့ ပေါ့ပါးပြီး လေဝင်လေထွက်ကောင်းတဲ့အဝတ်ကို ရွေးပါ။"
+        " ရေများများသောက်ပါ။"
+    ),
+    "cool": (
+        "အေးနေလို့ အပေါ်ထပ်တစ်ခု ထပ်ဆောင်းသွားပါ။"
+    ),
+    "rain": (
+        "မိုးရွာနိုင်လို့ ထီးယူဖို့ မမေ့ပါနဲ့။"
+    ),
+    "humid": (
+        "စိုစွတ်နေလို့ ချွေးစုပ်တဲ့အထည်တွေ ရွေးပါ။"
+    ),
 }
 
 
-def _get_weather_hint(weather_desc: str | None, temperature_c: float | None) -> str:
-    """Return a short weather hint string based on description and temperature."""
-    if not weather_desc and temperature_c is None:
-        return _WEATHER_HINTS["default"]
-    desc = (weather_desc or "").lower()
-    if temperature_c is not None and temperature_c > 32:
-        return _WEATHER_HINTS["hot"]
-    if "rain" in desc or "drizzle" in desc or "thunderstorm" in desc:
-        return _WEATHER_HINTS["rain"]
-    if temperature_c is not None and temperature_c < 20:
-        return _WEATHER_HINTS["cool"]
-    if "humid" in desc or (temperature_c is not None and temperature_c > 28):
-        return _WEATHER_HINTS["humid"]
-    return _WEATHER_HINTS["default"]
+# ── Helpers ──────────────────────────────────────────────
 
 
-def _get_weather_tip(weather_desc: str | None, temperature_c: float | None) -> str:
-    """Return a Myanmar-language weather tip."""
+def _classify_item(item: dict[str, Any]) -> str:
+    """Classify a wardrobe item into a broad type.
+
+    Returns one of: ``dress``, ``top``, ``bottom``, ``traditional``,
+    ``outerwear``, ``accessory``, ``shoes``, ``unknown``.
+    """
+    cat = (item.get("category") or "").lower().strip()
+    desc = (item.get("description") or "").lower().strip()
+    combined = f"{cat} {desc}"
+
+    # Order matters — check dress before top (blazer/jacket can be ambiguous)
+    if any(kw in cat for kw in _DRESS_KEYWORDS):
+        return "dress"
+    if any(kw in cat for kw in _TRADITIONAL_KEYWORDS):
+        return "traditional"
+    if any(kw in cat for kw in _OUTERWEAR_KEYWORDS):
+        return "outerwear"
+    if any(kw in cat for kw in _TOP_KEYWORDS):
+        return "top"
+    if any(kw in cat for kw in _BOTTOM_KEYWORDS):
+        return "bottom"
+    if any(kw in cat for kw in _ACCESSORY_KEYWORDS):
+        return "accessory"
+    if any(kw in cat for kw in _SHOES_KEYWORDS):
+        return "shoes"
+
+    # Fallback: try description
+    if any(kw in combined for kw in _DRESS_KEYWORDS):
+        return "dress"
+    if any(kw in combined for kw in _TOP_KEYWORDS):
+        return "top"
+    if any(kw in combined for kw in _BOTTOM_KEYWORDS):
+        return "bottom"
+
+    return "unknown"
+
+
+def _color_matches(color: str, allowed: set[str]) -> bool:
+    """Check whether *color* belongs to *allowed* set (case-insensitive)."""
+    if not color:
+        return False
+    return color.lower().strip() in allowed
+
+
+def _item_label(item: dict[str, Any]) -> str:
+    """Build a human-readable Myanmar label for a wardrobe item."""
+    cat = item.get("category") or ""
+    color = item.get("color") or ""
+    desc = item.get("description") or ""
+
+    # Map common category names to Myanmar
+    cat_my_map: dict[str, str] = {
+        "top": "အပေါ်ဝတ်", "bottom": "အောက်ဝတ်", "dress": "ဂါဝန်",
+        "outerwear": "အပေါ်ထပ်", "accessory": "အသုံးအဆောင်", "shoes": "ဖိနပ်",
+        "traditional": "မြန်မာဝတ်စုံ", "longyi": "လုံချည်",
+        "shirt": "အပေါ်ဝတ်", "blouse": "အပေါ်ဝတ်", "t-shirt": "အပေါ်ဝတ်",
+        "sweater": "အပေါ်ဝတ်", "hoodie": "အပေါ်ဝတ်", "blazer": "အပေါ်ဝတ်",
+        "jacket": "အပေါ်ဝတ်",
+        "trousers": "အောက်ဝတ်", "pants": "အောက်ဝတ်", "jeans": "အောက်ဝတ်",
+        "shorts": "အောက်ဝတ်", "skirt": "အောက်ဝတ်",
+        "gown": "ဂါဝန်", "jumpsuit": "တစ်ဆက်တည်းဝတ်စုံ",
+        "coat": "အပေါ်ထပ်", "cardigan": "အပေါ်ထပ်",
+    }
+    cat_my = cat_my_map.get(cat.lower().strip() if cat else "", cat)
+
+    if color and desc:
+        return f"{color} {cat_my} — {desc}"
+    if color:
+        return f"{color} {cat_my}"
+    if desc:
+        return f"{cat_my} — {desc}"
+    return cat_my
+
+
+def _get_weather_tip(
+    weather_desc: str | None,
+    temperature_c: float | None,
+) -> str:
+    """Return a natural Myanmar weather tip."""
     if not weather_desc and temperature_c is None:
-        return "ရာသီဥတုနဲ့လိုက်ဖက်တဲ့အဝတ်ကိုရွေးပါ။"
+        return (
+            "ရာသီဥတုနဲ့လိုက်ဖက်တဲ့အဝတ်ကို ရွေးပါ။"
+        )
     desc = (weather_desc or "").lower()
     if temperature_c is not None and temperature_c > 32:
         return _WEATHER_TIPS["hot"]
@@ -177,7 +284,111 @@ def _get_weather_tip(weather_desc: str | None, temperature_c: float | None) -> s
         return _WEATHER_TIPS["cool"]
     if "humid" in desc:
         return _WEATHER_TIPS["humid"]
-    return "ရာသီဥတုနဲ့လိုက်ဖက်တဲ့အဝတ်ကိုရွေးပါ။"
+    # Hot but not extreme
+    if temperature_c is not None and temperature_c > 28:
+        return _WEATHER_TIPS["hot"]
+    return (
+        "ရာသီဥတုနဲ့လိုက်ဖက်တဲ့အဝတ်ကို ရွေးပါ။"
+    )
+
+
+def _occasion_my(occasion: str) -> str:
+    """Translate an occasion key to natural Myanmar."""
+    mapping: dict[str, str] = {
+        "wedding": "မင်္ဂလာပွဲ",
+        "work": "ရုံးသွား",
+        "party": "ပါတီ",
+        "date": "ချိန်းတွေ့",
+        "casual": "အပြင်ထွက်",
+        "interview": "အင်တာဗျူး",
+        "sport": "အားကစား",
+        "temple": "ဘုရားဖူး",
+    }
+    return mapping.get(occasion.lower().strip(), occasion)
+
+
+# ── Suitability scoring ──────────────────────────────────
+
+_SUITABILITY_THRESHOLD_HIGH = 45
+_SUITABILITY_THRESHOLD_OK = 25
+
+
+def _score_item(
+    item: dict[str, Any],
+    broad_type: str,
+    occasion: str,
+    temperature_c: float | None,
+) -> int:
+    """Score a single item for suitability to the occasion (0–100)."""
+    cat = (item.get("category") or "").lower().strip()
+    color = (item.get("color") or "").lower().strip()
+    desc = (item.get("description") or "").lower().strip()
+    occ_lower = occasion.lower().strip()
+    score = 0
+
+    # --- Occasion category fit ---
+    if occ_lower == "interview":
+        if broad_type in ("top", "bottom", "dress"):
+            score += 35
+        elif broad_type == "outerwear":
+            score += 15
+        else:
+            score += 5
+        # Colour discipline
+        if _color_matches(color, _INTERVIEW_COLORS):
+            score += 20
+        elif _color_matches(color, _BRIGHT_ACCENT_COLORS):
+            score -= 10  # Penalty for bright yellow/orange at interview
+    elif occ_lower == "wedding":
+        if broad_type in ("traditional", "dress"):
+            score += 40
+        elif broad_type == "top":
+            score += 15
+        elif broad_type == "bottom" and (
+            "longyi" in cat or "longyi" in desc or "လုံချည်" in cat
+        ):
+            score += 25
+        elif broad_type == "bottom":
+            score += 10
+        else:
+            score += 5
+        # Colour bonus
+        if _color_matches(color, _WEDDING_COLORS):
+            score += 15
+    elif occ_lower == "casual":
+        if broad_type in ("top", "bottom", "dress"):
+            score += 30
+        else:
+            score += 15
+        # Hot weather: penalize heavy items
+        if temperature_c and temperature_c > 28:
+            heavy = ("wool", "fleece", "leather", "down", "puffer")
+            if not any(kw in cat or kw in desc for kw in heavy):
+                score += 10
+    else:
+        # Generic: prefer top/bottom/dress/traditional
+        if broad_type in ("top", "bottom", "dress", "traditional"):
+            score += 30
+        else:
+            score += 15
+
+    # --- Description quality bonus ---
+    if desc:
+        score += 5
+
+    return max(0, min(100, score))
+
+
+# ── Main fallback generator ──────────────────────────────
+
+
+def _best_from_scored(
+    key: str,
+    scored: dict[str, list[tuple[int, dict[str, Any]]]],
+) -> dict[str, Any] | None:
+    """Return the highest-scored item for *key* from *scored*, or None."""
+    entries = scored.get(key, [])
+    return entries[0][1] if entries else None
 
 
 def _generate_fallback(
@@ -190,150 +401,73 @@ def _generate_fallback(
 ) -> dict[str, Any]:
     """Generate a rule-based outfit recommendation from wardrobe metadata.
 
-    Uses occasion → category mapping, weather hints, skin-tone colour
-    guidance, and simple colour coordination.  Designed to produce the
-    same JSON shape as the AI response so the frontend rendering is
-    identical regardless of source.
+    Guarantees valid outfit composition:
+    • One dress only — OR —
+    • One top + one bottom — OR —
+    • One traditional/formal set
+    • Optional: one outerwear or accessory
+
+    Never returns dress+dress, top+top, bottom+bottom, or
+    dress+top+bottom.
 
     Returns:
         Dict with ``outfit`` (list[str]), ``explanation`` (str),
-        ``weather_based_tip`` (str).
+        ``weather_based_tip`` (str), ``suitability`` (int 0–100).
     """
-    import random as _random
-
     if not wardrobe_items:
         return {
             "outfit": [],
-            "explanation": "ဗီရိုထဲမှာ အဝတ်အစားမရှိသေးပါ။",
+            "explanation": "ဗီရိုထဲမှာ အဝတ်အစားမရှိသေးပါ။ ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ။",
             "weather_based_tip": "",
         }
 
     occ_lower = occasion.lower().strip()
-    preferred = _OCCASION_CATEGORIES.get(
-        occ_lower,
-        ["casual", "shirt", "top", "trousers", "t-shirt", "dress"],
-    )
 
-    # ── Score each item ──────────────────────────────────
-    scored: list[dict[str, Any]] = []
-    for item in wardrobe_items:
-        cat = (item.get("category") or "").lower().strip()
-        color = (item.get("color") or "").lower().strip()
-        desc = (item.get("description") or "").lower().strip()
-
-        score = 0
-
-        # Category match: earlier in preferred list = higher score
-        try:
-            idx = preferred.index(cat)
-            score += (len(preferred) - idx) * 10
-        except ValueError:
-            # Partial match
-            for pi, pc in enumerate(preferred):
-                if pc in cat or cat in pc:
-                    score += (len(preferred) - pi) * 4
-                    break
-
-        # Colour / skin-tone bonus
-        if skin_tone:
-            st_lower = skin_tone.lower().strip()
-            for st_key, fav_colors in _SKIN_TONE_COLORS.items():
-                if st_key in st_lower or st_lower in st_key:
-                    if any(fc in color or color in fc for fc in fav_colors):
-                        score += 8
-                    break
-
-        # Style preference bonus
-        if style_preference:
-            sp = style_preference.lower().strip()
-            if sp in cat or (sp in desc):
-                score += 5
-
-        # Weather bonus — hot weather prefers lighter items
-        if temperature_c is not None and temperature_c > 30:
-            heavy_keywords = ["wool", "fleece", "leather", "down", "puffer"]
-            if not any(kw in cat or kw in desc for kw in heavy_keywords):
-                score += 3
-        if temperature_c is not None and temperature_c < 18:
-            warm_keywords = ["jacket", "sweater", "blazer", "cardigan", "hoodie", "long sleeve"]
-            if any(kw in cat or kw in desc for kw in warm_keywords):
-                score += 3
-
-        scored.append({"item": item, "score": score, "category": cat, "color": color})
-
-    # ── Pick items (2–5), preferring high-score, category-diverse ──
-    scored.sort(key=lambda x: x["score"], reverse=True)
-
-    picked: list[dict[str, Any]] = []
-    seen_categories: set[str] = set()
-
-    for s in scored:
-        if len(picked) >= 5:
-            break
-        cat = s["category"]
-        # Avoid too many items from the same broad category
-        cat_base = cat.split("/")[0].strip()
-        if cat_base in seen_categories and len(picked) >= 3:
-            continue
-        picked.append(s)
-        seen_categories.add(cat_base)
-
-    # Ensure at least 2 items
-    if len(picked) < 2 and len(scored) >= 2:
-        picked = [scored[0]]
-        seen = {scored[0]["category"].split("/")[0].strip()}
-        for s in scored[1:]:
-            if len(picked) >= 5:
-                break
-            cb = s["category"].split("/")[0].strip()
-            if cb not in seen or len(picked) < 2:
-                picked.append(s)
-                seen.add(cb)
-
-    # ── Build outfit list ────────────────────────────────
-    outfit: list[str] = []
-    colors_used: list[str] = []
-    for p in picked:
-        item = p["item"]
-        cat = item.get("category") or "item"
-        color = item.get("color") or ""
-        desc = item.get("description") or ""
-        label_parts = [color.capitalize(), cat, desc]
-        label = " — ".join(part for part in label_parts if part).strip()
-        if not label or label == cat:
-            label = f"{color.capitalize()} {cat}".strip() if color else cat.capitalize()
-        outfit.append(label)
-        if color:
-            colors_used.append(color)
-
-    # ── Build explanation ────────────────────────────────
-    occasion_my: dict[str, str] = {
-        "wedding": "မင်္ဂလာပွဲ", "work": "ရုံးသွား", "party": "ပါတီ",
-        "date": "ချိန်းတွေ့", "casual": "အပြင်ထွက်", "interview": "အင်တာဗျူး",
-        "sport": "အားကစား", "temple": "ဘုရားဖူး",
+    # ── Classify all items ─────────────────────────────
+    classified: dict[str, list[dict[str, Any]]] = {
+        "dress": [], "top": [], "bottom": [], "traditional": [],
+        "outerwear": [], "accessory": [], "shoes": [], "unknown": [],
     }
-    occ_my = occasion_my.get(occ_lower, occasion)
-
-    weather_note = _get_weather_hint(weather_desc, temperature_c)
-
-    if colors_used:
-        uniq = list(dict.fromkeys(colors_used))  # preserve order, dedupe
-        if len(uniq) == 1:
-            color_note = f"{uniq[0]} အရောင်က တစ်သမတ်တည်းဖြစ်ပြီး"
-        elif len(uniq) == 2:
-            color_note = f"{uniq[0]} နဲ့ {uniq[1]} အရောင်တွဲက လိုက်ဖက်ပြီး"
+    for item in wardrobe_items:
+        broad = _classify_item(item)
+        if broad in classified:
+            classified[broad].append(item)
         else:
-            color_note = f"{', '.join(uniq[:-1])} နဲ့ {uniq[-1]} အရောင်တွေက လိုက်ဖက်ပြီး"
+            classified["unknown"].append(item)
+
+    # Score each item
+    scored: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+    for key, items in classified.items():
+        scored[key] = sorted(
+            ((_score_item(it, key, occasion, temperature_c), it) for it in items),
+            key=lambda x: x[0],
+            reverse=True,
+        )
+
+    outfit: list[str] = []
+    explanation: str = ""
+    suitability: int = 0
+
+    # ── Select outfit based on occasion ─────────────────
+
+    if occ_lower == "interview":
+        outfit, explanation, suitability = _build_interview_outfit(
+            classified, scored, occ_lower, temperature_c,
+        )
+    elif occ_lower == "wedding":
+        outfit, explanation, suitability = _build_wedding_outfit(
+            classified, scored, occ_lower, temperature_c,
+        )
+    elif occ_lower == "casual":
+        outfit, explanation, suitability = _build_casual_outfit(
+            classified, scored, occ_lower, temperature_c,
+        )
     else:
-        color_note = "အရောင်တွေက လိုက်ဖက်ပြီး"
+        outfit, explanation, suitability = _build_generic_outfit(
+            classified, scored, occ_lower, temperature_c,
+        )
 
-    template = _random.choice(_FALLBACK_EXPLANATIONS)
-    explanation = template.format(
-        occasion=occ_my,
-        color_note=color_note,
-        weather_note=weather_note,
-    )
-
+    # ── Weather tip ────────────────────────────────────
     weather_tip = _get_weather_tip(weather_desc, temperature_c)
 
     return {
@@ -341,6 +475,412 @@ def _generate_fallback(
         "explanation": explanation,
         "weather_based_tip": weather_tip,
     }
+
+
+# ── Outfit builders (one per occasion type) ──────────────
+
+
+def _build_interview_outfit(
+    classified: dict[str, list[dict[str, Any]]],
+    scored: dict[str, list[tuple[int, dict[str, Any]]]],
+    occasion: str,
+    temperature_c: float | None,
+) -> tuple[list[str], str, int]:
+    """Build an interview-appropriate outfit.
+
+    Rules:
+    • Prefer navy, white, beige, black, gray colours.
+    • One top + one bottom, OR one formal dress.
+    • Avoid bright yellow / orange.
+    • Never return multiple tops.
+    """
+    _best = lambda k: _best_from_scored(k, scored)
+    tops = scored.get("top", [])
+    bottoms = scored.get("bottom", [])
+    dresses = scored.get("dress", [])
+    outerwear = scored.get("outerwear", [])
+    occasion_my_str = _occasion_my(occasion)
+
+    # ── Collect interview-colour-filtered items ──────────
+    good_tops = [(s, it) for s, it in tops if _color_matches(
+        it.get("color", ""), _INTERVIEW_COLORS)]
+    good_dresses = [(s, it) for s, it in dresses if _color_matches(
+        it.get("color", ""), _INTERVIEW_COLORS)]
+    good_bottoms = [(s, it) for s, it in bottoms if _color_matches(
+        it.get("color", ""), _INTERVIEW_COLORS)]
+
+    # Try: formal dress in interview colour
+    if good_dresses:
+        s, dress = good_dresses[0]
+        label = _item_label(dress)
+        tip = ""
+        if _best("outerwear"):
+            ow = _best("outerwear")
+            label_ow = _item_label(ow)
+            label = f"{label} + {label_ow}"
+        feasibility = s
+        if feasibility >= _SUITABILITY_THRESHOLD_HIGH:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label} က သပ်သပ်ရပ်ရပ်ဖြစ်ပြီး "
+                f"ယုံကြည်မှုရှိရှိ ဝတ်လို့ရပါတယ်။"
+            )
+        else:
+            explanation = (
+                f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+                f"{label} ကို ဝတ်လို့ရပါတယ်။ "
+                f"ဗီရိုထဲမှာ ဒီ occasion အတွက် item မလုံလောက်သေးပါ။"
+            )
+        return ([label], explanation, feasibility)
+
+    # Try: top + bottom in interview colours
+    if good_tops and good_bottoms:
+        s_top, top = good_tops[0]
+        s_bot, bottom = good_bottoms[0]
+        label_top = _item_label(top)
+        label_bot = _item_label(bottom)
+        labels = [label_top, label_bot]
+        feasibility = (s_top + s_bot) // 2
+
+        # Optional outerwear
+        if _best("outerwear"):
+            ow = _best("outerwear")
+            labels.append(_item_label(ow))
+
+        if feasibility >= _SUITABILITY_THRESHOLD_HIGH:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label_top} နဲ့ {label_bot} တွဲဝတ်တာက "
+                f"သပ်သပ်ရပ်ရပ်ဖြစ်ပြီး ယုံကြည်မှုရှိစေပါတယ်။"
+            )
+        else:
+            explanation = (
+                f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+                f"{label_top} နဲ့ {label_bot} တွဲဝတ်လို့ရပါတယ်။ "
+                f"ဗီရိုထဲမှာ ဒီ occasion အတွက် item မလုံလောက်သေးပါ။"
+            )
+        return (labels, explanation, feasibility)
+
+    # Fallback: use any top + any bottom (but still not multiple tops)
+    if tops and bottoms:
+        s_top, top = tops[0]
+        s_bot, bottom = bottoms[0]
+        label_top = _item_label(top)
+        label_bot = _item_label(bottom)
+        labels = [label_top, label_bot]
+        feasibility = (s_top + s_bot) // 2
+
+        explanation = (
+            f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+            f"{label_top} နဲ့ {label_bot} တွဲဝတ်လို့ရပါတယ်။ "
+            f"ဒီ occasion အတွက် ဗီရိုထဲက item မလုံလောက်သေးပါ။ "
+            f"သပ်သပ်ရပ်ရပ် အပေါ်ဝတ်နဲ့ အောက်ဝတ် ထည့်ပေးပါ။"
+        )
+        return (labels, explanation, feasibility)
+
+    # Only dresses or only one category
+    if dresses:
+        s, dress = dresses[0]
+        label = _item_label(dress)
+        explanation = (
+            f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+            f"{label} ကို ဝတ်လို့ရပါတယ်။ "
+            f"ဒီ occasion အတွက် ဗီရိုထဲက item မလုံလောက်သေးပါ။"
+        )
+        return ([label], explanation, s)
+
+    # Nothing useful
+    return (
+        [],
+        f"{occasion_my_str} အတွက် သင့်တော်တဲ့ဝတ်စုံ ဗီရိုထဲမှာ မရှိသေးပါ။ "
+        f"သပ်သပ်ရပ်ရပ် အပေါ်ဝတ်နဲ့ အောက်ဝတ် ထည့်ပေးပါ။",
+        0,
+    )
+
+
+def _build_wedding_outfit(
+    classified: dict[str, list[dict[str, Any]]],
+    scored: dict[str, list[tuple[int, dict[str, Any]]]],
+    occasion: str,
+    temperature_c: float | None,
+) -> tuple[list[str], str, int]:
+    """Build a wedding-appropriate outfit.
+
+    Rules:
+    • Prefer traditional, longyi, formal dress, elegant dress.
+    • Avoid casual top + bottom.
+    • Avoid mixing dress + top + bottom.
+    • If no wedding-appropriate item, say so honestly.
+    """
+    _best = lambda k: _best_from_scored(k, scored)
+    traditionals = scored.get("traditional", [])
+    dresses = scored.get("dress", [])
+    tops = scored.get("top", [])
+    bottoms = scored.get("bottom", [])
+    outerwear = scored.get("outerwear", [])
+    occasion_my_str = _occasion_my(occasion)
+
+    # Best: traditional / longyi set
+    if traditionals:
+        s, trad = traditionals[0]
+        label = _item_label(trad)
+        # Try to complete with a longyi bottom if available
+        longyi_bottoms = [(s, it) for s, it in bottoms
+                          if "longyi" in (it.get("category") or "").lower()
+                          or "လုံချည်" in (it.get("category") or "").lower()]
+        if longyi_bottoms and "longyi" not in (trad.get("category") or "").lower():
+            _, l_bot = longyi_bottoms[0]
+            label = f"{label} + {_item_label(l_bot)}"
+            feasibility = (s + longyi_bottoms[0][0]) // 2
+        else:
+            feasibility = s
+
+        # Look for a matching top if traditional is a bottom
+        if traditionals and any(
+            kw in (traditionals[0][1].get("category") or "").lower()
+            for kw in ("bottom", "longyi", "လုံချည်")
+        ):
+            nice_tops = [(s, it) for s, it in tops
+                         if _color_matches(it.get("color", ""), _WEDDING_COLORS)]
+            if nice_tops:
+                _, n_top = nice_tops[0]
+                label = f"{_item_label(n_top)} + {label}"
+
+        if feasibility >= _SUITABILITY_THRESHOLD_HIGH:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label} က "
+                f"အလွန်သင့်တော်ပါတယ်။ မြန်မာဆန်ဆန် လှပစေပါတယ်။"
+            )
+        else:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label} ကို ဝတ်လို့ရပါတယ်။ "
+                f"အနီးစပ်ဆုံးရွေးချယ်မှုပါ။"
+            )
+        return ([label], explanation, feasibility)
+
+    # Good: formal/elegant dress
+    wedding_dresses = [(s, it) for s, it in dresses
+                       if _color_matches(it.get("color", ""), _WEDDING_COLORS)]
+    if wedding_dresses:
+        s, dress = wedding_dresses[0]
+        label = _item_label(dress)
+        if _best("outerwear"):
+            ow = _best("outerwear")
+            label = f"{label} + {_item_label(ow)}"
+        if s >= _SUITABILITY_THRESHOLD_HIGH:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label} က သင့်တော်ပါတယ်။"
+            )
+        else:
+            explanation = (
+                f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+                f"{label} ကို ဝတ်လို့ရပါတယ်။"
+            )
+        return ([label], explanation, s)
+
+    # OK: any dress
+    if dresses:
+        s, dress = dresses[0]
+        label = _item_label(dress)
+        explanation = (
+            f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+            f"{label} ကို ဝတ်လို့ရပါတယ်။ "
+            f"ဗီရိုထဲမှာ {occasion_my_str} အတွက် သင့်တဲ့ဝတ်စုံ မလုံလောက်သေးပါ။ "
+            f"formal dress / မြန်မာဝတ်စုံ / longyi set တစ်ခုထည့်ပေးပါ။"
+        )
+        return ([label], explanation, s)
+
+    # Poor: top + bottom (only if no dress/traditional at all)
+    if tops and bottoms:
+        s_top, top = tops[0]
+        s_bot, bottom = bottoms[0]
+        label_top = _item_label(top)
+        label_bot = _item_label(bottom)
+        labels = [label_top, label_bot]
+        feasibility = (s_top + s_bot) // 2
+
+        explanation = (
+            f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+            f"{label_top} နဲ့ {label_bot} တွဲဝတ်လို့ရပါတယ်။ "
+            f"ဒါပေမယ့် {occasion_my_str} အတွက် ပိုသပ်ရပ်တဲ့ "
+            f"မြန်မာဝတ်စုံ သို့မဟုတ် formal ဝတ်စုံလိုပါမယ်။"
+        )
+        return (labels, explanation, feasibility)
+
+    # Nothing suitable
+    return (
+        [],
+        f"ဗီရိုထဲမှာ {occasion_my_str} အတွက် သင့်တဲ့ဝတ်စုံ မလုံလောက်သေးပါ။ "
+        f"formal dress / မြန်မာဝတ်စုံ / longyi set တစ်ခုထည့်ပေးပါ။",
+        0,
+    )
+
+
+def _build_casual_outfit(
+    classified: dict[str, list[dict[str, Any]]],
+    scored: dict[str, list[tuple[int, dict[str, Any]]]],
+    occasion: str,
+    temperature_c: float | None,
+) -> tuple[list[str], str, int]:
+    """Build a casual outfit.
+
+    Rules:
+    • One comfortable top + one bottom.
+    • Prefer breathable colours / fabrics if hot.
+    """
+    tops = scored.get("top", [])
+    bottoms = scored.get("bottom", [])
+    dresses = scored.get("dress", [])
+    occasion_my_str = _occasion_my(occasion)
+
+    is_hot = temperature_c is not None and temperature_c > 28
+
+    # Prefer top + bottom
+    if tops and bottoms:
+        s_top, top = tops[0]
+        s_bot, bottom = bottoms[0]
+        label_top = _item_label(top)
+        label_bot = _item_label(bottom)
+        labels = [label_top, label_bot]
+        feasibility = (s_top + s_bot) // 2
+
+        if is_hot:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label_top} နဲ့ {label_bot} တွဲဝတ်တာက "
+                f"သက်တောင့်သက်သာရှိပါတယ်။ "
+                f"ရာသီဥတုပူလို့ ပေါ့ပါးပြီး လေဝင်လေထွက်ကောင်းတဲ့အဝတ်ကို ရွေးပါ။"
+            )
+        else:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label_top} နဲ့ {label_bot} တွဲဝတ်တာက "
+                f"သက်တောင့်သက်သာရှိပြီး လှပပါတယ်။"
+            )
+        return (labels, explanation, feasibility)
+
+    # Fallback: dress
+    if dresses:
+        s, dress = dresses[0]
+        label = _item_label(dress)
+        if is_hot:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label} က "
+                f"သက်တောင့်သက်သာရှိပြီး လှပပါတယ်။ "
+                f"ရာသီဥတုပူလို့ ပေါ့ပါးတဲ့အထည်ကို ရွေးပါ။"
+            )
+        else:
+            explanation = (
+                f"{occasion_my_str} အတွက် {label} က "
+                f"သက်တောင့်သက်သာရှိပြီး လှပပါတယ်။"
+            )
+        return ([label], explanation, s)
+
+    # Only tops or only bottoms
+    if tops:
+        s, top = tops[0]
+        label = _item_label(top)
+        return (
+            [label],
+            f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+            f"{label} ကို ဝတ်လို့ရပါတယ်။ အောက်ဝတ်လည်း ထည့်ပေးပါ။",
+            s,
+        )
+    if bottoms:
+        s, bottom = bottoms[0]
+        label = _item_label(bottom)
+        return (
+            [label],
+            f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+            f"{label} ကို ဝတ်လို့ရပါတယ်။ အပေါ်ဝတ်လည်း ထည့်ပေးပါ။",
+            s,
+        )
+
+    return (
+        [],
+        f"{occasion_my_str} အတွက် သင့်တော်တဲ့ဝတ်စုံ ဗီရိုထဲမှာ မရှိသေးပါ။",
+        0,
+    )
+
+
+def _build_generic_outfit(
+    classified: dict[str, list[dict[str, Any]]],
+    scored: dict[str, list[tuple[int, dict[str, Any]]]],
+    occasion: str,
+    temperature_c: float | None,
+) -> tuple[list[str], str, int]:
+    """Build an outfit for generic/other occasions.
+
+    Rules:
+    • Prefer: one dress, OR one top + one bottom, OR one traditional set.
+    • Optional outerwear/accessory.
+    • Never invalid combinations.
+    """
+    tops = scored.get("top", [])
+    bottoms = scored.get("bottom", [])
+    dresses = scored.get("dress", [])
+    traditionals = scored.get("traditional", [])
+    occasion_my_str = _occasion_my(occasion)
+
+    # Best: traditional
+    if traditionals:
+        s, trad = traditionals[0]
+        label = _item_label(trad)
+        return (
+            [label],
+            f"{occasion_my_str} အတွက် {label} က သင့်တော်ပါတယ်။",
+            s,
+        )
+
+    # Good: dress
+    if dresses:
+        s, dress = dresses[0]
+        label = _item_label(dress)
+        return (
+            [label],
+            f"{occasion_my_str} အတွက် {label} က သင့်တော်ပါတယ်။",
+            s,
+        )
+
+    # Good: top + bottom
+    if tops and bottoms:
+        s_top, top = tops[0]
+        s_bot, bottom = bottoms[0]
+        label_top = _item_label(top)
+        label_bot = _item_label(bottom)
+        labels = [label_top, label_bot]
+        feasibility = (s_top + s_bot) // 2
+
+        return (
+            labels,
+            f"{occasion_my_str} အတွက် {label_top} နဲ့ {label_bot} တွဲဝတ်တာက "
+            f"သင့်တော်ပါတယ်။",
+            feasibility,
+        )
+
+    # Only tops
+    if tops:
+        s, top = tops[0]
+        label = _item_label(top)
+        return (
+            [label],
+            f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+            f"{label} ကို ဝတ်လို့ရပါတယ်။ အောက်ဝတ်လည်း ထည့်ပေးပါ။",
+            s,
+        )
+
+    # Only bottoms
+    if bottoms:
+        s, bottom = bottoms[0]
+        label = _item_label(bottom)
+        return (
+            [label],
+            f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
+            f"{label} ကို ဝတ်လို့ရပါတယ်။ အပေါ်ဝတ်လည်း ထည့်ပေးပါ။",
+            s,
+        )
+
+    return (
+        [],
+        f"{occasion_my_str} အတွက် သင့်တော်တဲ့ဝတ်စုံ ဗီရိုထဲမှာ မရှိသေးပါ။",
+        0,
+    )
 
 
 # ── Routes ─────────────────────────────────────────────
