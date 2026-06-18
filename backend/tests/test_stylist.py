@@ -19,10 +19,12 @@ from routes.stylist import (
     _generate_fallback,
     _classify_item,
     _score_item,
+    _item_label,
     _build_interview_outfit,
     _build_wedding_outfit,
     _build_casual_outfit,
     _build_generic_outfit,
+    _build_party_outfit,
 )
 
 
@@ -421,3 +423,107 @@ def test_weather_tip_is_myanmar():
     assert any(
         "က" <= c <= "ာ" for c in tip
     ), f"Expected Myanmar text, got: {tip}"
+
+
+# ── Party outfit tests ───────────────────────────────────
+
+
+def test_party_with_red_dress_chooses_red_over_navy():
+    """Party with red dress must choose red dress, not navy."""
+    classified = {
+        "dress": [_item("dress", "red"), _item("dress", "navy")],
+        "top": [], "bottom": [], "traditional": [],
+        "outerwear": [], "accessory": [], "shoes": [], "unknown": [],
+    }
+    scored = {}
+    for key, items in classified.items():
+        scored[key] = sorted(
+            ((_score_item(it, key, "party", None), it) for it in items),
+            key=lambda x: x[0], reverse=True,
+        )
+    outfit, explanation, suitability = _build_party_outfit(
+        classified, scored, "party", None,
+    )
+
+    # Must contain red, not navy
+    has_red = any("red" in o.lower() or "အနီ" in o for o in outfit)
+    assert has_red, f"Party should choose red dress, got: {outfit}"
+    # Explanation should mention party relevance
+    assert "ပါတီ" in explanation, f"Explanation should mention party: {explanation}"
+
+
+def test_party_does_not_prefer_navy_when_red_exists():
+    """When both red dress and navy dress exist, party must prefer red."""
+    assert _score_item(
+        _item("dress", "red"), "dress", "party", None,
+    ) > _score_item(
+        _item("dress", "navy"), "dress", "party", None,
+    ), "Red dress should score higher than navy dress for party"
+
+
+def test_party_with_only_navy_dress_gives_honest_tip():
+    """When only a navy dress is available, mention that red/black would be better."""
+    classified = {
+        "dress": [_item("dress", "navy")],
+        "top": [], "bottom": [], "traditional": [],
+        "outerwear": [], "accessory": [], "shoes": [], "unknown": [],
+    }
+    scored = {}
+    for key, items in classified.items():
+        scored[key] = sorted(
+            ((_score_item(it, key, "party", None), it) for it in items),
+            key=lambda x: x[0], reverse=True,
+        )
+    outfit, explanation, suitability = _build_party_outfit(
+        classified, scored, "party", None,
+    )
+
+    assert len(outfit) == 1
+    assert "အနီ" in explanation or "အနက်" in explanation, \
+        f"Should suggest red/black would be better, got: {explanation}"
+
+
+# ── Label tests ──────────────────────────────────────────
+
+
+def test_item_label_no_duplication():
+    """_item_label must never return duplicated English+Myanmar."""
+    labels = [
+        _item_label(_item("dress", "red")),
+        _item_label(_item("top", "navy")),
+        _item_label(_item("bottom", "beige")),
+        _item_label(_item("traditional", "gold")),
+    ]
+    for label in labels:
+        # Check that the label doesn't contain raw English category concatenated
+        # with its Myanmar form (e.g., "dressdress" or "dressဂါဝန်")
+        assert "dressdress" not in label.lower(), f"Duplicated dress: {label}"
+        assert "toptop" not in label.lower(), f"Duplicated top: {label}"
+        assert "bottombottom" not in label.lower(), f"Duplicated bottom: {label}"
+        assert "shirtshirt" not in label.lower(), f"Duplicated shirt: {label}"
+
+
+def test_item_label_uses_myanmar_categories():
+    """_item_label should use Myanmar category names."""
+    assert "ဂါဝန်" in _item_label(_item("dress", "red"))
+    assert "အပေါ်ဝတ်" in _item_label(_item("top", "navy"))
+    assert "အောက်ဝတ်" in _item_label(_item("bottom", "beige"))
+    assert "မြန်မာဝတ်စုံ" in _item_label(_item("traditional", "gold"))
+
+
+# ── Timezone integration test ────────────────────────────
+#  (Actual timezone rendering tested via frontend; backend stores UTC)
+
+
+def test_fallback_timestamps_are_iso_format():
+    """Verify the _isoformat helper produces valid ISO-8601 that
+    the frontend can render in Asia/Yangon timezone."""
+    from datetime import datetime, timezone
+    from routes.stylist import _isoformat
+
+    dt = datetime(2026, 6, 18, 14, 30, 0, tzinfo=timezone.utc)
+    result = _isoformat(dt)
+    assert "2026-06-18" in result
+    assert "T" in result or "14:30" in result
+    # Must be valid ISO-8601 that new Date() can parse
+    # The frontend will render this in Asia/Yangon via Intl.DateTimeFormat

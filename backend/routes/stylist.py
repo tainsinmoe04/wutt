@@ -155,6 +155,11 @@ _SHOES_KEYWORDS: tuple[str, ...] = (
 
 # ── Occasion-specific colours ────────────────────────────
 
+_PARTY_COLORS: set[str] = {
+    "red", "black", "gold", "silver", "purple", "pink", "white",
+    "အနီ", "အနက်", "ခရမ်း", "ပန်းရောင်", "အဖြူ",
+}
+
 _INTERVIEW_COLORS: set[str] = {
     "navy", "white", "beige", "black", "gray", "grey", "နေပယ်ပြာ",
     "အဖြူ", "ဘဲဂျီ", "အနက်", "မီးခိုး",
@@ -355,6 +360,23 @@ def _score_item(
         # Colour bonus
         if _color_matches(color, _WEDDING_COLORS):
             score += 15
+    elif occ_lower == "party":
+        # Party: prefer dress, then top+bottom.  Favors bold colors.
+        if broad_type == "dress":
+            score += 40
+        elif broad_type in ("top", "bottom"):
+            score += 20
+        else:
+            score += 10
+        # Color bonus: red/black/gold > navy
+        if _color_matches(color, _PARTY_COLORS):
+            score += 25
+        elif _color_matches(color, _INTERVIEW_COLORS):
+            # Navy/beige/grey are fine but less exciting for party
+            score += 8
+        # Bright accent colors (yellow/orange) are OK for party
+        if _color_matches(color, _BRIGHT_ACCENT_COLORS):
+            score += 12
     elif occ_lower == "casual":
         if broad_type in ("top", "bottom", "dress"):
             score += 30
@@ -366,7 +388,7 @@ def _score_item(
             if not any(kw in cat or kw in desc for kw in heavy):
                 score += 10
     else:
-        # Generic: prefer top/bottom/dress/traditional
+        # Generic (work, date, sport, temple, etc.): prefer top/bottom/dress/traditional
         if broad_type in ("top", "bottom", "dress", "traditional"):
             score += 30
         else:
@@ -456,6 +478,10 @@ def _generate_fallback(
         )
     elif occ_lower == "wedding":
         outfit, explanation, suitability = _build_wedding_outfit(
+            classified, scored, occ_lower, temperature_c,
+        )
+    elif occ_lower == "party":
+        outfit, explanation, suitability = _build_party_outfit(
             classified, scored, occ_lower, temperature_c,
         )
     elif occ_lower == "casual":
@@ -710,6 +736,93 @@ def _build_wedding_outfit(
         [],
         f"ဗီရိုထဲမှာ {occasion_my_str} အတွက် သင့်တဲ့ဝတ်စုံ မလုံလောက်သေးပါ။ "
         f"formal dress / မြန်မာဝတ်စုံ / longyi set တစ်ခုထည့်ပေးပါ။",
+        0,
+    )
+
+
+def _build_party_outfit(
+    classified: dict[str, list[dict[str, Any]]],
+    scored: dict[str, list[tuple[int, dict[str, Any]]]],
+    occasion: str,
+    temperature_c: float | None,
+) -> tuple[list[str], str, int]:
+    """Build a party-appropriate outfit.
+
+    Rules:
+    • Prefer red dress, black dress, elegant dress over navy.
+    • If red dress exists, explain why it's the best party choice.
+    • One dress, OR one top + one bottom.
+    • Avoid recommending navy when a bolder option is available.
+    """
+    _best = lambda k: _best_from_scored(k, scored)
+    tops = scored.get("top", [])
+    bottoms = scored.get("bottom", [])
+    dresses = scored.get("dress", [])
+    occasion_my_str = _occasion_my(occasion)
+
+    # ── Party dress selection: favours bold colors ─────────
+    # Separate dresses into bold (red/black/gold) and neutral (navy/beige)
+    bold_dresses = [(s, it) for s, it in dresses
+                    if _color_matches(it.get("color", ""), _PARTY_COLORS)]
+    other_dresses = [(s, it) for s, it in dresses
+                     if not _color_matches(it.get("color", ""), _PARTY_COLORS)]
+
+    # Best: bold party dress
+    if bold_dresses:
+        s, dress = bold_dresses[0]
+        label = _item_label(dress)
+        if _best("outerwear"):
+            ow = _best("outerwear")
+            label = f"{label} + {_item_label(ow)}"
+        dress_color = (dress.get("color") or "").lower()
+        if dress_color in ("red", "အနီ"):
+            explanation = (
+                f"ပါတီအတွက် {label} က ပိုထင်ရှားပြီး "
+                f"ပွဲတက် look နဲ့ ပိုလိုက်ပါတယ်။"
+            )
+        else:
+            explanation = (
+                f"ပါတီအတွက် {label} က "
+                f"ထင်ရှားပြီး ကြော့ရှင်းတဲ့ look ဖြစ်ပါတယ်။"
+            )
+        return ([label], explanation, s)
+
+    # OK: any dress (but note if navy is less ideal)
+    if dresses:
+        s, dress = dresses[0]
+        label = _item_label(dress)
+        dress_color = (dress.get("color") or "").lower()
+        if dress_color in ("navy", "နေပယ်ပြာ", "blue", "beige", "gray", "grey"):
+            explanation = (
+                f"{label} က ပါတီအတွက် ဝတ်လို့ရပေမယ့် "
+                f"အနီရောင် သို့မဟုတ် အနက်ရောင် "
+                f"တစ်ဆက်တည်းဝတ်စုံဆိုရင် ပိုထင်ရှားပါမယ်။"
+            )
+        else:
+            explanation = (
+                f"ပါတီအတွက် {label} က သင့်တော်ပါတယ်။"
+            )
+        return ([label], explanation, s)
+
+    # Fallback: top + bottom
+    if tops and bottoms:
+        s_top, top = tops[0]
+        s_bot, bottom = bottoms[0]
+        label_top = _item_label(top)
+        label_bot = _item_label(bottom)
+        labels = [label_top, label_bot]
+        feasibility = (s_top + s_bot) // 2
+        explanation = (
+            f"ပါတီအတွက် {label_top} နဲ့ {label_bot} တွဲဝတ်လို့ရပါတယ်။ "
+            f"ဒါပေမယ့် ပါတီအတွက် အနီရောင် သို့မဟုတ် အနက်ရောင် "
+            f"တစ်ဆက်တည်းဝတ်စုံဆိုရင် ပိုကြော့ပါမယ်။"
+        )
+        return (labels, explanation, feasibility)
+
+    return (
+        [],
+        f"ပါတီအတွက် သင့်တော်တဲ့ဝတ်စုံ ဗီရိုထဲမှာ မရှိသေးပါ। "
+        f"အနီရောင် သို့မဟုတ် အနက်ရောင် တစ်ဆက်တည်းဝတ်စုံ ထည့်ပေးပါ။",
         0,
     )
 

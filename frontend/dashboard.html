@@ -727,17 +727,30 @@
           </div>`;
         return;
       }
-      grid.innerHTML = items.map(i => `
-        <div class="wardrobe__item" onclick="openLightbox('${i.cloudinary_url}','${(i.category||'')} ${i.color?'· '+i.color:''}')">
-          <img src="${i.cloudinary_url}" alt="${i.category||'Wardrobe item'}" loading="lazy"
+      grid.innerHTML = items.map(i => {
+        // Map English categories to clean Myanmar labels — no duplication
+        const labelMy = {
+          dress: 'တစ်ဆက်တည်းဝတ်စုံ', gown: 'တစ်ဆက်တည်းဝတ်စုံ',
+          top: 'အပေါ်ဝတ်', shirt: 'အပေါ်ဝတ်', blouse: 'အပေါ်ဝတ်', 't-shirt': 'အပေါ်ဝတ်',
+          bottom: 'အောက်ဝတ်', trousers: 'အောက်ဝတ်', pants: 'အောက်ဝတ်', jeans: 'အောက်ဝတ်', skirt: 'အောက်ဝတ်',
+          traditional: 'မြန်မာဝတ်စုံ', longyi: 'လုံချည်',
+          outerwear: 'အပေါ်ထပ်', jacket: 'အပေါ်ထပ်', blazer: 'အပေါ်ထပ်', coat: 'အပေါ်ထပ်',
+          shoes: 'ဖိနပ်', accessory: 'အသုံးအဆောင်',
+        };
+        const rawCat = (i.category || '').toLowerCase().trim();
+        const catLabel = labelMy[rawCat] || (i.category || '');
+        const meta = catLabel + (i.color ? ' · ' + i.color : '');
+        return `
+        <div class="wardrobe__item" onclick="openLightbox('${i.cloudinary_url}','${meta.replace(/'/g,"\\'")}')">
+          <img src="${i.cloudinary_url}" alt="${catLabel}" loading="lazy"
             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
           <div class="wardrobe__item-error" style="display:none;">👗</div>
           <button class="wardrobe__item-delete" data-id="${i.id}" title="ဖျက်မယ်" aria-label="Delete item">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          <div class="wardrobe__item-meta">${i.category||''} ${i.color?'· '+i.color:''}</div>
+          <div class="wardrobe__item-meta">${meta}</div>
         </div>
-      `).join('');
+      `}).join('');
       grid.querySelectorAll('.wardrobe__item-delete').forEach(b => {
         b.addEventListener('click', (ev) => { ev.stopPropagation(); deleteItem(b.dataset.id); });
       });
@@ -946,20 +959,47 @@
     resp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  /** Myanmar-friendly date formatting */
+  /** Myanmar-friendly date formatting — always renders in Asia/Yangon timezone. */
   function formatDateMyanmar(isoStr) {
     if (!isoStr) return '';
     const date = new Date(isoStr);
     if (isNaN(date.getTime())) return isoStr;
-    const months = ['ဇန်နဝါရီ','ဖေဖော်ဝါရီ','မတ်','ဧပြီ','မေ','ဇွန်','ဇူလိုင်','သြဂုတ်','စက်တင်ဘာ','အောက်တိုဘာ','နိုဝင်ဘာ','ဒီဇင်ဘာ'];
-    const y = date.getFullYear();
-    const m = months[date.getMonth()];
-    const d = date.getDate();
-    const h = date.getHours();
-    const min = String(date.getMinutes()).padStart(2,'0');
-    const ampm = h >= 12 ? 'ညနေ' : 'မနက်';
-    const h12 = h % 12 || 12;
-    return `${y} ${m} ${d} · ${ampm} ${h12}:${min}`;
+
+    // Always format in Myanmar Standard Time (UTC+6:30)
+    const opts = {
+      timeZone: 'Asia/Yangon',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    };
+    const mmMonths = {
+      January: 'ဇန်နဝါရီ', February: 'ဖေဖော်ဝါရီ', March: 'မတ်', April: 'ဧပြီ',
+      May: 'မေ', June: 'ဇွန်', July: 'ဇူလိုင်', August: 'သြဂုတ်',
+      September: 'စက်တင်ဘာ', October: 'အောက်တိုဘာ', November: 'နိုဝင်ဘာ', December: 'ဒီဇင်ဘာ',
+    };
+
+    // Build ISO-like parts from the Intl formatter, then replace month
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Yangon',
+      year: 'numeric', month: 'long', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+    }).formatToParts(date);
+
+    const vals = {};
+    for (const p of parts) {
+      if (p.type !== 'literal') vals[p.type] = p.value;
+    }
+    const y = vals.year;
+    const m = mmMonths[vals.month] || vals.month;
+    const d = vals.day;
+    const h = vals.hour;
+    const min = vals.minute;
+    const ampm = vals.dayPeriod === 'AM' ? 'မနက်' : 'ညနေ';
+
+    return `${y} ${m} ${d} · ${ampm} ${h}:${min}`;
   }
 
   function renderOutfitRecommendation(data) {
