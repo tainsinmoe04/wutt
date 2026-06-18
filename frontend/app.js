@@ -7,7 +7,7 @@
    Config
    -------------------------------------------------------- */
 const CONFIG = {
-  API_BASE: 'https://wutt.onrender.com',
+  API_BASE: 'https://wutt-api.onrender.com',
 };
 
 /* --------------------------------------------------------
