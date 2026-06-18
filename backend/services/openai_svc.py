@@ -15,11 +15,18 @@ logger = logging.getLogger(__name__)
 
 
 def _build_client() -> OpenAI | None:
-    """Return an OpenAI client or None if the key is not configured."""
+    """Return an OpenAI client or None if the key is not configured.
+
+    When *openai_base_url* is set (e.g. an OpenAI-compatible proxy such as
+    VibeCode), the client is pointed at that endpoint instead of the default.
+    """
     if not settings.openai_api_key:
         logger.warning("OPENAI_API_KEY is not set — AI recommendations disabled")
         return None
-    return OpenAI(api_key=settings.openai_api_key)
+    kwargs: dict[str, Any] = {"api_key": settings.openai_api_key}
+    if settings.openai_base_url:
+        kwargs["base_url"] = settings.openai_base_url
+    return OpenAI(**kwargs)
 
 
 def get_outfit_recommendation(
@@ -113,7 +120,7 @@ def get_outfit_recommendation(
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=settings.openai_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": content},
