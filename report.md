@@ -87,7 +87,8 @@ Both skills follow the principle of **context-on-demand** — Claude only loads 
 | Total lines of code | 4,516 |
 | API endpoints | 11 |
 | Database tables | 4 |
-| Git commits | 13 |
+| Git commits | 31 |
 | MCP servers configured | 4 |
-| Claude Code agents | 3 |
-| Claude Code skills | 2 |
+| Claude Code agents | 6 |
+| Claude Code skills | 4 |
+| Presentation slides | 6 (PechaKucha) |
