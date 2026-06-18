@@ -5,7 +5,8 @@ Schema:
     profiles        — id, user_id (FK), height_cm, skin_tone,
                       style_preference, location_city, updated_at
     wardrobes       — id, user_id (FK), cloudinary_url, cloudinary_public_id,
-                      category, color, description, uploaded_at
+                      category, subtype, style_tags, material_tags,
+                      occasion_tags, color, description, uploaded_at
     style_sessions  — id, user_id (FK), occasion, weather_desc,
                       temperature_c, location, ai_response, created_at
 """
@@ -72,6 +73,10 @@ class Wardrobe(Base):
     cloudinary_url      = Column(String(500), nullable=False)
     cloudinary_public_id = Column(String(200), nullable=False)
     category            = Column(String(50),  nullable=True)
+    subtype             = Column(String(100), nullable=True)   # e.g. "mini skirt", "blouse", "jeans"
+    style_tags          = Column(String(200), nullable=True)   # comma-separated: "casual,summer,street"
+    material_tags       = Column(String(200), nullable=True)   # comma-separated: "cotton,denim"
+    occasion_tags       = Column(String(200), nullable=True)   # comma-separated: "party,formal"
     color               = Column(String(50),  nullable=True)
     description         = Column(String(255), nullable=True)
     uploaded_at         = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
@@ -80,7 +85,7 @@ class Wardrobe(Base):
     user = relationship("User", back_populates="wardrobes")
 
     def __repr__(self) -> str:
-        return f"<Wardrobe id={self.id} category={self.category!r}>"
+        return f"<Wardrobe id={self.id} category={self.category!r} subtype={self.subtype!r}>"
 
 
 class StyleSession(Base):

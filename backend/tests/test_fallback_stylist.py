@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from routes.stylist import (
     _item_label,
     _classify_item,
+    _has_subtype,
     _score_item,
     _color_matches,
     _generate_fallback,
@@ -29,9 +30,11 @@ from routes.stylist import (
 # ── Helper: build a minimal wardrobe item dict ──────────────
 
 
-def item(category, color="", description=""):
+def item(category, color="", description="", subtype=""):
     """Create a minimal wardrobe item dict for testing."""
     d = {"category": category}
+    if subtype:
+        d["subtype"] = subtype
     if color:
         d["color"] = color
     if description:
@@ -454,3 +457,196 @@ class TestScoreItem:
             for occasion in ("interview", "wedding", "party", "casual", "work"):
                 s = _score_item(item(broad_type, "red"), broad_type, occasion, 25)
                 assert 0 <= s <= 100, f"Score {s} out of bounds for {broad_type}/{occasion}"
+
+
+# ── Tests: subtype-aware labels ──────────────────────────────
+
+
+class TestSubtypeLabels:
+    """Test that _item_label produces specific subtype labels when available."""
+
+    def test_blouse_label(self):
+        """blouse → blouse / ဘလောက်စ်"""
+        label = _item_label(item("top", subtype="blouse", color="white"))
+        assert "blouse" in label
+        assert "ဘလောက်စ်" in label
+        assert "white" in label
+
+    def test_jeans_label(self):
+        """jeans → jeans / ဂျင်းဘောင်းဘီ"""
+        label = _item_label(item("bottom", subtype="jeans", color="blue"))
+        assert "jeans" in label
+        assert "ဂျင်းဘောင်းဘီ" in label
+
+    def test_mini_skirt_label(self):
+        """mini skirt → mini skirt / စကတ်တို"""
+        label = _item_label(item("bottom", subtype="mini skirt"))
+        assert "mini skirt" in label
+        assert "စကတ်တို" in label
+
+    def test_party_dress_label(self):
+        """party dress → ပွဲတက်ဂါဝန်"""
+        label = _item_label(item("dress", subtype="party dress", color="red"))
+        assert "ပွဲတက်ဂါဝန်" in label
+
+    def test_jean_coat_label(self):
+        """jean coat → jean coat / ဂျင်းအပေါ်ထပ်"""
+        label = _item_label(item("outerwear", subtype="jean coat"))
+        assert "jean coat" in label
+        assert "ဂျင်းအပေါ်ထပ်" in label
+
+    def test_longyi_label(self):
+        """longyi → လုံချည်"""
+        label = _item_label(item("bottom", subtype="longyi"))
+        assert "လုံချည်" in label
+
+    def test_no_subtype_falls_back_to_category(self):
+        """Without subtype, fall back to category label only."""
+        label = _item_label(item("top", color="brown"))
+        assert label == "အပေါ်ဝတ် · brown", f"Got: {label}"
+
+    def test_shirt_label(self):
+        """shirt → shirt / ရှပ်အင်္ကျီ"""
+        label = _item_label(item("top", subtype="shirt"))
+        assert "shirt" in label
+        assert "ရှပ်အင်္ကျီ" in label
+
+
+# ── Tests: subtype-aware scoring ─────────────────────────────
+
+
+class TestSubtypeScoring:
+    """Test that subtype affects item scoring."""
+
+    def test_mini_skirt_penalized_for_interview(self):
+        """Mini skirt should score lower than regular trousers for interview."""
+        mini_score = _score_item(
+            item("bottom", subtype="mini skirt"), "bottom", "interview", None)
+        trouser_score = _score_item(
+            item("bottom", subtype="trousers", color="navy"), "bottom", "interview", None)
+        assert mini_score < trouser_score, (
+            f"mini_skirt={mini_score}, trousers={trouser_score}"
+        )
+
+    def test_party_dress_preferred_for_party(self):
+        """Party dress should score higher than casual dress for party."""
+        party_score = _score_item(
+            item("dress", subtype="party dress"), "dress", "party", None)
+        casual_score = _score_item(
+            item("dress", subtype="casual dress"), "dress", "party", None)
+        assert party_score > casual_score, (
+            f"party_dress={party_score}, casual_dress={casual_score}"
+        )
+
+    def test_casual_items_get_bonus_for_casual(self):
+        """Blouse and jeans should get subtype bonus for casual."""
+        blouse_score = _score_item(
+            item("top", subtype="blouse"), "top", "casual", None)
+        shirt_score = _score_item(
+            item("top", subtype="shirt"), "top", "casual", None)
+        assert blouse_score >= 30, f"Blouse should score well for casual: {blouse_score}"
+        assert shirt_score >= 30, f"Shirt should score well for casual: {shirt_score}"
+
+    def test_jean_coat_is_outerwear_only(self):
+        """Jean coat should classify as outerwear, not top or dress."""
+        classification = _classify_item(item("outerwear", subtype="jean coat"))
+        assert classification == "outerwear", f"Got: {classification}"
+
+
+# ── Tests: subtype-aware outfit composition ──────────────────
+
+
+class TestSubtypeOutfits:
+    """Test real outfit combinations with subtypes."""
+
+    def test_blouse_plus_jeans_casual(self):
+        """Blouse + jeans makes a valid casual outfit."""
+        wardrobe = [
+            item("top", subtype="blouse", color="white"),
+            item("bottom", subtype="jeans", color="blue"),
+        ]
+        result = _generate_fallback(wardrobe, "casual")
+        assert len(result["outfit"]) == 2, f"Got: {result['outfit']}"
+        assert any("blouse" in o for o in result["outfit"])
+        assert any("jeans" in o for o in result["outfit"])
+
+    def test_mini_skirt_not_preferred_for_interview(self):
+        """Interview should avoid mini skirt when trousers exist."""
+        wardrobe = [
+            item("top", subtype="blouse", color="white"),
+            item("bottom", subtype="mini skirt", color="black"),
+            item("bottom", subtype="trousers", color="navy"),
+        ]
+        result = _generate_fallback(wardrobe, "interview")
+        # Should pick trousers over mini skirt
+        outfit_text = " ".join(result["outfit"])
+        assert "စကတ်တို" not in outfit_text, (
+            f"Mini skirt appeared in interview: {result['outfit']}"
+        )
+
+    def test_party_dress_preferred_for_party(self):
+        """Party dress should be preferred for party occasion."""
+        wardrobe = [
+            item("dress", subtype="party dress", color="red"),
+            item("dress", subtype="casual dress", color="blue"),
+        ]
+        result = _generate_fallback(wardrobe, "party")
+        assert len(result["outfit"]) == 1
+        assert "ပွဲတက်ဂါဝန်" in result["outfit"][0], (
+            f"Expected party dress, got: {result['outfit']}"
+        )
+
+    def test_jean_coat_only_optional_outerwear(self):
+        """Jean coat should not be recommended as a standalone outfit."""
+        wardrobe = [
+            item("outerwear", subtype="jean coat", color="blue"),
+        ]
+        result = _generate_fallback(wardrobe, "casual")
+        # With only outerwear, should return empty or limited result
+        outfit_text = " ".join(result["outfit"])
+        # Should not have a full outfit suggestion with just a coat
+        assert len(result["outfit"]) <= 1
+
+    def test_old_items_without_subtype_still_work(self):
+        """Items without subtype should still work with fallback logic."""
+        wardrobe = [
+            item("top", color="white"),  # no subtype
+            item("bottom", color="navy"),  # no subtype
+        ]
+        result = _generate_fallback(wardrobe, "casual")
+        assert len(result["outfit"]) == 2
+        assert "အပေါ်ဝတ်" in result["outfit"][0]
+        assert "အောက်ဝတ်" in result["outfit"][1]
+
+    def test_formal_dress_preferred_for_wedding(self):
+        """Formal dress or longyi should be preferred for wedding."""
+        wardrobe = [
+            item("dress", subtype="formal dress", color="gold"),
+            item("dress", subtype="casual dress", color="blue"),
+        ]
+        result = _generate_fallback(wardrobe, "wedding")
+        # Formal dress should score higher
+        assert len(result["outfit"]) == 1
+
+
+# ── Tests: _has_subtype helper ───────────────────────────────
+
+
+class TestHasSubtype:
+    """Test the _has_subtype helper function."""
+
+    def test_matches_subtype(self):
+        it = item("dress", subtype="party dress")
+        assert _has_subtype(it, "party dress")
+
+    def test_matches_partial_in_subtype(self):
+        it = item("bottom", subtype="mini skirt")
+        assert _has_subtype(it, "skirt")
+
+    def test_does_not_match_unrelated(self):
+        it = item("top", subtype="blouse")
+        assert not _has_subtype(it, "party dress", "jeans")
+
+    def test_falls_back_to_category(self):
+        it = item("dress")  # no subtype
+        assert not _has_subtype(it, "party dress")

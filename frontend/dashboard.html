@@ -455,6 +455,12 @@
                   <option value="navy">နေပယ်ပြာ</option><option value="beige">ဘဲဂျီ</option>
                 </select>
               </div>
+              <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm);">
+                <select class="select" id="wardrobeSubtype" name="subtype" style="flex:1;">
+                  <option value="">အမျိုးအစားခွဲ (optional)</option>
+                </select>
+                <input class="input__field" type="text" id="wardrobeTags" name="style_tags" placeholder="tags (e.g. casual,summer)" style="flex:1;">
+              </div>
               <div class="alert alert--error u-hidden" id="uploadError" role="alert" style="margin-top:var(--space-sm);"></div>
               <button type="submit" class="btn btn--primary btn--full" style="margin-top:var(--space-md);" id="uploadBtn">
                 <span class="btn__label">ထည့်မယ်</span>
@@ -695,17 +701,31 @@
           </div>`;
         return;
       }
-      const labelMy = {
+      const subtypeLabel = {
+        blouse:'blouse / ဘလောက်စ်',shirt:'shirt / ရှပ်အင်္ကျီ','t-shirt':'t-shirt / တီရှပ်',
+        sweater:'sweater / ဆွယ်တာ',hoodie:'hoodie / ဟူဒီ',blazer:'blazer / ဘလေဇာ',
+        polo:'polo / ပိုလို','tank top':'tank top / တန့်ခ်တော့ပ်',
+        jeans:'jeans / ဂျင်းဘောင်းဘီ',skirt:'skirt / စကတ်','mini skirt':'mini skirt / စကတ်တို',
+        trousers:'trousers / ဘောင်းဘီရှည်',shorts:'shorts / ဘောင်းဘီတို','cargo pants':'cargo pants / ကာဂိုဘောင်းဘီ',
+        'party dress':'ပွဲတက်ဂါဝန်','formal dress':'formal dress / ဖောင်မယ်ဂါဝန်',
+        'casual dress':'casual dress / ပေါ့ပေါ့ပါးပါးဂါဝန်','maxi dress':'maxi dress / မက်စီဂါဝန်',
+        'mini dress':'mini dress / မီနီဂါဝန်',
+        'jean coat':'jean coat / ဂျင်းအပေါ်ထပ်',jacket:'jacket / အပေါ်ထပ်',
+        coat:'coat / ကုတ်အင်္ကျီ',cardigan:'cardigan / ကာဒီဂန်',shawl:'shawl / ပဝါ',
+        longyi:'လုံချည်',htamein:'ထဘီ',taikpon:'တိုက်ပုံ',
+      };
+      const catLabelFallback = {
         dress:'တစ်ဆက်တည်းဝတ်စုံ',gown:'တစ်ဆက်တည်းဝတ်စုံ','တစ်ဆက်တည်းဝတ်စုံ':'တစ်ဆက်တည်းဝတ်စုံ','ဂါဝန်':'တစ်ဆက်တည်းဝတ်စုံ',
-        top:'အပေါ်ဝတ်',shirt:'အပေါ်ဝတ်',blouse:'အပေါ်ဝတ်','t-shirt':'အပေါ်ဝတ်','အပေါ်ဝတ်':'အပေါ်ဝတ်',
-        bottom:'အောက်ဝတ်',trousers:'အောက်ဝတ်',pants:'အောက်ဝတ်',jeans:'အောက်ဝတ်',skirt:'အောက်ဝတ်','အောက်ဝတ်':'အောက်ဝတ်',
-        traditional:'မြန်မာဝတ်စုံ',longyi:'လုံချည်','မြန်မာဝတ်စုံ':'မြန်မာဝတ်စုံ',
-        outerwear:'အပေါ်ထပ်',jacket:'အပေါ်ထပ်',blazer:'အပေါ်ထပ်',coat:'အပေါ်ထပ်','အပေါ်ထပ်':'အပေါ်ထပ်',
+        top:'အပေါ်ဝတ်','အပေါ်ဝတ်':'အပေါ်ဝတ်',
+        bottom:'အောက်ဝတ်','အောက်ဝတ်':'အောက်ဝတ်',
+        traditional:'မြန်မာဝတ်စုံ','မြန်မာဝတ်စုံ':'မြန်မာဝတ်စုံ',
+        outerwear:'အပေါ်ထပ်','အပေါ်ထပ်':'အပေါ်ထပ်',
         shoes:'ဖိနပ်','ဖိနပ်':'ဖိနပ်',accessory:'အသုံးအဆောင်','အသုံးအဆောင်':'အသုံးအဆောင်',
       };
       grid.innerHTML = items.map(i => {
+        const rawSub = (i.subtype || '').toLowerCase().trim();
         const rawCat = (i.category || '').toLowerCase().trim();
-        const catLabel = labelMy[rawCat] || (i.category || '');
+        const catLabel = subtypeLabel[rawSub] || catLabelFallback[rawCat] || (i.category || '');
         const meta = catLabel + (i.color ? ' · ' + i.color : '');
         return `
         <div class="wardrobe__item" onclick="openLightbox('${i.cloudinary_url}','${meta.replace(/'/g,"\\'")}')">
@@ -807,6 +827,66 @@
 
   $('#wardrobeFile').addEventListener('change', (e) => { if (e.target.files[0]) handleFileSelect(e.target.files[0]); });
 
+  // ── Subtype dropdown: populated based on category selection ──
+  const SUBTYPE_OPTIONS = {
+    top: [
+      { value: '', label: '-- မရှိ --' },
+      { value: 'blouse', label: 'blouse / ဘလောက်စ်' },
+      { value: 'shirt', label: 'shirt / ရှပ်အင်္ကျီ' },
+      { value: 't-shirt', label: 't-shirt / တီရှပ်' },
+      { value: 'sweater', label: 'sweater / ဆွယ်တာ' },
+      { value: 'hoodie', label: 'hoodie / ဟူဒီ' },
+      { value: 'blazer', label: 'blazer / ဘလေဇာ' },
+      { value: 'polo', label: 'polo / ပိုလို' },
+      { value: 'tank top', label: 'tank top / တန့်ခ်တော့ပ်' },
+    ],
+    bottom: [
+      { value: '', label: '-- မရှိ --' },
+      { value: 'jeans', label: 'jeans / ဂျင်းဘောင်းဘီ' },
+      { value: 'skirt', label: 'skirt / စကတ်' },
+      { value: 'mini skirt', label: 'mini skirt / စကတ်တို' },
+      { value: 'trousers', label: 'trousers / ဘောင်းဘီရှည်' },
+      { value: 'shorts', label: 'shorts / ဘောင်းဘီတို' },
+      { value: 'cargo pants', label: 'cargo pants / ကာဂိုဘောင်းဘီ' },
+      { value: 'longyi', label: 'လုံချည်' },
+    ],
+    dress: [
+      { value: '', label: '-- မရှိ --' },
+      { value: 'party dress', label: 'ပွဲတက်ဂါဝန်' },
+      { value: 'formal dress', label: 'formal dress / ဖောင်မယ်ဂါဝန်' },
+      { value: 'casual dress', label: 'casual dress / ပေါ့ပေါ့ပါးပါးဂါဝန်' },
+      { value: 'maxi dress', label: 'maxi dress / မက်စီဂါဝန်' },
+      { value: 'mini dress', label: 'mini dress / မီနီဂါဝန်' },
+    ],
+    outerwear: [
+      { value: '', label: '-- မရှိ --' },
+      { value: 'jean coat', label: 'jean coat / ဂျင်းအပေါ်ထပ်' },
+      { value: 'jacket', label: 'jacket / အပေါ်ထပ်' },
+      { value: 'coat', label: 'coat / ကုတ်အင်္ကျီ' },
+      { value: 'cardigan', label: 'cardigan / ကာဒီဂန်' },
+      { value: 'shawl', label: 'shawl / ပဝါ' },
+    ],
+    shoes: [{ value: '', label: '-- မရှိ --' }],
+    accessory: [{ value: '', label: '-- မရှိ --' }],
+  };
+
+  function populateSubtype(category) {
+    const sel = $('#wardrobeSubtype');
+    if (!sel) return;
+    sel.innerHTML = '';
+    const options = SUBTYPE_OPTIONS[category] || [{ value: '', label: '-- မရှိ --' }];
+    options.forEach(opt => {
+      const el = document.createElement('option');
+      el.value = opt.value;
+      el.textContent = opt.label;
+      sel.appendChild(el);
+    });
+  }
+
+  $('#wardrobeCategory').addEventListener('change', function() {
+    populateSubtype(this.value);
+  });
+
   const uploadBox = $('#uploadBox');
   if (uploadBox) {
     ['dragenter','dragover'].forEach(evt => {
@@ -835,7 +915,10 @@
     try {
       const fd = new FormData(); fd.append('file', file);
       const cat = $('#wardrobeCategory').value; const col = $('#wardrobeColor').value;
+      const sub = $('#wardrobeSubtype').value; const tags = $('#wardrobeTags').value;
       if (cat) fd.append('category', cat);
+      if (sub) fd.append('subtype', sub);
+      if (tags) fd.append('style_tags', tags);
       if (col) fd.append('color', col);
       const res = await api('POST', '/wardrobe/upload', null, fd);
       const uploadErr = $('#uploadError');

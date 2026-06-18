@@ -31,14 +31,17 @@ from routes.stylist import (
 # ── Helper factories ────────────────────────────────────
 
 
-def _item(category: str, color: str = "", description: str = "") -> dict:
+def _item(category: str, color: str = "", description: str = "", subtype: str = "") -> dict:
     """Create a wardrobe item dict matching the stylist route's expected shape."""
-    return {
+    d: dict = {
         "url": f"https://example.com/{category}.jpg",
         "category": category,
         "color": color,
         "description": description,
     }
+    if subtype:
+        d["subtype"] = subtype
+    return d
 
 
 # ── Classification tests ────────────────────────────────
@@ -505,7 +508,7 @@ def test_item_label_no_duplication():
 
 def test_item_label_uses_myanmar_categories():
     """_item_label should use Myanmar category names."""
-    assert "ဂါဝန်" in _item_label(_item("dress", "red"))
+    assert "တစ်ဆက်တည်းဝတ်စုံ" in _item_label(_item("dress", "red"))
     assert "အပေါ်ဝတ်" in _item_label(_item("top", "navy"))
     assert "အောက်ဝတ်" in _item_label(_item("bottom", "beige"))
     assert "မြန်မာဝတ်စုံ" in _item_label(_item("traditional", "gold"))
@@ -527,3 +530,59 @@ def test_fallback_timestamps_are_iso_format():
     assert "T" in result or "14:30" in result
     # Must be valid ISO-8601 that new Date() can parse
     # The frontend will render this in Asia/Yangon via Intl.DateTimeFormat
+
+
+# ── Subtype-aware tests ──────────────────────────────────
+
+
+def test_has_subtype_detects_party_dress():
+    """_has_subtype should detect party dress in subtype or category."""
+    from routes.stylist import _has_subtype
+    assert _has_subtype(_item("dress", subtype="party dress"), "party dress")
+    assert not _has_subtype(_item("dress", subtype="casual dress"), "party dress")
+
+
+def test_has_subtype_detects_jeans():
+    from routes.stylist import _has_subtype
+    assert _has_subtype(_item("bottom", subtype="jeans"), "jeans")
+    assert _has_subtype(_item("bottom", subtype="mini skirt"), "skirt")
+
+
+def test_classify_with_subtype_still_correct():
+    """Subtype should not change broad classification."""
+    from routes.stylist import _classify_item
+    assert _classify_item(_item("bottom", subtype="mini skirt")) == "bottom"
+    assert _classify_item(_item("bottom", subtype="jeans")) == "bottom"
+    assert _classify_item(_item("dress", subtype="party dress")) == "dress"
+    assert _classify_item(_item("outerwear", subtype="jean coat")) == "outerwear"
+    assert _classify_item(_item("top", subtype="blouse")) == "top"
+
+
+def test_item_label_with_subtypes():
+    """_item_label should show specific labels for known subtypes."""
+    from routes.stylist import _item_label
+    # With subtype
+    assert "ဘလောက်စ်" in _item_label(_item("top", subtype="blouse"))
+    assert "ဂျင်းဘောင်းဘီ" in _item_label(_item("bottom", subtype="jeans"))
+    assert "စကတ်တို" in _item_label(_item("bottom", subtype="mini skirt"))
+    assert "ပွဲတက်ဂါဝန်" in _item_label(_item("dress", subtype="party dress"))
+    assert "ဂျင်းအပေါ်ထပ်" in _item_label(_item("outerwear", subtype="jean coat"))
+    # Without subtype — falls back to category
+    label = _item_label(_item("top", color="brown"))
+    assert "အပေါ်ဝတ်" in label
+
+
+def test_subtype_scoring_party_dress_vs_casual_dress():
+    """Party dress should outscore casual dress for party."""
+    from routes.stylist import _score_item
+    party = _score_item(_item("dress", subtype="party dress"), "dress", "party", None)
+    casual = _score_item(_item("dress", subtype="casual dress"), "dress", "party", None)
+    assert party > casual, f"party_dress={party}, casual_dress={casual}"
+
+
+def test_subtype_scoring_mini_skirt_interview_penalty():
+    """Mini skirt should score lower than trousers for interview."""
+    from routes.stylist import _score_item
+    mini = _score_item(_item("bottom", subtype="mini skirt"), "bottom", "interview", None)
+    trouser = _score_item(_item("bottom", subtype="trousers", color="navy"), "bottom", "interview", None)
+    assert mini < trouser, f"mini_skirt={mini}, trousers={trouser}"

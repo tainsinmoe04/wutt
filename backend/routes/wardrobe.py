@@ -41,6 +41,10 @@ class WardrobeItemData(BaseModel):
     cloudinary_url: str
     cloudinary_public_id: str
     category: str | None
+    subtype: str | None
+    style_tags: str | None
+    material_tags: str | None
+    occasion_tags: str | None
     color: str | None
     description: str | None
     uploaded_at: datetime | None  # Serialized to ISO-8601 via model_dump(mode='json')
@@ -130,6 +134,10 @@ def _isoformat(dt) -> str:
 async def upload_wardrobe_item(
     file: UploadFile = File(...),
     category: str | None = Form(None),
+    subtype: str | None = Form(None),
+    style_tags: str | None = Form(None),
+    material_tags: str | None = Form(None),
+    occasion_tags: str | None = Form(None),
     color: str | None = Form(None),
     description: str | None = Form(None),
     db: Session = Depends(get_db),
@@ -138,7 +146,8 @@ async def upload_wardrobe_item(
     """Upload a clothing image to Cloudinary and save the record.
 
     *file* — multipart image (JPEG, PNG, or WebP ≤ 10 MB).
-    *category*, *color*, *description* — optional metadata form fields.
+    *category*, *subtype*, *style_tags*, *material_tags*, *occasion_tags*,
+    *color*, *description* — optional metadata form fields.
     """
     raw = _validate_image(file)
 
@@ -166,6 +175,10 @@ async def upload_wardrobe_item(
         cloudinary_url=url,
         cloudinary_public_id=pid,
         category=category,
+        subtype=subtype,
+        style_tags=style_tags,
+        material_tags=material_tags,
+        occasion_tags=occasion_tags,
         color=color,
         description=description,
     )

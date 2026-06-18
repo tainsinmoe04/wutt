@@ -203,10 +203,15 @@ def _classify_item(item: dict[str, Any]) -> str:
 
     Returns one of: ``dress``, ``top``, ``bottom``, ``traditional``,
     ``outerwear``, ``accessory``, ``shoes``, ``unknown``.
+
+    Uses both category and subtype for accurate classification.
+    A ``jean coat`` subtype with ``outerwear`` category stays outerwear.
+    A ``mini skirt`` subtype with ``bottom`` category stays bottom.
     """
     cat = (item.get("category") or "").lower().strip()
+    sub = (item.get("subtype") or "").lower().strip()
     desc = (item.get("description") or "").lower().strip()
-    combined = f"{cat} {desc}"
+    combined = f"{cat} {sub} {desc}"
 
     # Order matters — check dress before top (blazer/jacket can be ambiguous)
     if any(kw in cat for kw in _DRESS_KEYWORDS):
@@ -224,7 +229,13 @@ def _classify_item(item: dict[str, Any]) -> str:
     if any(kw in cat for kw in _SHOES_KEYWORDS):
         return "shoes"
 
-    # Fallback: try description
+    # Fallback: try subtype first, then description
+    if any(kw in sub for kw in _DRESS_KEYWORDS):
+        return "dress"
+    if any(kw in sub for kw in _TOP_KEYWORDS):
+        return "top"
+    if any(kw in sub for kw in _BOTTOM_KEYWORDS):
+        return "bottom"
     if any(kw in combined for kw in _DRESS_KEYWORDS):
         return "dress"
     if any(kw in combined for kw in _TOP_KEYWORDS):
@@ -233,6 +244,14 @@ def _classify_item(item: dict[str, Any]) -> str:
         return "bottom"
 
     return "unknown"
+
+
+def _has_subtype(item: dict[str, Any], *keywords: str) -> bool:
+    """Check whether an item's subtype or category matches any of *keywords*."""
+    sub = (item.get("subtype") or "").lower().strip()
+    cat = (item.get("category") or "").lower().strip()
+    combined = f"{sub} {cat}"
+    return any(kw in combined for kw in keywords)
 
 
 def _color_matches(color: str, allowed: set[str]) -> bool:
@@ -245,16 +264,59 @@ def _color_matches(color: str, allowed: set[str]) -> bool:
 def _item_label(item: dict[str, Any]) -> str:
     """Build a human-readable Myanmar label for a wardrobe item.
 
-    Returns labels like "အပေါ်ဝတ် · brown" or "အပေါ်ဝတ် — a nice shirt".
-    Never duplicates the category label (e.g. မနေပယ်ပြာအပေါ်ဝတ်အပေါ်ဝတ်).
+    Uses subtype for specific labels when available:
+        blouse     → blouse / ဘလောက်စ်
+        jeans      → jeans / ဂျင်းဘောင်းဘီ
+        mini skirt → mini skirt / စကတ်တို
+        party dress → ပွဲတက်ဂါဝန်
+        longyi     → လုံချည်
+        etc.
+
+    Falls back to broad category label when subtype is empty.
+    Never duplicates category text.
     """
     cat = item.get("category") or ""
+    sub = (item.get("subtype") or "").lower().strip()
     color = item.get("color") or ""
     desc = item.get("description") or ""
 
-    # Map common category names to Myanmar.
-    # Myanmar keys map to themselves to prevent double-translation
-    # when the stored category is already in Myanmar.
+    # ── Subtype → Myanmar label map (specific, human-friendly) ──
+    subtype_label_map: dict[str, str] = {
+        # Tops
+        "blouse": "blouse / ဘလောက်စ်",
+        "shirt": "shirt / ရှပ်အင်္ကျီ",
+        "t-shirt": "t-shirt / တီရှပ်",
+        "sweater": "sweater / ဆွယ်တာ",
+        "hoodie": "hoodie / ဟူဒီ",
+        "blazer": "blazer / ဘလေဇာ",
+        "polo": "polo / ပိုလို",
+        "tank top": "tank top / တန့်ခ်တော့ပ်",
+        # Bottoms
+        "jeans": "jeans / ဂျင်းဘောင်းဘီ",
+        "skirt": "skirt / စကတ်",
+        "mini skirt": "mini skirt / စကတ်တို",
+        "trousers": "trousers / ဘောင်းဘီရှည်",
+        "shorts": "shorts / ဘောင်းဘီတို",
+        "cargo pants": "cargo pants / ကာဂိုဘောင်းဘီ",
+        # Dresses
+        "party dress": "ပွဲတက်ဂါဝန်",
+        "formal dress": "formal dress / ဖောင်မယ်ဂါဝန်",
+        "casual dress": "casual dress / ပေါ့ပေါ့ပါးပါးဂါဝန်",
+        "maxi dress": "maxi dress / မက်စီဂါဝန်",
+        "mini dress": "mini dress / မီနီဂါဝန်",
+        # Outerwear
+        "jean coat": "jean coat / ဂျင်းအပေါ်ထပ်",
+        "jacket": "jacket / အပေါ်ထပ်",
+        "coat": "coat / ကုတ်အင်္ကျီ",
+        "cardigan": "cardigan / ကာဒီဂန်",
+        "shawl": "shawl / ပဝါ",
+        # Traditional
+        "longyi": "လုံချည်",
+        "htamein": "ထဘီ",
+        "taikpon": "တိုက်ပုံ",
+    }
+
+    # ── Category → Myanmar label map (fallback) ──
     cat_my_map: dict[str, str] = {
         "top": "အပေါ်ဝတ်", "bottom": "အောက်ဝတ်", "dress": "တစ်ဆက်တည်းဝတ်စုံ",
         "outerwear": "အပေါ်ထပ်", "accessory": "အသုံးအဆောင်", "shoes": "ဖိနပ်",
@@ -275,17 +337,20 @@ def _item_label(item: dict[str, Any]) -> str:
         "အင်္ကျီ": "အပေါ်ဝတ်", "ဘောင်းဘီ": "အောက်ဝတ်",
         "ထဘီ": "မြန်မာဝတ်စုံ",
     }
-    cat_key = cat.lower().strip() if cat else ""
-    cat_my = cat_my_map.get(cat_key, cat)
 
-    # Build label: category first, then color/desc (matching frontend format)
-    base = cat_my
+    # Build the base label — prefer subtype label, fall back to category label
+    if sub and sub in subtype_label_map:
+        base = subtype_label_map[sub]
+    else:
+        cat_key = cat.lower().strip() if cat else ""
+        base = cat_my_map.get(cat_key, cat)
+
+    # Append color and description
     if color:
-        base = f"{cat_my} \u00b7 {color}"
+        base = f"{base} · {color}"
     if desc:
-        base = f"{base} \u2014 {desc}"
+        base = f"{base} — {desc}"
     return base
-
 
 def _get_weather_tip(
     weather_desc: str | None,
@@ -344,13 +409,14 @@ def _score_item(
     """Score a single item for suitability to the occasion (0–100).
 
     Scoring dimensions:
-    • Occasion–category fit
+    • Occasion–category fit (with subtype bonus/penalty)
     • Colour discipline (occasion-appropriate, no over-bonus for red/navy)
     • Style preference alignment (small bonus)
     • Weather suitability
     • Description quality
     """
     cat = (item.get("category") or "").lower().strip()
+    sub = (item.get("subtype") or "").lower().strip()
     color = (item.get("color") or "").lower().strip()
     desc = (item.get("description") or "").lower().strip()
     occ_lower = occasion.lower().strip()
@@ -364,11 +430,14 @@ def _score_item(
             score += 15
         else:
             score += 5
-        # Colour: modest bonus for interview-appropriate colours (reduced from 20→10)
+        # Colour: modest bonus for interview-appropriate colours
         if _color_matches(color, _INTERVIEW_COLORS):
             score += 10
         elif _color_matches(color, _BRIGHT_ACCENT_COLORS):
             score -= 10
+        # Subtype: mini skirt penalty for interview
+        if "mini skirt" in sub:
+            score -= 15
     elif occ_lower == "wedding":
         if broad_type in ("traditional", "dress"):
             score += 40
@@ -382,25 +451,33 @@ def _score_item(
             score += 10
         else:
             score += 5
-        # Colour bonus (reduced from 15→8 to avoid over-bias toward red)
+        # Colour bonus
         if _color_matches(color, _WEDDING_COLORS):
             score += 8
+        # Subtype bonuses for wedding
+        if sub in ("formal dress", "longyi", "htamein", "taikpon"):
+            score += 15
     elif occ_lower == "party":
-        # Party: prefer dress, then top+bottom. Bold colors welcome but not exclusive.
+        # Party: prefer dress, then top+bottom
         if broad_type == "dress":
             score += 40
         elif broad_type in ("top", "bottom"):
             score += 20
         else:
             score += 10
-        # Color bonus reduced to avoid always picking red/black.
-        # Red/black still get a bonus, but not overwhelming.
+        # Color bonus
         if _color_matches(color, _PARTY_COLORS):
             score += 12
         elif _color_matches(color, _INTERVIEW_COLORS):
             score += 5
         if _color_matches(color, _BRIGHT_ACCENT_COLORS):
             score += 8
+        # Subtype: party dress gets significant bonus
+        if sub in ("party dress", "mini dress"):
+            score += 15
+        # Mini skirt ok for party
+        if "mini skirt" in sub:
+            score += 5
     elif occ_lower == "casual":
         if broad_type in ("top", "bottom", "dress"):
             score += 30
@@ -416,6 +493,9 @@ def _score_item(
                         "အဖြူ", "ဘဲဂျီ", "ပန်းရောင်", "အဝါ"}
         if _color_matches(color, light_colors):
             score += 3
+        # Subtype: casual-friendly items get bonus
+        if sub in ("blouse", "t-shirt", "jeans", "shorts", "casual dress"):
+            score += 5
     else:
         # Generic (work, date, sport, temple, etc.)
         if broad_type in ("top", "bottom", "dress", "traditional"):
@@ -440,11 +520,6 @@ def _score_item(
         score += 5
 
     return max(0, min(100, score))
-
-
-# ── Main fallback generator ──────────────────────────────
-
-
 def _best_from_scored(
     key: str,
     scored: dict[str, list[tuple[int, dict[str, Any]]]],
@@ -823,10 +898,11 @@ def _build_party_outfit(
     """Build a party-appropriate outfit.
 
     Rules:
-    • Prefer red dress, black dress, elegant dress over navy.
-    • If red dress exists, explain why it's the best party choice.
-    • One dress, OR one top + one bottom.
-    • Avoid recommending navy when a bolder option is available.
+    • Prefer party dress over other dresses.
+    • Prefer bold red/black dress over navy dress.
+    • If no dress: blouse + skirt or top + bottom.
+    • Mini skirt is acceptable for party.
+    • One dress, OR one top + one bottom + optional outerwear.
     """
     _best = lambda k: _best_from_scored(k, scored)
     tops = scored.get("top", [])
@@ -834,11 +910,28 @@ def _build_party_outfit(
     dresses = scored.get("dress", [])
     occasion_my_str = _occasion_my(occasion)
 
-    # ── Party dress selection: favours bold colors (randomised) ──
+    # ── Separate party-specific dresses from general dresses ──
+    party_dress_subtypes = {"party dress", "mini dress"}
+    party_dresses = [(s, it) for s, it in dresses
+                     if _has_subtype(it, *party_dress_subtypes)]
     bold_dresses = [(s, it) for s, it in dresses
-                    if _color_matches(it.get("color", ""), _PARTY_COLORS)]
+                    if _color_matches(it.get("color", ""), _PARTY_COLORS)
+                    and not _has_subtype(it, *party_dress_subtypes)]
 
-    # Best: bold party dress (randomised among top picks)
+    # Best: party dress subtype (e.g. party dress, mini dress)
+    if party_dresses:
+        dress = _pick_best(party_dresses)
+        s = party_dresses[0][0]
+        label = _item_label(dress)
+        if _best("outerwear"):
+            ow = _best("outerwear")
+            label = f"{label} + {_item_label(ow)}"
+        explanation = (
+            f"ပါတီအတွက် {label} က ထင်ရှားပြီး ကြော့ရှင်းတဲ့ look ဖြစ်ပါတယ်။"
+        )
+        return ([label], explanation, s)
+
+    # Good: bold party dress (red, black, etc.)
     if bold_dresses:
         dress = _pick_best(bold_dresses)
         s = bold_dresses[0][0]
@@ -859,7 +952,7 @@ def _build_party_outfit(
             )
         return ([label], explanation, s)
 
-    # OK: any dress (randomised; note if navy is less ideal)
+    # OK: any dress
     if dresses:
         dress = _pick_best(dresses)
         s = dresses[0][0]
@@ -877,8 +970,9 @@ def _build_party_outfit(
             )
         return ([label], explanation, s)
 
-    # Fallback: top + bottom (randomised)
+    # Fallback: top + bottom (prefer blouse + skirt for party)
     if tops and bottoms:
+        # Try to pick party-friendly combos: blouse+skirt is better than t-shirt+jeans
         top = _pick_best(tops)
         bottom = _pick_best(bottoms)
         s_top = tops[0][0]
@@ -896,12 +990,10 @@ def _build_party_outfit(
 
     return (
         [],
-        f"ပါတီအတွက် သင့်တော်တဲ့ဝတ်စုံ ဗီရိုထဲမှာ မရှိသေးပါ। "
+        f"ပါတီအတွက် သင့်တော်တဲ့ဝတ်စုံ ဗီရိုထဲမှာ မရှိသေးပါ။ "
         f"အနီရောင် သို့မဟုတ် အနက်ရောင် တစ်ဆက်တည်းဝတ်စုံ ထည့်ပေးပါ။",
         0,
     )
-
-
 def _build_casual_outfit(
     classified: dict[str, list[dict[str, Any]]],
     scored: dict[str, list[tuple[int, dict[str, Any]]]],
@@ -911,17 +1003,20 @@ def _build_casual_outfit(
     """Build a casual outfit.
 
     Rules:
-    • One comfortable top + one bottom.
-    • Prefer breathable colours / fabrics if hot.
+    • Prefer comfortable top + bottom combos: blouse+jeans, t-shirt+skirt, top+jeans.
+    • Optional outerwear (jean coat, jacket) but never as a standalone item.
+    • Dress is a fallback if no top+bottom combo exists.
+    • Hot weather: prefer light colors and breathable items.
     """
     tops = scored.get("top", [])
     bottoms = scored.get("bottom", [])
     dresses = scored.get("dress", [])
+    outerwear = scored.get("outerwear", [])
     occasion_my_str = _occasion_my(occasion)
 
     is_hot = temperature_c is not None and temperature_c > 28
 
-    # Prefer top + bottom (randomised)
+    # Prefer top + bottom (with optional outerwear)
     if tops and bottoms:
         top = _pick_best(tops)
         bottom = _pick_best(bottoms)
@@ -931,6 +1026,11 @@ def _build_casual_outfit(
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
         feasibility = (s_top + s_bot) // 2
+
+        # Optional outerwear — jean coat/jacket should only be outerwear, not main
+        outer = _best_from_scored("outerwear", scored)
+        if outer:
+            labels.append(_item_label(outer))
 
         if is_hot:
             explanation = (
@@ -945,7 +1045,7 @@ def _build_casual_outfit(
             )
         return (labels, explanation, feasibility)
 
-    # Fallback: dress (randomised)
+    # Fallback: dress
     if dresses:
         dress = _pick_best(dresses)
         s = dresses[0][0]
@@ -963,7 +1063,7 @@ def _build_casual_outfit(
             )
         return ([label], explanation, s)
 
-    # Only tops or only bottoms (randomised)
+    # Only tops or only bottoms
     if tops:
         top = _pick_best(tops)
         s = tops[0][0]
@@ -990,8 +1090,6 @@ def _build_casual_outfit(
         f"{occasion_my_str} အတွက် သင့်တော်တဲ့ဝတ်စုံ ဗီရိုထဲမှာ မရှိသေးပါ။",
         0,
     )
-
-
 def _build_generic_outfit(
     classified: dict[str, list[dict[str, Any]]],
     scored: dict[str, list[tuple[int, dict[str, Any]]]],
@@ -1154,8 +1252,11 @@ def recommend_outfit(
         wardrobe_images.append({
             "url": item.cloudinary_url,
             "category": item.category,
+            "subtype": item.subtype,
             "color": item.color,
             "description": item.description,
+            "style_tags": item.style_tags,
+            "occasion_tags": item.occasion_tags,
         })
 
     # ── Call AI ────────────────────────────────────────
