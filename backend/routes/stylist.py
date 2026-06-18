@@ -9,6 +9,7 @@ Requires authentication on both endpoints.
 
 import json
 import logging
+import random
 from datetime import datetime
 from typing import Any
 
@@ -242,33 +243,48 @@ def _color_matches(color: str, allowed: set[str]) -> bool:
 
 
 def _item_label(item: dict[str, Any]) -> str:
-    """Build a human-readable Myanmar label for a wardrobe item."""
+    """Build a human-readable Myanmar label for a wardrobe item.
+
+    Returns labels like "အပေါ်ဝတ် · brown" or "အပေါ်ဝတ် — a nice shirt".
+    Never duplicates the category label (e.g. မနေပယ်ပြာအပေါ်ဝတ်အပေါ်ဝတ်).
+    """
     cat = item.get("category") or ""
     color = item.get("color") or ""
     desc = item.get("description") or ""
 
-    # Map common category names to Myanmar
+    # Map common category names to Myanmar.
+    # Myanmar keys map to themselves to prevent double-translation
+    # when the stored category is already in Myanmar.
     cat_my_map: dict[str, str] = {
-        "top": "အပေါ်ဝတ်", "bottom": "အောက်ဝတ်", "dress": "ဂါဝန်",
+        "top": "အပေါ်ဝတ်", "bottom": "အောက်ဝတ်", "dress": "တစ်ဆက်တည်းဝတ်စုံ",
         "outerwear": "အပေါ်ထပ်", "accessory": "အသုံးအဆောင်", "shoes": "ဖိနပ်",
         "traditional": "မြန်မာဝတ်စုံ", "longyi": "လုံချည်",
         "shirt": "အပေါ်ဝတ်", "blouse": "အပေါ်ဝတ်", "t-shirt": "အပေါ်ဝတ်",
-        "sweater": "အပေါ်ဝတ်", "hoodie": "အပေါ်ဝတ်", "blazer": "အပေါ်ဝတ်",
-        "jacket": "အပေါ်ဝတ်",
+        "sweater": "အပေါ်ဝတ်", "hoodie": "အပေါ်ဝတ်", "blazer": "အပေါ်ထပ်",
+        "jacket": "အပေါ်ထပ်",
         "trousers": "အောက်ဝတ်", "pants": "အောက်ဝတ်", "jeans": "အောက်ဝတ်",
         "shorts": "အောက်ဝတ်", "skirt": "အောက်ဝတ်",
-        "gown": "ဂါဝန်", "jumpsuit": "တစ်ဆက်တည်းဝတ်စုံ",
+        "gown": "တစ်ဆက်တည်းဝတ်စုံ", "jumpsuit": "တစ်ဆက်တည်းဝတ်စုံ",
         "coat": "အပေါ်ထပ်", "cardigan": "အပေါ်ထပ်",
+        # Myanmar self-keys — prevent duplication when DB stores Myanmar text
+        "အပေါ်ဝတ်": "အပေါ်ဝတ်", "အောက်ဝတ်": "အောက်ဝတ်",
+        "တစ်ဆက်တည်းဝတ်စုံ": "တစ်ဆက်တည်းဝတ်စုံ", "ဂါဝန်": "တစ်ဆက်တည်းဝတ်စုံ",
+        "အပေါ်ထပ်": "အပေါ်ထပ်", "ဖိနပ်": "ဖိနပ်",
+        "အသုံးအဆောင်": "အသုံးအဆောင်",
+        "မြန်မာဝတ်စုံ": "မြန်မာဝတ်စုံ", "လုံချည်": "လုံချည်",
+        "အင်္ကျီ": "အပေါ်ဝတ်", "ဘောင်းဘီ": "အောက်ဝတ်",
+        "ထဘီ": "မြန်မာဝတ်စုံ",
     }
-    cat_my = cat_my_map.get(cat.lower().strip() if cat else "", cat)
+    cat_key = cat.lower().strip() if cat else ""
+    cat_my = cat_my_map.get(cat_key, cat)
 
-    if color and desc:
-        return f"{color} {cat_my} — {desc}"
+    # Build label: category first, then color/desc (matching frontend format)
+    base = cat_my
     if color:
-        return f"{color} {cat_my}"
+        base = f"{cat_my} \u00b7 {color}"
     if desc:
-        return f"{cat_my} — {desc}"
-    return cat_my
+        base = f"{base} \u2014 {desc}"
+    return base
 
 
 def _get_weather_tip(
@@ -323,8 +339,17 @@ def _score_item(
     broad_type: str,
     occasion: str,
     temperature_c: float | None,
+    style_preference: str | None = None,
 ) -> int:
-    """Score a single item for suitability to the occasion (0–100)."""
+    """Score a single item for suitability to the occasion (0–100).
+
+    Scoring dimensions:
+    • Occasion–category fit
+    • Colour discipline (occasion-appropriate, no over-bonus for red/navy)
+    • Style preference alignment (small bonus)
+    • Weather suitability
+    • Description quality
+    """
     cat = (item.get("category") or "").lower().strip()
     color = (item.get("color") or "").lower().strip()
     desc = (item.get("description") or "").lower().strip()
@@ -339,11 +364,11 @@ def _score_item(
             score += 15
         else:
             score += 5
-        # Colour discipline
+        # Colour: modest bonus for interview-appropriate colours (reduced from 20→10)
         if _color_matches(color, _INTERVIEW_COLORS):
-            score += 20
+            score += 10
         elif _color_matches(color, _BRIGHT_ACCENT_COLORS):
-            score -= 10  # Penalty for bright yellow/orange at interview
+            score -= 10
     elif occ_lower == "wedding":
         if broad_type in ("traditional", "dress"):
             score += 40
@@ -357,26 +382,25 @@ def _score_item(
             score += 10
         else:
             score += 5
-        # Colour bonus
+        # Colour bonus (reduced from 15→8 to avoid over-bias toward red)
         if _color_matches(color, _WEDDING_COLORS):
-            score += 15
+            score += 8
     elif occ_lower == "party":
-        # Party: prefer dress, then top+bottom.  Favors bold colors.
+        # Party: prefer dress, then top+bottom. Bold colors welcome but not exclusive.
         if broad_type == "dress":
             score += 40
         elif broad_type in ("top", "bottom"):
             score += 20
         else:
             score += 10
-        # Color bonus: red/black/gold > navy
+        # Color bonus reduced to avoid always picking red/black.
+        # Red/black still get a bonus, but not overwhelming.
         if _color_matches(color, _PARTY_COLORS):
-            score += 25
-        elif _color_matches(color, _INTERVIEW_COLORS):
-            # Navy/beige/grey are fine but less exciting for party
-            score += 8
-        # Bright accent colors (yellow/orange) are OK for party
-        if _color_matches(color, _BRIGHT_ACCENT_COLORS):
             score += 12
+        elif _color_matches(color, _INTERVIEW_COLORS):
+            score += 5
+        if _color_matches(color, _BRIGHT_ACCENT_COLORS):
+            score += 8
     elif occ_lower == "casual":
         if broad_type in ("top", "bottom", "dress"):
             score += 30
@@ -387,12 +411,29 @@ def _score_item(
             heavy = ("wool", "fleece", "leather", "down", "puffer")
             if not any(kw in cat or kw in desc for kw in heavy):
                 score += 10
+        # Light/bright colors feel more casual
+        light_colors = {"white", "beige", "cream", "pink", "yellow",
+                        "အဖြူ", "ဘဲဂျီ", "ပန်းရောင်", "အဝါ"}
+        if _color_matches(color, light_colors):
+            score += 3
     else:
-        # Generic (work, date, sport, temple, etc.): prefer top/bottom/dress/traditional
+        # Generic (work, date, sport, temple, etc.)
         if broad_type in ("top", "bottom", "dress", "traditional"):
             score += 30
         else:
             score += 15
+
+    # --- Style preference bonus (small, 0–5) ---
+    if style_preference:
+        sp = style_preference.lower().strip()
+        if sp == "formal" and broad_type in ("dress", "traditional", "outerwear"):
+            score += 5
+        elif sp == "casual" and broad_type in ("top", "bottom"):
+            score += 5
+        elif sp == "traditional" and broad_type == "traditional":
+            score += 5
+        elif sp == "sporty" and broad_type in ("top", "bottom", "shoes"):
+            score += 3
 
     # --- Description quality bonus ---
     if desc:
@@ -408,9 +449,30 @@ def _best_from_scored(
     key: str,
     scored: dict[str, list[tuple[int, dict[str, Any]]]],
 ) -> dict[str, Any] | None:
-    """Return the highest-scored item for *key* from *scored*, or None."""
-    entries = scored.get(key, [])
-    return entries[0][1] if entries else None
+    """Return the highest-scored item for *key* from *scored*, or None.
+
+    When multiple items share the top score, one is picked at random
+    so the recommendation varies naturally across calls.
+    """
+    return _pick_best(scored.get(key, []))
+
+
+def _pick_best(
+    entries: list[tuple[int, dict[str, Any]]],
+    margin: int = 5,
+) -> dict[str, Any] | None:
+    """Pick the best item from scored *entries*, with tie-breaker variety.
+
+    All items within *margin* points of the top score are considered
+    equally suitable; one is chosen at random.  This prevents always
+    recommending the same red/navy item when several are equally good.
+    """
+    if not entries:
+        return None
+    top_score = entries[0][0]
+    # Collect items within margin of the top score
+    candidates = [it for s, it in entries if s >= top_score - margin]
+    return random.choice(candidates) if candidates else entries[0][1]
 
 
 def _generate_fallback(
@@ -457,11 +519,12 @@ def _generate_fallback(
         else:
             classified["unknown"].append(item)
 
-    # Score each item
+    # Score each item (with style preference for variety)
     scored: dict[str, list[tuple[int, dict[str, Any]]]] = {}
     for key, items in classified.items():
         scored[key] = sorted(
-            ((_score_item(it, key, occasion, temperature_c), it) for it in items),
+            ((_score_item(it, key, occasion, temperature_c, style_preference), it)
+             for it in items),
             key=lambda x: x[0],
             reverse=True,
         )
@@ -535,9 +598,10 @@ def _build_interview_outfit(
     good_bottoms = [(s, it) for s, it in bottoms if _color_matches(
         it.get("color", ""), _INTERVIEW_COLORS)]
 
-    # Try: formal dress in interview colour
+    # Try: formal dress in interview colour (randomised among top picks)
     if good_dresses:
-        s, dress = good_dresses[0]
+        dress = _pick_best(good_dresses)
+        s = good_dresses[0][0]  # top score for feasibility check
         label = _item_label(dress)
         tip = ""
         if _best("outerwear"):
@@ -558,10 +622,12 @@ def _build_interview_outfit(
             )
         return ([label], explanation, feasibility)
 
-    # Try: top + bottom in interview colours
+    # Try: top + bottom in interview colours (randomised)
     if good_tops and good_bottoms:
-        s_top, top = good_tops[0]
-        s_bot, bottom = good_bottoms[0]
+        top = _pick_best(good_tops)
+        bottom = _pick_best(good_bottoms)
+        s_top = good_tops[0][0]
+        s_bot = good_bottoms[0][0]
         label_top = _item_label(top)
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
@@ -585,10 +651,12 @@ def _build_interview_outfit(
             )
         return (labels, explanation, feasibility)
 
-    # Fallback: use any top + any bottom (but still not multiple tops)
+    # Fallback: use any top + any bottom (randomised, but still not multiple tops)
     if tops and bottoms:
-        s_top, top = tops[0]
-        s_bot, bottom = bottoms[0]
+        top = _pick_best(tops)
+        bottom = _pick_best(bottoms)
+        s_top = tops[0][0]
+        s_bot = bottoms[0][0]
         label_top = _item_label(top)
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
@@ -604,7 +672,8 @@ def _build_interview_outfit(
 
     # Only dresses or only one category
     if dresses:
-        s, dress = dresses[0]
+        dress = _pick_best(dresses)
+        s = dresses[0][0]
         label = _item_label(dress)
         explanation = (
             f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
@@ -644,30 +713,31 @@ def _build_wedding_outfit(
     outerwear = scored.get("outerwear", [])
     occasion_my_str = _occasion_my(occasion)
 
-    # Best: traditional / longyi set
+    # Best: traditional / longyi set (randomised among top picks)
     if traditionals:
-        s, trad = traditionals[0]
+        trad = _pick_best(traditionals)
+        s = traditionals[0][0]
         label = _item_label(trad)
         # Try to complete with a longyi bottom if available
         longyi_bottoms = [(s, it) for s, it in bottoms
                           if "longyi" in (it.get("category") or "").lower()
                           or "လုံချည်" in (it.get("category") or "").lower()]
         if longyi_bottoms and "longyi" not in (trad.get("category") or "").lower():
-            _, l_bot = longyi_bottoms[0]
+            l_bot = _pick_best(longyi_bottoms)
             label = f"{label} + {_item_label(l_bot)}"
             feasibility = (s + longyi_bottoms[0][0]) // 2
         else:
             feasibility = s
 
         # Look for a matching top if traditional is a bottom
-        if traditionals and any(
-            kw in (traditionals[0][1].get("category") or "").lower()
+        if any(
+            kw in (trad.get("category") or "").lower()
             for kw in ("bottom", "longyi", "လုံချည်")
         ):
             nice_tops = [(s, it) for s, it in tops
                          if _color_matches(it.get("color", ""), _WEDDING_COLORS)]
             if nice_tops:
-                _, n_top = nice_tops[0]
+                n_top = _pick_best(nice_tops)
                 label = f"{_item_label(n_top)} + {label}"
 
         if feasibility >= _SUITABILITY_THRESHOLD_HIGH:
@@ -682,11 +752,12 @@ def _build_wedding_outfit(
             )
         return ([label], explanation, feasibility)
 
-    # Good: formal/elegant dress
+    # Good: formal/elegant dress (randomised)
     wedding_dresses = [(s, it) for s, it in dresses
                        if _color_matches(it.get("color", ""), _WEDDING_COLORS)]
     if wedding_dresses:
-        s, dress = wedding_dresses[0]
+        dress = _pick_best(wedding_dresses)
+        s = wedding_dresses[0][0]
         label = _item_label(dress)
         if _best("outerwear"):
             ow = _best("outerwear")
@@ -702,9 +773,10 @@ def _build_wedding_outfit(
             )
         return ([label], explanation, s)
 
-    # OK: any dress
+    # OK: any dress (randomised)
     if dresses:
-        s, dress = dresses[0]
+        dress = _pick_best(dresses)
+        s = dresses[0][0]
         label = _item_label(dress)
         explanation = (
             f"{occasion_my_str} အတွက် အနီးစပ်ဆုံးရွေးချယ်မှုပါ — "
@@ -714,10 +786,12 @@ def _build_wedding_outfit(
         )
         return ([label], explanation, s)
 
-    # Poor: top + bottom (only if no dress/traditional at all)
+    # Poor: top + bottom (randomised, only if no dress/traditional)
     if tops and bottoms:
-        s_top, top = tops[0]
-        s_bot, bottom = bottoms[0]
+        top = _pick_best(tops)
+        bottom = _pick_best(bottoms)
+        s_top = tops[0][0]
+        s_bot = bottoms[0][0]
         label_top = _item_label(top)
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
@@ -760,16 +834,14 @@ def _build_party_outfit(
     dresses = scored.get("dress", [])
     occasion_my_str = _occasion_my(occasion)
 
-    # ── Party dress selection: favours bold colors ─────────
-    # Separate dresses into bold (red/black/gold) and neutral (navy/beige)
+    # ── Party dress selection: favours bold colors (randomised) ──
     bold_dresses = [(s, it) for s, it in dresses
                     if _color_matches(it.get("color", ""), _PARTY_COLORS)]
-    other_dresses = [(s, it) for s, it in dresses
-                     if not _color_matches(it.get("color", ""), _PARTY_COLORS)]
 
-    # Best: bold party dress
+    # Best: bold party dress (randomised among top picks)
     if bold_dresses:
-        s, dress = bold_dresses[0]
+        dress = _pick_best(bold_dresses)
+        s = bold_dresses[0][0]
         label = _item_label(dress)
         if _best("outerwear"):
             ow = _best("outerwear")
@@ -787,9 +859,10 @@ def _build_party_outfit(
             )
         return ([label], explanation, s)
 
-    # OK: any dress (but note if navy is less ideal)
+    # OK: any dress (randomised; note if navy is less ideal)
     if dresses:
-        s, dress = dresses[0]
+        dress = _pick_best(dresses)
+        s = dresses[0][0]
         label = _item_label(dress)
         dress_color = (dress.get("color") or "").lower()
         if dress_color in ("navy", "နေပယ်ပြာ", "blue", "beige", "gray", "grey"):
@@ -804,10 +877,12 @@ def _build_party_outfit(
             )
         return ([label], explanation, s)
 
-    # Fallback: top + bottom
+    # Fallback: top + bottom (randomised)
     if tops and bottoms:
-        s_top, top = tops[0]
-        s_bot, bottom = bottoms[0]
+        top = _pick_best(tops)
+        bottom = _pick_best(bottoms)
+        s_top = tops[0][0]
+        s_bot = bottoms[0][0]
         label_top = _item_label(top)
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
@@ -846,10 +921,12 @@ def _build_casual_outfit(
 
     is_hot = temperature_c is not None and temperature_c > 28
 
-    # Prefer top + bottom
+    # Prefer top + bottom (randomised)
     if tops and bottoms:
-        s_top, top = tops[0]
-        s_bot, bottom = bottoms[0]
+        top = _pick_best(tops)
+        bottom = _pick_best(bottoms)
+        s_top = tops[0][0]
+        s_bot = bottoms[0][0]
         label_top = _item_label(top)
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
@@ -868,9 +945,10 @@ def _build_casual_outfit(
             )
         return (labels, explanation, feasibility)
 
-    # Fallback: dress
+    # Fallback: dress (randomised)
     if dresses:
-        s, dress = dresses[0]
+        dress = _pick_best(dresses)
+        s = dresses[0][0]
         label = _item_label(dress)
         if is_hot:
             explanation = (
@@ -885,9 +963,10 @@ def _build_casual_outfit(
             )
         return ([label], explanation, s)
 
-    # Only tops or only bottoms
+    # Only tops or only bottoms (randomised)
     if tops:
-        s, top = tops[0]
+        top = _pick_best(tops)
+        s = tops[0][0]
         label = _item_label(top)
         return (
             [label],
@@ -896,7 +975,8 @@ def _build_casual_outfit(
             s,
         )
     if bottoms:
-        s, bottom = bottoms[0]
+        bottom = _pick_best(bottoms)
+        s = bottoms[0][0]
         label = _item_label(bottom)
         return (
             [label],
@@ -931,9 +1011,10 @@ def _build_generic_outfit(
     traditionals = scored.get("traditional", [])
     occasion_my_str = _occasion_my(occasion)
 
-    # Best: traditional
+    # Best: traditional (randomised)
     if traditionals:
-        s, trad = traditionals[0]
+        trad = _pick_best(traditionals)
+        s = traditionals[0][0]
         label = _item_label(trad)
         return (
             [label],
@@ -941,20 +1022,23 @@ def _build_generic_outfit(
             s,
         )
 
-    # Good: dress
+    # Good: dress (randomised)
     if dresses:
-        s, dress = dresses[0]
+        dress = _pick_best(dresses)
+        s = dresses[0][0]
         label = _item_label(dress)
         return (
             [label],
-            f"{occasion_my_str} အတွက် {label} က သင့်တော်ပါတယ်။",
+            f"{occasion_my_str} အတွက် {label} က သင့်တော်ပါတယ်।",
             s,
         )
 
-    # Good: top + bottom
+    # Good: top + bottom (randomised)
     if tops and bottoms:
-        s_top, top = tops[0]
-        s_bot, bottom = bottoms[0]
+        top = _pick_best(tops)
+        bottom = _pick_best(bottoms)
+        s_top = tops[0][0]
+        s_bot = bottoms[0][0]
         label_top = _item_label(top)
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
@@ -967,9 +1051,10 @@ def _build_generic_outfit(
             feasibility,
         )
 
-    # Only tops
+    # Only tops (randomised)
     if tops:
-        s, top = tops[0]
+        top = _pick_best(tops)
+        s = tops[0][0]
         label = _item_label(top)
         return (
             [label],
@@ -978,9 +1063,10 @@ def _build_generic_outfit(
             s,
         )
 
-    # Only bottoms
+    # Only bottoms (randomised)
     if bottoms:
-        s, bottom = bottoms[0]
+        bottom = _pick_best(bottoms)
+        s = bottoms[0][0]
         label = _item_label(bottom)
         return (
             [label],

@@ -696,12 +696,12 @@
         return;
       }
       const labelMy = {
-        dress:'တစ်ဆက်တည်းဝတ်စုံ',gown:'တစ်ဆက်တည်းဝတ်စုံ',
-        top:'အပေါ်ဝတ်',shirt:'အပေါ်ဝတ်',blouse:'အပေါ်ဝတ်','t-shirt':'အပေါ်ဝတ်',
-        bottom:'အောက်ဝတ်',trousers:'အောက်ဝတ်',pants:'အောက်ဝတ်',jeans:'အောက်ဝတ်',skirt:'အောက်ဝတ်',
-        traditional:'မြန်မာဝတ်စုံ',longyi:'လုံချည်',
-        outerwear:'အပေါ်ထပ်',jacket:'အပေါ်ထပ်',blazer:'အပေါ်ထပ်',coat:'အပေါ်ထပ်',
-        shoes:'ဖိနပ်',accessory:'အသုံးအဆောင်',
+        dress:'တစ်ဆက်တည်းဝတ်စုံ',gown:'တစ်ဆက်တည်းဝတ်စုံ','တစ်ဆက်တည်းဝတ်စုံ':'တစ်ဆက်တည်းဝတ်စုံ','ဂါဝန်':'တစ်ဆက်တည်းဝတ်စုံ',
+        top:'အပေါ်ဝတ်',shirt:'အပေါ်ဝတ်',blouse:'အပေါ်ဝတ်','t-shirt':'အပေါ်ဝတ်','အပေါ်ဝတ်':'အပေါ်ဝတ်',
+        bottom:'အောက်ဝတ်',trousers:'အောက်ဝတ်',pants:'အောက်ဝတ်',jeans:'အောက်ဝတ်',skirt:'အောက်ဝတ်','အောက်ဝတ်':'အောက်ဝတ်',
+        traditional:'မြန်မာဝတ်စုံ',longyi:'လုံချည်','မြန်မာဝတ်စုံ':'မြန်မာဝတ်စုံ',
+        outerwear:'အပေါ်ထပ်',jacket:'အပေါ်ထပ်',blazer:'အပေါ်ထပ်',coat:'အပေါ်ထပ်','အပေါ်ထပ်':'အပေါ်ထပ်',
+        shoes:'ဖိနပ်','ဖိနပ်':'ဖိနပ်',accessory:'အသုံးအဆောင်','အသုံးအဆောင်':'အသုံးအဆောင်',
       };
       grid.innerHTML = items.map(i => {
         const rawCat = (i.category || '').toLowerCase().trim();
@@ -885,20 +885,32 @@
     if (!isoStr) return '';
     const date = new Date(isoStr);
     if (isNaN(date.getTime())) return isoStr;
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Yangon', year: 'numeric', month: 'long', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true,
-    }).formatToParts(date);
-    const vals = {};
-    for (const p of parts) { if (p.type !== 'literal') vals[p.type] = p.value; }
-    const mmMonths = {
-      January:'ဇန်နဝါရီ',February:'ဖေဖော်ဝါရီ',March:'မတ်',April:'ဧပြီ',
-      May:'မေ',June:'ဇွန်',July:'ဇူလိုင်',August:'သြဂုတ်',
-      September:'စက်တင်ဘာ',October:'အောက်တိုဘာ',November:'နိုဝင်ဘာ',December:'ဒီဇင်ဘា',
-    };
-    const y = vals.year; const m = mmMonths[vals.month] || vals.month;
-    const d = vals.day; const ampm = vals.dayPeriod === 'AM' ? 'မနက်' : 'ညနေ';
-    return `${y} ${m} ${d} · ${ampm} ${vals.hour}:${vals.minute}`;
+
+    // Use browser/device local time, not a hardcoded timezone
+    const h = date.getHours();
+    const mm = date.getMinutes();
+    const monthNames = [
+      'ဇန်နဝါရီ','ဖေဖော်ဝါရီ','မတ်','ဧပြီ','မေ','ဇွန်',
+      'ဇူလိုင်','သြဂုတ်','စက်တင်ဘာ','အောက်တိုဘာ','နိုဝင်ဘာ','ဒီဇင်ဘာ',
+    ];
+
+    // Myanmar daypart based on hour
+    let daypart;
+    if (h < 12) {
+      daypart = 'မနက်';
+    } else if (h < 16) {
+      daypart = 'နေ့လယ်';
+    } else if (h < 19) {
+      daypart = 'ညနေ';
+    } else {
+      daypart = 'ည';
+    }
+
+    // 12-hour display hour
+    const displayH = h % 12 === 0 ? 12 : h % 12;
+    const displayM = String(mm).padStart(2, '0');
+
+    return `${date.getFullYear()} ${monthNames[date.getMonth()]} ${date.getDate()} · ${daypart} ${displayH}:${displayM}`;
   }
 
   function renderOutfitRecommendation(data) {
