@@ -2,6 +2,7 @@
 marp: true
 theme: default
 paginate: true
+auto-advance: 20
 backgroundColor: #0A0A0A
 color: #FFFFFF
 style: |
@@ -133,7 +134,7 @@ style: |
 
 <br>
 
-### 🔗 **https://wutt.onrender.com**
+### 🔗 **https://wutt-frontend.onrender.com**
 
 <br>
 
