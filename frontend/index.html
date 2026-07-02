@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="WUTT — Your city. Your weather. Your look. AI outfit advisor for Myanmar.">
+  <meta name="description" content="WUTT — Your wardrobe. Your occasion. Your perfect outfit. AI Fashion Companion.">
   <meta name="theme-color" content="#FFFFFF">
   <title>WUTT — AI Personal Stylist</title>
   <link rel="stylesheet" href="style.css">
@@ -15,56 +15,140 @@
 
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
-  <!-- Navbar -->
-  <nav class="navbar" role="navigation" aria-label="Main navigation">
+  <!-- Navbar — Logo + Login -->
+  <nav class="navbar navbar--landing" role="navigation" aria-label="Main navigation">
     <div class="navbar__inner">
       <a href="/" class="navbar__logo" aria-label="WUTT Home">
         <span class="navbar__logo-icon" aria-hidden="true">W</span>
         WUTT
       </a>
-      <div class="navbar__nav" id="navbarNav">
-        <button type="button" class="navbar__link" id="navLoginBtn">ဝင်မယ်</button>
-        <button type="button" class="btn btn--outline btn--sm" id="navGetStartedBtn">စတင်မယ်</button>
-      </div>
-      <button
-        class="navbar__toggle" id="navbarToggle"
-        aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navbarNav"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-      </button>
+      <button type="button" class="navbar__login-btn" id="navbarLoginBtn">Log In</button>
     </div>
   </nav>
 
-  <!-- Hero -->
+  <!-- Landing Hero -->
   <main id="main-content">
-    <section class="hero" aria-labelledby="hero-heading">
-      <div class="hero__inner">
-        <div class="hero__content">
-          <div class="hero__overline">
-            <span class="hero__overline-dot" aria-hidden="true"></span>
-            AI Style Advisor · Myanmar
-          </div>
-          <h1 class="hero__headline" id="hero-heading">
-            Your city.<br>Your weather.<br><em>Your look.</em>
+    <section class="landing-hero" aria-labelledby="landing-hero-heading">
+      <div class="landing-hero__bg" aria-hidden="true"></div>
+      <div class="landing-hero__overlay" aria-hidden="true"></div>
+
+      <div class="landing-hero__content">
+        <div class="landing-hero__text">
+          <div class="landing-hero__wordmark landing-hero__stagger-1" aria-hidden="true">WUTT</div>
+          <h1 class="landing-hero__headline landing-hero__stagger-2" id="landing-hero-heading">
+            Know Your Wardrobe<br>Upgrade Your Style
           </h1>
-          <p class="hero__subtitle">
-            WUTT helps you choose outfits from your wardrobe based on
-            weather, occasion, and style. Upload your clothes and get
-            AI-powered recommendations in seconds.
+          <p class="landing-hero__subtitle landing-hero__stagger-3">
+            Your fashion companion for better everyday looks.
           </p>
-          <div class="hero__actions">
-            <button class="btn btn--primary btn--lg" id="heroGetStartedBtn">စတင်မယ်</button>
-            <button class="btn btn--outline btn--lg" id="heroLearnMoreBtn">ဝင်မယ်</button>
-          </div>
         </div>
-        <div class="hero__visual" aria-hidden="true">
-          <div class="hero__visual-shape"></div>
-          <div class="hero__visual-accent"></div>
-          <div class="hero__visual-accent2"></div>
+      </div>
+    </section>
+
+    <!-- Landing Login Modal -->
+    <div
+      class="landing-modal-overlay" id="heroLoginOverlay"
+      role="dialog" aria-modal="true" aria-labelledby="heroLoginTitle" aria-hidden="true"
+    >
+      <div class="login-card" id="heroLoginCard">
+        <button class="login-card__close" id="heroLoginClose" aria-label="Close login" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <h2 class="login-card__title" id="heroLoginTitle">Welcome back</h2>
+        <div class="login-card__social">
+          <button type="button" class="btn btn--social" id="googleLoginBtn">
+            <svg class="btn__icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+          </button>
+          <button type="button" class="btn btn--social btn--social-apple" id="appleLoginBtn">
+            <svg class="btn__icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+            </svg>
+            Continue with Apple
+          </button>
+        </div>
+
+        <div class="login-card__divider">
+          <span>or</span>
+        </div>
+
+        <form class="login-card__form" id="heroLoginForm" novalidate>
+          <div class="alert alert--error u-hidden" id="heroFormError" role="alert"></div>
+          <div class="input">
+            <label class="input__label" for="heroEmail">Email</label>
+            <input class="input__field" type="email" id="heroEmail" name="email"
+              placeholder="you@example.com" autocomplete="off" inputmode="email"
+              required aria-required="true" aria-describedby="heroEmailError">
+            <span class="input__error u-hidden" id="heroEmailError" role="alert"></span>
+          </div>
+          <div class="input">
+            <label class="input__label" for="heroPassword">Password</label>
+            <div class="input__wrapper">
+              <input class="input__field" type="password" id="heroPassword" name="password"
+                placeholder="Your password" autocomplete="new-password"
+                required minlength="6" aria-required="true" aria-describedby="heroPasswordError">
+              <button type="button" class="input__toggle-password" id="heroPasswordToggle" aria-label="Show password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <span class="input__error u-hidden" id="heroPasswordError" role="alert"></span>
+          </div>
+          <button type="button" class="login-card__forgot" id="heroForgotPassword">Forgot password?</button>
+          <button type="submit" class="btn btn--primary btn--full" id="heroLoginSubmitBtn">
+            <span class="btn__label">Log In</span>
+            <span class="btn__spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <p class="login-card__switch">
+          Don't have an account?
+          <button type="button" id="heroSwitchToRegister" formnovalidate>Sign Up</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- How WUTT styles you (hidden on landing) -->
+    <section class="how-it-works u-hidden" aria-labelledby="how-heading">
+      <h2 class="how-it-works__title" id="how-heading">How WUTT styles you</h2>
+      <div class="how-it-works__grid">
+        <div class="how-it-works__card">
+          <div class="how-it-works__icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <h3 class="how-it-works__card-title">Know your wardrobe</h3>
+          <p class="how-it-works__card-text">Upload your clothes. WUTT remembers them all.</p>
+        </div>
+        <div class="how-it-works__card">
+          <div class="how-it-works__icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="12" x2="16" y2="12"/>
+            </svg>
+          </div>
+          <h3 class="how-it-works__card-title">Match the moment</h3>
+          <p class="how-it-works__card-text">Wedding, office, casual — WUTT picks what fits the occasion.</p>
+        </div>
+        <div class="how-it-works__card">
+          <div class="how-it-works__icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h3 class="how-it-works__card-title">Save the look</h3>
+          <p class="how-it-works__card-text">Every outfit saved to your style history.</p>
         </div>
       </div>
     </section>
@@ -77,7 +161,7 @@
   >
     <div class="modal" id="loginModal">
       <div class="modal__header">
-        <h2 class="modal__title" id="loginModalTitle">အကောင့်ဝင်မယ်</h2>
+        <h2 class="modal__title" id="loginModalTitle">Log In</h2>
         <button class="modal__close" id="loginModalClose" aria-label="Close login dialog" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -88,17 +172,17 @@
         <div class="modal__body">
           <div class="alert alert--error u-hidden" id="loginFormError" role="alert"></div>
           <div class="input">
-            <label class="input__label" for="loginEmail">အီးမေးလ် <span class="input__required" aria-hidden="true">*</span></label>
+            <label class="input__label" for="loginEmail">Email <span class="input__required" aria-hidden="true">*</span></label>
             <input class="input__field" type="email" id="loginEmail" name="email"
               placeholder="you@example.com" autocomplete="email" inputmode="email"
               required aria-required="true" aria-describedby="loginEmailError">
             <span class="input__error u-hidden" id="loginEmailError" role="alert"></span>
           </div>
           <div class="input">
-            <label class="input__label" for="loginPassword">စကားဝှက် <span class="input__required" aria-hidden="true">*</span></label>
+            <label class="input__label" for="loginPassword">Password <span class="input__required" aria-hidden="true">*</span></label>
             <div class="input__wrapper">
               <input class="input__field" type="password" id="loginPassword" name="password"
-                placeholder="သင့်စကားဝှက်ထည့်ပါ" autocomplete="current-password"
+                placeholder="Your password" autocomplete="current-password"
                 required minlength="6" aria-required="true" aria-describedby="loginPasswordError">
               <button type="button" class="input__toggle-password" id="loginPasswordToggle" aria-label="Show password">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -111,84 +195,485 @@
         </div>
         <div class="modal__footer">
           <button type="submit" class="btn btn--primary btn--full" id="loginSubmitBtn">
-            <span class="btn__label">ဝင်မယ်</span>
+            <span class="btn__label">Log In</span>
             <span class="btn__spinner" aria-hidden="true"></span>
           </button>
           <p class="modal__switch">
-            အကောင့်မရှိသေးဘူးလား?
-            <button type="button" id="switchToRegister" style="background:none;border:none;font-family:inherit;font-weight:600;font-size:inherit;color:var(--wutt-dark);cursor:pointer;">အကောင့်အသစ်ဖွင့်မယ်</button>
+            Don't have an account?
+            <button type="button" id="switchToRegister" style="background:none;border:none;font-family:inherit;font-weight:600;font-size:inherit;color:var(--wutt-dark);cursor:pointer;">Sign Up</button>
           </p>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Register Modal -->
+  <!-- Sign Up Modal -->
   <div
-    class="modal-overlay" id="registerModalOverlay"
+    class="landing-modal-overlay" id="registerModalOverlay"
     role="dialog" aria-modal="true" aria-labelledby="registerModalTitle" aria-hidden="true"
   >
-    <div class="modal" id="registerModal">
-      <div class="modal__header">
-        <h2 class="modal__title" id="registerModalTitle">အကောင့်အသစ်ဖွင့်မယ်</h2>
-        <button class="modal__close" id="registerModalClose" aria-label="Close registration dialog" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    <div class="login-card" id="registerCard">
+      <button class="login-card__close" id="registerModalClose" aria-label="Close sign up" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <h2 class="login-card__title" id="registerModalTitle">Create your style profile</h2>
+      <p class="login-card__subtitle">Start building better everyday looks.</p>
+      <div class="login-card__social">
+        <button type="button" class="btn btn--social" id="googleRegisterBtn">
+          <svg class="btn__icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
           </svg>
+          Continue with Google
+        </button>
+        <button type="button" class="btn btn--social btn--social-apple" id="appleRegisterBtn">
+          <svg class="btn__icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+          </svg>
+          Continue with Apple
         </button>
       </div>
-      <form id="registerForm" novalidate>
-        <div class="modal__body">
-          <div class="alert alert--error u-hidden" id="registerFormError" role="alert"></div>
-          <div class="input">
-            <label class="input__label" for="registerEmail">အီးမေးလ် <span class="input__required" aria-hidden="true">*</span></label>
-            <input class="input__field" type="email" id="registerEmail" name="email"
-              placeholder="you@example.com" autocomplete="email" inputmode="email"
-              required aria-required="true" aria-describedby="registerEmailError">
-            <span class="input__error u-hidden" id="registerEmailError" role="alert"></span>
-          </div>
-          <div class="input">
-            <label class="input__label" for="registerPassword">စကားဝှက် <span class="input__required" aria-hidden="true">*</span></label>
-            <div class="input__wrapper">
-              <input class="input__field" type="password" id="registerPassword" name="password"
-                placeholder="အနည်းဆုံး ၆ လုံး" autocomplete="new-password"
-                required minlength="6" aria-required="true" aria-describedby="registerPasswordError">
-              <button type="button" class="input__toggle-password" id="registerPasswordToggle" aria-label="Show password">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <span class="input__error u-hidden" id="registerPasswordError" role="alert"></span>
-          </div>
-          <div class="input">
-            <label class="input__label" for="registerConfirmPassword">စကားဝှက်အတည်ပြု <span class="input__required" aria-hidden="true">*</span></label>
-            <div class="input__wrapper">
-              <input class="input__field" type="password" id="registerConfirmPassword" name="confirmPassword"
-                placeholder="စကားဝှက်ပြန်ထည့်ပါ" autocomplete="new-password"
-                required minlength="6" aria-required="true" aria-describedby="registerConfirmPasswordError">
-              <button type="button" class="input__toggle-password" id="registerConfirmPasswordToggle" aria-label="Show password">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <span class="input__error u-hidden" id="registerConfirmPasswordError" role="alert"></span>
-          </div>
+
+      <div class="login-card__divider">
+        <span>or</span>
+      </div>
+
+      <form class="login-card__form" id="registerForm" novalidate>
+        <div class="alert alert--error u-hidden" id="registerFormError" role="alert"></div>
+        <div class="input">
+          <label class="input__label" for="registerName">Name</label>
+          <input class="input__field" type="text" id="registerName" name="name"
+            placeholder="Your name" autocomplete="off"
+            aria-describedby="registerNameError">
+          <span class="input__error u-hidden" id="registerNameError" role="alert"></span>
         </div>
-        <div class="modal__footer">
-          <button type="submit" class="btn btn--primary btn--full" id="registerSubmitBtn">
-            <span class="btn__label">အကောင့်ဖွင့်မယ်</span>
-            <span class="btn__spinner" aria-hidden="true"></span>
-          </button>
-          <p class="modal__switch">
-            အကောင့်ရှိပြီးသားလား?
-            <button type="button" id="switchToLogin" style="background:none;border:none;font-family:inherit;font-weight:600;font-size:inherit;color:var(--wutt-dark);cursor:pointer;">ဝင်မယ်</button>
-          </p>
+        <div class="input">
+          <label class="input__label" for="registerEmail">Email</label>
+          <input class="input__field" type="email" id="registerEmail" name="email"
+            placeholder="you@example.com" autocomplete="off" inputmode="email"
+            required aria-required="true" aria-describedby="registerEmailError">
+          <span class="input__error u-hidden" id="registerEmailError" role="alert"></span>
         </div>
+        <div class="input">
+          <label class="input__label" for="registerPassword">Password</label>
+          <div class="input__wrapper">
+            <input class="input__field" type="password" id="registerPassword" name="password"
+              placeholder="At least 6 characters" autocomplete="new-password"
+              required minlength="6" aria-required="true" aria-describedby="registerPasswordError">
+            <button type="button" class="input__toggle-password" id="registerPasswordToggle" aria-label="Show password">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <span class="input__error u-hidden" id="registerPasswordError" role="alert"></span>
+        </div>
+        <button type="submit" class="btn btn--primary btn--full" id="registerSubmitBtn">
+          <span class="btn__label">Create Account</span>
+          <span class="btn__spinner" aria-hidden="true"></span>
+        </button>
       </form>
+
+      <p class="login-card__switch">
+        Already have an account?
+        <button type="button" id="switchToLogin" formnovalidate>Log In</button>
+      </p>
     </div>
   </div>
+
+  <!-- Style Quiz — Onboarding -->
+  <section class="style-quiz u-hidden" id="styleQuiz" aria-labelledby="styleQuizHeading">
+    <div class="style-quiz__inner">
+      <header class="style-quiz__header">
+        <span class="style-quiz__step">Step 1 of 2</span>
+        <h1 class="style-quiz__title" id="styleQuizHeading">What style feels most like you?</h1>
+        <p class="style-quiz__subtitle">Pick all that resonate. We'll refine as you go.</p>
+      </header>
+
+      <div class="style-quiz__grid" id="styleQuizGrid">
+        <button type="button" class="style-card" data-style="minimal" aria-pressed="false">
+          <div class="style-card__visual style-card__visual--minimal">
+            <img class="style-card__img" src="assets/styles/minimal.png" alt="" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="style-card__info">
+            <span class="style-card__label">Minimal</span>
+            <span class="style-card__tag">Clean lines · Neutral tones</span>
+          </div>
+          <span class="style-card__check" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+
+        <button type="button" class="style-card" data-style="streetwear" aria-pressed="false">
+          <div class="style-card__visual style-card__visual--streetwear">
+            <img class="style-card__img" src="assets/styles/streetwear.png" alt="" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="style-card__info">
+            <span class="style-card__label">Streetwear</span>
+            <span class="style-card__tag">Oversized · Relaxed · Off-duty</span>
+          </div>
+          <span class="style-card__check" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+
+        <button type="button" class="style-card" data-style="old-money" aria-pressed="false">
+          <div class="style-card__visual style-card__visual--old-money">
+            <img class="style-card__img" src="assets/styles/old-money.png" alt="" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="style-card__info">
+            <span class="style-card__label">Old Money</span>
+            <span class="style-card__tag">Tailored · Neutral · Refined</span>
+          </div>
+          <span class="style-card__check" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+
+        <button type="button" class="style-card" data-style="clean-fit" aria-pressed="false">
+          <div class="style-card__visual style-card__visual--clean-fit">
+            <img class="style-card__img" src="assets/styles/clean-fit.png" alt="" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="style-card__info">
+            <span class="style-card__label">Clean Fit</span>
+            <span class="style-card__tag">Crisp basics · Everyday style</span>
+          </div>
+          <span class="style-card__check" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+
+        <button type="button" class="style-card" data-style="korean-casual" aria-pressed="false">
+          <div class="style-card__visual style-card__visual--korean-casual">
+            <img class="style-card__img" src="assets/styles/korean-casual.png" alt="" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="style-card__info">
+            <span class="style-card__label">Korean Casual</span>
+            <span class="style-card__tag">Soft layers · Calm tones</span>
+          </div>
+          <span class="style-card__check" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+
+        <button type="button" class="style-card" data-style="vintage" aria-pressed="false">
+          <div class="style-card__visual style-card__visual--vintage">
+            <img class="style-card__img" src="assets/styles/vintage.png" alt="" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="style-card__info">
+            <span class="style-card__label">Vintage</span>
+            <span class="style-card__tag">Retro textures · Modern thrift</span>
+          </div>
+          <span class="style-card__check" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+
+        <button type="button" class="style-card" data-style="y2k" aria-pressed="false">
+          <div class="style-card__visual style-card__visual--y2k">
+            <img class="style-card__img" src="assets/styles/y2k.png" alt="" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="style-card__info">
+            <span class="style-card__label">Y2K</span>
+            <span class="style-card__tag">playful · nostalgic · statement</span>
+          </div>
+          <span class="style-card__check" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+
+        <button type="button" class="style-card" data-style="dark-academia" aria-pressed="false">
+          <div class="style-card__visual style-card__visual--dark-academia">
+            <img class="style-card__img" src="assets/styles/dark-academia.png" alt="" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="style-card__info">
+            <span class="style-card__label">Dark Academia</span>
+            <span class="style-card__tag">Dark layers · Refined mood</span>
+          </div>
+          <span class="style-card__check" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+      </div>
+
+      <footer class="style-quiz__footer">
+        <button type="button" class="btn btn--primary btn--quiz-continue" id="styleQuizContinue" disabled>
+          <span class="btn__label">Continue</span>
+        </button>
+        <button type="button" class="style-quiz__skip" id="styleQuizSkip">Skip for now</button>
+      </footer>
+    </div>
+  </section>
+
+  <!-- ============================================================
+  Welcome Loading Screen
+  ============================================================ -->
+  <section class="welcome-screen u-hidden" id="welcomeScreen" aria-hidden="true">
+    <div class="welcome-screen__inner">
+      <div class="welcome-screen__wordmark">WUTT</div>
+      <h1 class="welcome-screen__title">Welcome to WUTT</h1>
+      <p class="welcome-screen__subtitle">Preparing your personal style space…</p>
+      <div class="welcome-screen__loader">
+        <span class="welcome-screen__dot"></span>
+        <span class="welcome-screen__dot"></span>
+        <span class="welcome-screen__dot"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+  Main Chat Screen
+  ============================================================ -->
+  <section class="chat-app u-hidden" id="chatApp" aria-hidden="true">
+
+    <!-- Slim sidebar — icon-only nav -->
+    <nav class="chat-sidebar" id="chatSidebar">
+      <a class="chat-sidebar__logo" href="#" aria-label="WUTT home">
+        <svg width="26" height="26" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="currentColor" opacity="0.12"/><path d="M10 22V10l6 4-6 4zm6 0h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <button class="chat-sidebar__item chat-sidebar__item--active" aria-label="Home" data-panel="home">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </button>
+      <button class="chat-sidebar__item" aria-label="Chat" data-panel="chat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <button class="chat-sidebar__item" aria-label="Wardrobe" data-panel="wardrobe">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>
+      </button>
+      <button class="chat-sidebar__item" aria-label="Saved Looks" data-panel="saved">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+      <button class="chat-sidebar__item" aria-label="Style Feed" data-panel="feed">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M6 8h12M6 12h8M6 16h10"/></svg>
+      </button>
+      <button class="chat-sidebar__item" aria-label="Settings" data-panel="settings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <div class="chat-sidebar__spacer"></div>
+      <button class="chat-sidebar__item" aria-label="Log out" id="logoutBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </nav>
+
+    <!-- Wardrobe drawer -->
+    <aside class="wardrobe-drawer u-hidden" id="wardrobeDrawer" aria-hidden="true">
+      <div class="wardrobe-drawer__header">
+        <h3 class="wardrobe-drawer__title">Wardrobe</h3>
+        <button class="wardrobe-drawer__close" id="wardrobeDrawerClose" aria-label="Close wardrobe">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sidebar-wardrobe" id="sidebarWardrobe">
+        <p class="sidebar-wardrobe__empty">No items yet. Use the chat to add wardrobe pieces.</p>
+      </div>
+    </aside>
+
+    <!-- Settings drawer -->
+    <aside class="settings-drawer u-hidden" id="settingsDrawer" aria-hidden="true">
+      <div class="settings-drawer__header">
+        <h3 class="settings-drawer__title">Chat Settings</h3>
+        <button class="settings-drawer__close" id="settingsDrawerClose" aria-label="Close settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="settings-drawer__body">
+        <!-- Mood -->
+        <div class="settings-section">
+          <div class="settings-section__title">Mood</div>
+          <div class="settings-chips" id="moodChips">
+            <button class="settings-chip settings-chip--active" data-mood="day">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              Day
+            </button>
+            <button class="settings-chip" data-mood="night">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              Night
+            </button>
+          </div>
+        </div>
+        <!-- Background -->
+        <div class="settings-section">
+          <div class="settings-section__title">Background</div>
+          <div class="settings-bg-chips" id="bgChips">
+            <button class="settings-bg-chip settings-bg-chip--clean settings-bg-chip--active" data-bg="clean" aria-label="Clean background">
+              <div class="settings-bg-chip__preview"></div>
+            </button>
+            <button class="settings-bg-chip settings-bg-chip--grid" data-bg="grid" aria-label="Grid background">
+              <div class="settings-bg-chip__preview"></div>
+            </button>
+            <button class="settings-bg-chip settings-bg-chip--fabric" data-bg="fabric" aria-label="Fabric texture background">
+              <div class="settings-bg-chip__preview"></div>
+            </button>
+            <button class="settings-bg-chip settings-bg-chip--wardrobe" data-bg="wardrobe" aria-label="Wardrobe beige background">
+              <div class="settings-bg-chip__preview"></div>
+            </button>
+            <button class="settings-bg-chip settings-bg-chip--midnight" data-bg="midnight" aria-label="Midnight background">
+              <div class="settings-bg-chip__preview"></div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main chat area -->
+    <div class="chat-main">
+      <!-- Style Feed — full-page view (replaces chat content when active) -->
+      <div class="feed-view u-hidden" id="feedView">
+        <header class="feed-view__header">
+          <div class="feed-view__header-left">
+            <button class="feed-view__back" id="feedBackBtn" aria-label="Back to chat">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            </button>
+            <h2 class="feed-view__title">Style Feed</h2>
+          </div>
+          <button class="feed-view__share-btn" id="feedShareBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Share Look
+          </button>
+        </header>
+
+        <div class="feed-view__body">
+          <div class="feed-masonry" id="feedGrid"></div>
+        </div>
+
+        <!-- Composer overlay -->
+        <div class="feed-composer-overlay u-hidden" id="feedComposer">
+          <div class="feed-composer">
+            <div class="feed-composer__header">
+              <span class="feed-composer__title">New Look</span>
+              <button class="feed-composer__cancel" id="feedComposerCancel" aria-label="Cancel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="feed-composer__body">
+              <div class="feed-composer__dropzone" id="feedDropzone">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span>Drop image or tap to upload</span>
+                <input type="file" id="feedFileInput" accept="image/*" class="u-hidden" aria-label="Upload outfit image">
+              </div>
+              <img class="feed-composer__preview u-hidden" id="feedPreview" alt="Preview">
+              <input class="feed-composer__input" id="feedComposerCaption" type="text" placeholder="Caption your look..." maxlength="120" aria-label="Caption">
+              <select class="feed-composer__select" id="feedComposerMood" aria-label="Mood tag">
+                <option value="">Mood tag</option>
+                <option value="Casual">Casual</option>
+                <option value="Chic">Chic</option>
+                <option value="Street">Street</option>
+                <option value="Minimal">Minimal</option>
+                <option value="Bold">Bold</option>
+                <option value="Cozy">Cozy</option>
+                <option value="Work">Work</option>
+                <option value="Date Night">Date Night</option>
+              </select>
+              <button class="feed-composer__post" id="feedComposerPost">Post Look</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat header -->
+      <header class="chat-header">
+        <div class="chat-header__ai-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="12" fill="#1F1F1F"/>
+            <path d="M9 25V12l8 5.5-8 5.5zm8 0h8" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="chat-header__text">
+          <h2 class="chat-header__title">WUTT Stylist</h2>
+          <p class="chat-header__subtitle">Your wardrobe companion</p>
+        </div>
+      </header>
+
+      <!-- Chat body -->
+      <div class="chat-body" id="chatBody">
+        <!-- Empty/welcome state — shown initially -->
+        <div class="chat-welcome" id="chatWelcome">
+          <div class="chat-welcome__avatar" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 36 36" fill="none">
+              <rect width="36" height="36" rx="12" fill="#1F1F1F"/>
+              <path d="M9 25V12l8 5.5-8 5.5zm8 0h8" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="chat-welcome__greeting">Hey, ready to style something today?</h3>
+          <p class="chat-welcome__hint">Pick an action or just say what you need</p>
+          <div class="chat-welcome__cards" id="chatWelcomeCards">
+            <button class="action-card" data-action="add-top">
+              <span class="action-card__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>
+              </span>
+              <span class="action-card__label">Add Top</span>
+              <span class="action-card__desc">Start your wardrobe</span>
+            </button>
+            <button class="action-card" data-action="build-outfit">
+              <span class="action-card__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </span>
+              <span class="action-card__label">Build Outfit</span>
+              <span class="action-card__desc">Get AI-styled looks</span>
+            </button>
+            <button class="action-card" data-action="save-look">
+              <span class="action-card__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </span>
+              <span class="action-card__label">Save Look</span>
+              <span class="action-card__desc">Keep your favorites</span>
+            </button>
+            <button class="action-card" data-action="ask-wutt">
+              <span class="action-card__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12.01" y2="16"/><line x1="12" y1="8" x2="12" y2="13"/></svg>
+              </span>
+              <span class="action-card__label">Ask WUTT</span>
+              <span class="action-card__desc">Style advice &amp; tips</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat messages — hidden until interaction starts -->
+        <div class="chat-messages u-hidden" id="chatMessages" aria-live="polite">
+          <div class="chat-msg chat-msg--bot" id="chatFirstMessage">
+            <div class="chat-msg__avatar" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="12" fill="#1F1F1F"/><path d="M9 25V12l8 5.5-8 5.5zm8 0h8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="chat-msg__bubble">
+              <p>Nice choice! Let&rsquo;s find the perfect piece. What style are you thinking?</p>
+            </div>
+          </div>
+          <div class="chat-chips" id="chatChips">
+            <button class="chat-chip" data-item="casual">Casual</button>
+            <button class="chat-chip" data-item="formal">Formal</button>
+            <button class="chat-chip" data-item="street">Street</button>
+            <button class="chat-chip" data-item="minimal">Minimal</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat input bar -->
+      <div class="chat-input-bar">
+        <div class="chat-input__wrapper">
+          <button class="chat-input__attach" aria-label="Attach image" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
+          <input
+            type="text"
+            class="chat-input__field"
+            id="chatInput"
+            placeholder="Ask WUTT…"
+            aria-label="Chat message"
+          >
+          <button class="chat-input__send" id="chatSendBtn" aria-label="Send message">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hidden file input for wardrobe upload -->
+  <input type="file" id="wardrobeFileInput" accept="image/*" capture="environment" class="u-hidden" aria-hidden="true">
 
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>

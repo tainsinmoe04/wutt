@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "superpowers": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-superpowers"]
-    },
     "taskmaster": {
       "command": "npx",
       "args": ["-y", "task-master-ai"]
@@ -11,10 +7,6 @@
     "filesystem": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-    },
-    "fetch": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-fetch"]
     }
   }
 }

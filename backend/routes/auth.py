@@ -12,6 +12,7 @@ Dependency
 """
 
 from datetime import datetime, timedelta, timezone
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -185,12 +186,12 @@ def register(
     """
     # ── Validate ──────────────────────────────────────
     email = body.email.strip().lower()
-    if len(body.password) < 6:
-        raise _err("Password must be at least 6 characters.")
+    if len(body.password) < 8 or not re.search(r'[a-zA-Z]', body.password) or not re.search(r'[0-9]', body.password):
+        raise _err("Password must be at least 8 characters and include both letters and numbers.")
 
     # ── Check uniqueness ──────────────────────────────
     if db.query(User).filter(User.email == email).first():
-        raise _err("ဒီအီးမေးလ်နဲ့ အကောင့်ရှိပြီးသားပါ", code=409)
+        raise _err("This email is already registered. Please log in instead.", code=409)
 
     # ── Create user ───────────────────────────────────
     try:

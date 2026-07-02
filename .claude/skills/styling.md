@@ -1,89 +1,145 @@
-# Skill: WUTT AI Outfit Recommendation Logic
+# Skill: WUTT Fashion Intelligence
 
-## When to use this skill
-Load this skill when working on: stylist.py, OpenAI prompt engineering, outfit recommendation features.
+## When to use
 
-## OpenAI Vision API — WUTT Prompt Template
-```python
-SYSTEM_PROMPT = """
-You are WUTT, Myanmar's AI Personal Stylist.
-You analyze wardrobe photos and give outfit recommendations.
+Load when working on: stylist.py, outfit recommendations, wardrobe classification, occasion matching, fashion-related frontend features.
 
-Rules:
-- Respond in Myanmar (Burmese) language
-- Consider: occasion, weather, temperature, body proportions
-- Be specific: name exact items from uploaded photos
-- Give 1 primary outfit + 1 backup option
-- Include: what to wear, how to style, what accessories
-- Keep advice practical and culturally appropriate for Myanmar
+## Core Concept
 
-Response format (JSON):
+WUTT's recommendation engine is rule-based metadata matching. The fallback system in `backend/routes/stylist.py` is the primary working recommendation path. OpenAI Vision is optional and unverified — the app works without it.
+
+## Occasion Categories
+
+| Key | Myanmar | English |
+|-----|---------|---------|
+| wedding | မင်္ဂလာပွဲ | Wedding |
+| work | ရုံးသွား | Office/Work |
+| party | ပါတီ | Party |
+| date | ချိန်းတွေ့ | Date |
+| casual | အပြင်ထွက် | Casual daily |
+| interview | အင်တာဗျူး | Interview |
+| sport | အားကစား | Sport |
+| temple | ဘုရားဖူး | Religious/Temple |
+
+## Item Classification
+
+WUTT classifies wardrobe items into 7 types using category → subtype → description, in that priority order:
+
+| Type | Keywords |
+|------|----------|
+| dress | dress, gown, jumpsuit, one-piece, ဂါဝန် |
+| top | shirt, blouse, t-shirt, sweater, hoodie, blazer, အင်္ကျီ |
+| bottom | trouser, pant, jeans, short, skirt, ဘောင်းဘီ, လုံချည် |
+| traditional | longyi, htamein, taikpon, မြန်မာ, ရိုးရာ |
+| outerwear | coat, cardigan, shawl, jacket, အင်္ကျီအပေါ်ခံ |
+| accessory | bag, belt, jewelry, scarf, hat |
+| shoes | sandal, heel, ဖိနပ် |
+
+## Outfit Composition Rules
+
+**Valid combinations:**
+- One dress only
+- One top + one bottom
+- One traditional/formal set
+- Any of the above + one outerwear or accessory (optional)
+
+**Invalid — never generate:**
+- dress + dress
+- top + top
+- bottom + bottom
+- dress + top + bottom
+
+## Occasion-Specific Rules
+
+### Interview
+- Prefer navy, white, beige, black, gray colours
+- Avoid bright yellow/orange
+- No mini skirts
+- Formal dress or top+bottom combo
+
+### Wedding
+- Prefer traditional/longyi set or formal dress
+- Wedding colours: red, gold, pink, purple, navy, green, cream
+- Avoid casual top+bottom
+- If no wedding item exists, say so honestly
+
+### Party
+- Prefer party dress or bold colours (red, black, gold)
+- Mini skirt and mini dress are acceptable
+- Bright accent colours welcome
+- Fallback: blouse + skirt over t-shirt + jeans
+
+### Casual
+- Prefer comfortable top+bottom combos (blouse+jeans, t-shirt+skirt)
+- Light colours for hot weather
+- Optional outerwear (jean coat, jacket)
+- Dress is fallback if no top+bottom exists
+
+### Generic (work, date, sport, temple)
+- Preference order: traditional > dress > top+bottom
+- If only one category available, use it with honest limitation note
+
+## Colour Matching Sets
+
+| Occasion | Preferred Colours |
+|----------|------------------|
+| Party | red, black, gold, silver, purple, pink, white |
+| Interview | navy, white, beige, black, gray |
+| Wedding | red, gold, pink, purple, navy, green, cream |
+| Bright accents | yellow, orange, neon (party/casual only) |
+
+## Scoring System
+
+Each item is scored 0–100 on these dimensions:
+
+1. **Occasion-category fit** — does the item type suit the occasion? (with subtype bonus/penalty)
+2. **Colour discipline** — does the colour match occasion-appropriate sets?
+3. **Style preference alignment** — small bonus if matches user's style preference
+4. **Weather suitability** — penalize heavy fabrics in hot weather
+5. **Description quality** — items with descriptions score slightly higher
+
+When multiple items share the top score (within 5 points), one is picked at random for variety.
+
+## Weather Tips
+
+| Condition | Tip (Myanmar) |
+|-----------|---------------|
+| Hot (>32°C) | ရာသီဥတုပူလို့ ပေါ့ပါးပြီး လေဝင်လေထွက်ကောင်းတဲ့အဝတ်ကို ရွေးပါ |
+| Rain | မိုးရွာနိုင်လို့ ထီးယူဖို့ မမေ့ပါနဲ့ |
+| Cool (<20°C) | အေးနေလို့ အပေါ်ထပ်တစ်ခု ထပ်ဆောင်းသွားပါ |
+| Humid | စိုစွတ်နေလို့ ချွေးစုပ်တဲ့အထည်တွေ ရွေးပါ |
+
+## Response Format
+
+```json
 {
-  "primary_outfit": {
-    "items": ["item1", "item2"],
-    "styling_tips": "...",
-    "accessories": "..."
-  },
-  "backup_outfit": {
-    "items": ["item1", "item2"],
-    "styling_tips": "..."
-  },
-  "weather_note": "...",
-  "occasion_note": "..."
+  "outfit": ["item1 label", "item2 label"],
+  "explanation": "why this outfit works for the occasion",
+  "weather_based_tip": "practical weather advice in Myanmar"
 }
-"""
-
-USER_PROMPT_TEMPLATE = """
-Occasion: {occasion}
-Weather: {weather_desc}, {temperature}°C
-Location: {location}
-User height: {height}cm
-
-Please analyze the wardrobe photos and recommend the best outfit.
-"""
 ```
 
-## Occasion Categories (Myanmar Language)
-```python
-OCCASIONS = [
-    "မင်္ဂလာပွဲ",      # Wedding
-    "ရုံးသွားမယ်",      # Office/Work
-    "ပါတီ/ဆေးဆုံ",     # Party
-    "နေ့စဉ်ဝတ်",       # Casual daily
-    "ရုပ်ရှင်/မားလ်",  # Date/Mall
-    "ဘုရားသွားမယ်",    # Religious
-    "အင်တာဗျူး",       # Interview
-    "အပြင်ထွက်",       # Outdoor
-]
-```
+The `source` field in the API response indicates whether the recommendation came from `"ai"` or `"fallback"`.
 
-## Image Handling
-```python
-import base64
+## Myanmar Item Labels
 
-def encode_image_to_base64(image_path: str) -> str:
-    with open(image_path, "rb") as f:
-        return base64.b64encode(f.read()).decode("utf-8")
+Items are labelled using subtype-specific Myanmar translations when available, falling back to category labels. Examples:
 
-def build_vision_messages(images: list[str], occasion: str, weather: dict, height: int):
-    content = [{"type": "text", "text": USER_PROMPT_TEMPLATE.format(
-        occasion=occasion,
-        weather_desc=weather["description"],
-        temperature=weather["temp"],
-        location=weather["city"],
-        height=height
-    )}]
+| Subtype | Label |
+|---------|-------|
+| blouse | blouse / ဘလောက်စ် |
+| jeans | jeans / ဂျင်းဘောင်းဘီ |
+| party dress | ပွဲတက်ဂါဝန် |
+| longyi | လုံချည် |
+| mini skirt | mini skirt / စကတ်တို |
 
-    for img_url in images:
-        content.append({
-            "type": "image_url",
-            "image_url": {"url": img_url, "detail": "high"}
-        })
+Labels append colour and description when available: `blouse / ဘလောက်စ် · white — office wear`
 
-    return [{"role": "user", "content": content}]
-```
+## OpenAI Vision (Optional, Unverified)
 
-## Error Handling for AI responses
-- If OpenAI returns non-JSON: wrap in try/except, return fallback message in Myanmar
-- If no wardrobe images: prompt user to upload at least 2 photos
-- If weather API fails: ask user to input weather manually
+OpenAI Vision is a secondary recommendation path. On any error or missing API key, the system falls back to the rule-based engine automatically.
+
+- Sends metadata dicts (url, category, subtype, color, description, style_tags, occasion_tags) — not base64
+- Uses Cloudinary image URLs
+- Missing `OPENAI_API_KEY` → graceful 503 → fallback
+- Never assume Vision is working without testing

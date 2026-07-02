@@ -16,9 +16,21 @@ I built WUTT as a small vertical slice instead of trying to finish a large platf
 - what: Project-level MCP configuration used by Claude Code.
 
 ### Skill
-- path: .claude/skills/wutt-autonomous/SKILL.md
-- what: A reusable Claude Code skill for continuing WUTT work.
+- path: .claude/skills/styling.md
+- what: A reusable Claude Code skill documenting WUTT's fashion intelligence — occasion matching, item classification, outfit scoring, and recommendation rules.
 
 ### Agent
-- path: .claude/agents/wutt-debugger.md
-- what: A WUTT-specific debugging agent for frontend, backend, auth, CORS, and deployment issues.
+- path: .claude/agents/wutt-reviewer.md
+- what: A code review agent with 6 dimensions — correctness, security, style, architecture, cross-origin safety, and anti-patterns.
+
+### CLAUDE.md
+- path: CLAUDE.md
+- what: Project-level instructions defining WUTT's identity, product principles, design system, conventions, and safety rules.
+
+### Slides
+- path: slides/wutt-presentation.md
+- what: Marp slide deck styled with the WUTT design system.
+
+### README
+- path: README.md
+- what: Project documentation with setup instructions, tech stack, and design system.
