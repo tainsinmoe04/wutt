@@ -1,0 +1,27 @@
+{
+  "what_is_wutt": "WUTT is your AI fashion companion. It helps you know your wardrobe and upgrade your style. You upload photos of your clothes, and WUTT gives you outfit recommendations, style tips, and helps you discover new looks.",
+  "features": [
+    "Upload wardrobe items (photos of your clothes)",
+    "Get AI-powered outfit recommendations for any occasion",
+    "Ask fashion questions and get personalised advice",
+    "Save looks you love to your wardrobe",
+    "Shop local fashion items from curated shops"
+  ],
+  "how_to_upload": {
+    "step1": "Go to the Wardrobe section (sidebar icon)",
+    "step2": "Choose a category: Top, Bottom, Dress, Shoes, or Accessory",
+    "step3": "Upload a photo of your clothing item",
+    "step4": "AI will analyze the item — you can edit the analysis",
+    "step5": "Click Save to add it to your wardrobe"
+  },
+  "how_to_save_items": "After uploading a photo, AI analyzes it. You'll see a draft card showing color, style, material, and occasion tags. Edit anything that's wrong, then tap Save to Wardrobe.",
+  "how_to_delete_items": "Open the Wardrobe sidebar. Hover over or tap the item you want to remove. Tap the X button to delete it from your wardrobe.",
+  "how_to_get_outfit": "Ask WUTT in chat: 'What should I wear to a wedding?' or 'Style me for a coffee date.' WUTT uses your wardrobe items to recommend the best outfit.",
+  "shop_this_look": "Coming soon! After getting an outfit recommendation, WUTT will suggest similar items from local shops you can buy to complete your wardrobe.",
+  "wardrobe_tips": [
+    "Upload clear photos for better AI analysis",
+    "Add multiple angles if possible",
+    "Good lighting helps AI identify colors accurately",
+    "Upload regularly — the more items, the better recommendations"
+  ]
+}

@@ -1,0 +1,16 @@
+ M backend/config.py
+ M backend/requirements.txt
+ M backend/routes/stylist.py
+ M frontend/app.js
+ M frontend/index.html
+ M frontend/style.css
+ M skills-lock.json
+?? .agents/skills/high-end-visual-design/
+?? .claude/agents/emil-design-eng.md
+?? .claude/agents/ui-ux-pro-max.md
+?? .claude/skills/high-end-visual-design
+?? WUTT-staged-backup.patch
+?? WUTT-working-backup.patch
+?? backend/services/gemini_svc.py
+?? wutt-before-morning-test.patch
+?? wutt-status-before-morning.txt

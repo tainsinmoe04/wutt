@@ -163,14 +163,35 @@ function saveAuth(email, token) {
   if (email) {
     localStorage.setItem('wutt_user', email);
   }
+  loadUserData();
 }
 
-/** Log out — clear session and return to landing */
+/** Load user-specific data after login */
+function loadUserData() {
+  applyChatPreferences();
+  renderWardrobeSidebar();
+}
+
+/** Log out — clear session only, preserve user data */
 function handleLogout() {
   localStorage.removeItem('wutt_token');
   localStorage.removeItem('wutt_user');
-  localStorage.removeItem('wutt_styles');
   window.location.reload();
+}
+
+/* --------------------------------------------------------
+   User-Scoped localStorage Helpers
+   -------------------------------------------------------- */
+
+/** Get current user email for scoping */
+function getCurrentUser() {
+  return localStorage.getItem('wutt_user') || null;
+}
+
+/** Get user-scoped localStorage key */
+function userKey(key) {
+  var user = getCurrentUser();
+  return user ? key + '_' + user.replace(/[^a-zA-Z0-9]/g, '_') : key;
 }
 
 /* --------------------------------------------------------
@@ -688,7 +709,7 @@ async function handleRegisterSubmit(e) {
         setButtonLoading(registerSubmitBtn, false);
         return;
       }
-      saveAuth(email.value.trim(), token);
+      saveAuth($('#registerEmail').value.trim(), token);
       showToast('Account created', 'success');
       closeAllLandingModals();
       showStyleQuiz();
@@ -846,7 +867,7 @@ function completeStyleQuiz() {
     if (selectedStyles.size === 0) return;
     // Store selected styles
     try {
-      localStorage.setItem('wutt_styles', JSON.stringify(Array.from(selectedStyles)));
+      localStorage.setItem(userKey('wutt_styles'), JSON.stringify(Array.from(selectedStyles)));
     } catch (e) { /* ignore */ }
     completeStyleQuiz();
   });
@@ -870,39 +891,64 @@ function initChatApp() {
 
   /* ---- Sidebar navigation: single-panel, view switching ---- */
   var sidebarItems = document.querySelectorAll('.chat-sidebar__item[data-panel]');
+  var allViews = ['shopView', 'wishlistView', 'profileView'];
 
-  /** Close all side drawers (wardrobe, settings) and hide feed view */
-  function hideAllSidePanels() {
-    var panels = ['wardrobeDrawer', 'settingsDrawer'];
-    panels.forEach(function(id) {
+  /** Hide all main views */
+  function hideAllViews() {
+    allViews.forEach(function(id) {
       var el = document.getElementById(id);
       if (el) { el.classList.add('u-hidden'); el.setAttribute('aria-hidden', 'true'); }
     });
-  }
-
-  /** Show chat view (header + body + input bar), hide feed */
-  function showChatView() {
-    var feedView = document.getElementById('feedView');
+    // Also hide chat
     var chatHeader = document.querySelector('.chat-header');
     var chatBody = document.getElementById('chatBody');
     var chatInput = document.querySelector('.chat-input-bar');
-    if (feedView) feedView.classList.add('u-hidden');
+    if (chatHeader) chatHeader.classList.add('u-hidden');
+    if (chatBody) chatBody.classList.add('u-hidden');
+    if (chatInput) chatInput.classList.add('u-hidden');
+    // Hide wardrobe drawer
+    var wd = document.getElementById('wardrobeDrawer');
+    if (wd) { wd.classList.add('u-hidden'); wd.setAttribute('aria-hidden', 'true'); }
+    // Hide AI chat FAB (only show on shop/home)
+    var fab = document.getElementById('aiChatFab');
+    if (fab) fab.classList.add('u-hidden');
+  }
+
+  /** Show shop home page */
+  function showHomeView() {
+    hideAllViews();
+    var shopView = document.getElementById('shopView');
+    if (shopView) { shopView.classList.remove('u-hidden'); shopView.setAttribute('aria-hidden', 'false'); }
+    var fab = document.getElementById('aiChatFab');
+    if (fab) fab.classList.remove('u-hidden');
+    renderShopProducts();
+  }
+
+  /** Show AI chat view */
+  function showChatView() {
+    hideAllViews();
+    var chatHeader = document.querySelector('.chat-header');
+    var chatBody = document.getElementById('chatBody');
+    var chatInput = document.querySelector('.chat-input-bar');
     if (chatHeader) chatHeader.classList.remove('u-hidden');
     if (chatBody) chatBody.classList.remove('u-hidden');
     if (chatInput) chatInput.classList.remove('u-hidden');
   }
 
-  /** Show Style Feed full-page view, hide chat content */
-  function showStyleFeedView() {
-    var feedView = document.getElementById('feedView');
-    var chatHeader = document.querySelector('.chat-header');
-    var chatBody = document.getElementById('chatBody');
-    var chatInput = document.querySelector('.chat-input-bar');
-    if (feedView) feedView.classList.remove('u-hidden');
-    if (chatHeader) chatHeader.classList.add('u-hidden');
-    if (chatBody) chatBody.classList.add('u-hidden');
-    if (chatInput) chatInput.classList.add('u-hidden');
-    renderFeedCards();
+  /** Show profile page */
+  function showProfileView() {
+    hideAllViews();
+    var profileView = document.getElementById('profileView');
+    if (profileView) { profileView.classList.remove('u-hidden'); profileView.setAttribute('aria-hidden', 'false'); }
+    renderProfileView();
+  }
+
+  /** Show wishlist page */
+  function showWishlistView() {
+    hideAllViews();
+    var wishlistView = document.getElementById('wishlistView');
+    if (wishlistView) { wishlistView.classList.remove('u-hidden'); wishlistView.setAttribute('aria-hidden', 'false'); }
+    renderWishlist();
   }
 
   /** Set active sidebar icon */
@@ -912,53 +958,38 @@ function initChatApp() {
     if (target) target.classList.add('chat-sidebar__item--active');
   }
 
-  /** Open a side drawer with mutual exclusion */
-  function openSidePanel(panelName) {
-    hideAllSidePanels();
-    var drawerId = panelName === 'wardrobe' ? 'wardrobeDrawer' : panelName === 'settings' ? 'settingsDrawer' : null;
-    if (drawerId) {
-      var el = document.getElementById(drawerId);
-      if (el) {
-        el.classList.remove('u-hidden');
-        el.setAttribute('aria-hidden', 'false');
-      }
-    }
-  }
-
   sidebarItems.forEach(function(item) {
     item.addEventListener('click', function() {
       var panel = item.getAttribute('data-panel');
 
       if (panel === 'wardrobe') {
         showChatView();
-        openSidePanel('wardrobe');
+        var wd = document.getElementById('wardrobeDrawer');
+        if (wd) { wd.classList.remove('u-hidden'); wd.setAttribute('aria-hidden', 'false'); }
         renderWardrobeSidebar();
         setActiveSidebar('wardrobe');
         return;
       }
 
-      if (panel === 'settings') {
-        showChatView();
-        openSidePanel('settings');
-        setActiveSidebar('settings');
+      if (panel === 'profile') {
+        showProfileView();
+        setActiveSidebar('profile');
         return;
       }
 
-      if (panel === 'feed') {
-        hideAllSidePanels();
-        showStyleFeedView();
-        setActiveSidebar('feed');
+      if (panel === 'wishlist') {
+        showWishlistView();
+        setActiveSidebar('wishlist');
         return;
       }
 
-      // home / chat / saved — show chat, close side panels
-      hideAllSidePanels();
-      showChatView();
-      setActiveSidebar(panel);
+      // home
+      showHomeView();
+      setActiveSidebar('home');
     });
   });
 
-  // Drawer close buttons
+  // Wardrobe drawer close
   var drawerClose = document.getElementById('wardrobeDrawerClose');
   if (drawerClose) {
     drawerClose.addEventListener('click', function() {
@@ -966,138 +997,320 @@ function initChatApp() {
       if (drawer) { drawer.classList.add('u-hidden'); drawer.setAttribute('aria-hidden', 'true'); }
     });
   }
-  var settingsClose = document.getElementById('settingsDrawerClose');
-  if (settingsClose) {
-    settingsClose.addEventListener('click', function() {
-      var sDrawer = document.getElementById('settingsDrawer');
-      if (sDrawer) { sDrawer.classList.add('u-hidden'); sDrawer.setAttribute('aria-hidden', 'true'); }
+
+  // AI Chat FAB
+  var aiChatFab = document.getElementById('aiChatFab');
+  if (aiChatFab) {
+    aiChatFab.addEventListener('click', function() {
+      showChatView();
+      setActiveSidebar(null);
+    });
+  }
+
+  /* ---- Profile view ---- */
+  var profileEditBtn = document.getElementById('profileEditBtn');
+  var profileEditOverlay = document.getElementById('profileEditOverlay');
+  var profileEditClose = document.getElementById('profileEditClose');
+
+  // Wire chip/pill/swatch single-select groups
+  wireSingleSelectGroup('profileGenderChips', 'pf-chip--active');
+  wireSingleSelectGroup('profileTopSizePills', 'pf-size-pill--active');
+  wireSingleSelectGroup('profileBottomSizePills', 'pf-size-pill--active');
+  wireSingleSelectGroup('profileShoppingStyleChips', 'pf-chip--active');
+  wireSingleSelectGroup('profileFitPreferenceChips', 'pf-chip--active');
+  wireSingleSelectGroup('profileOutfitVibeChips', 'pf-chip--active');
+  wireSingleSelectGroup('profileBudgetRangeChips', 'pf-chip--active');
+  wireSingleSelectGroup('profileShoppingPrefChips', 'pf-chip--active');
+  wireSkinToneSwatches();
+
+  // Wire multi-select groups
+  wireMultiSelectGroup('profileFavoriteStylesChips', 'pf-chip--active');
+  wireMultiSelectGroup('profileCategoriesChips', 'pf-chip--active');
+  wireMultiSelectGroup('profilePreferredColorsChips', 'pf-color-chip--active');
+
+  function openProfileEdit() {
+    loadProfileForm();
+    if (profileEditOverlay) profileEditOverlay.classList.add('pf-edit-overlay--open');
+  }
+  function closeProfileEdit() {
+    if (profileEditOverlay) profileEditOverlay.classList.remove('pf-edit-overlay--open');
+  }
+
+  if (profileEditBtn) profileEditBtn.addEventListener('click', openProfileEdit);
+  if (profileEditClose) profileEditClose.addEventListener('click', closeProfileEdit);
+
+  // Section edit buttons — all open the same edit modal
+  document.querySelectorAll('.pf-section__edit').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      openProfileEdit();
+    });
+  });
+
+  // Close on overlay click (not modal body)
+  if (profileEditOverlay) {
+    profileEditOverlay.addEventListener('click', function(e) {
+      if (e.target === profileEditOverlay) closeProfileEdit();
+    });
+  }
+
+  var profileForm = document.getElementById('profileForm');
+  if (profileForm) {
+    profileForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      saveProfileForm();
+      closeProfileEdit();
+      renderProfileView();
+    });
+  }
+
+  /* ---- Profile photo upload ---- */
+  var photoUpload = document.getElementById('profilePhotoUpload');
+  var photoInput = document.getElementById('profilePhotoInput');
+  var editPhotoBtn = document.getElementById('profileEditPhotoBtn');
+
+  if (photoUpload && photoInput) {
+    photoUpload.addEventListener('click', function() { photoInput.click(); });
+    photoUpload.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); photoInput.click(); }
+    });
+  }
+  if (editPhotoBtn && photoInput) {
+    editPhotoBtn.addEventListener('click', function() { photoInput.click(); });
+  }
+  if (photoInput) {
+    photoInput.addEventListener('change', function() {
+      var file = photoInput.files && photoInput.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB', 'error'); return; }
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var dataUrl = ev.target.result;
+        localStorage.setItem(userKey('wutt_profile_photo'), dataUrl);
+        renderProfilePhoto();
+        showToast('Photo updated', 'success');
+      };
+      reader.readAsDataURL(file);
+      photoInput.value = '';
+    });
+  }
+
+  /* ---- Coupon copy buttons ---- */
+  document.querySelectorAll('.pf-coupon__copy').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var code = btn.getAttribute('data-code');
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(code).then(function() {
+          btn.textContent = 'Copied';
+          setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+        });
+      } else {
+        btn.textContent = 'Copied';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+      }
+    });
+  });
+
+  /* ============================================================
+     Shop Home — mock product data and rendering
+     ============================================================ */
+  var MOCK_PRODUCTS = [
+    { id: 'p1',  name: 'Oversized Linen Blazer',   shop: 'Yangon Atelier', price: '45,000 Ks', cat: 'tops',        rating: 4.8, color: '#E8E0D8' },
+    { id: 'p2',  name: 'Straight Leg Denim',        shop: 'Thiri Store',    price: '32,000 Ks', cat: 'bottoms',     rating: 4.5, color: '#A8B8C8' },
+    { id: 'p3',  name: 'Minimal Leather Tote',      shop: 'Mandalay Craft', price: '28,000 Ks', cat: 'accessories', rating: 4.9, color: '#C8B8A8' },
+    { id: 'p4',  name: 'Cotton Poplin Dress',       shop: 'Paw Sandy',      price: '38,000 Ks', cat: 'dresses',     rating: 4.6, color: '#D8E8F0' },
+    { id: 'p5',  name: 'Canvas Court Sneakers',     shop: 'Street Yangon',  price: '42,000 Ks', cat: 'shoes',       rating: 4.3, color: '#F0ECE8' },
+    { id: 'p6',  name: 'Ribbed Knit Top',           shop: 'Nora Boutique',  price: '18,000 Ks', cat: 'tops',        rating: 4.7, color: '#F5E8E0' },
+    { id: 'p7',  name: 'Wide Leg Trousers',         shop: 'Thiri Store',    price: '35,000 Ks', cat: 'bottoms',     rating: 4.4, color: '#E0D8D0' },
+    { id: 'p8',  name: 'Silk Scarf',                shop: 'Mandalay Craft', price: '15,000 Ks', cat: 'accessories', rating: 4.8, color: '#E8D8E8' },
+    { id: 'p9',  name: 'Cropped Cardigan',          shop: 'Nora Boutique',  price: '22,000 Ks', cat: 'tops',        rating: 4.2, color: '#F0E0E8' },
+    { id: 'p10', name: 'Pleated Midi Skirt',        shop: 'Yangon Atelier', price: '29,000 Ks', cat: 'bottoms',     rating: 4.6, color: '#E8E8F0' },
+    { id: 'p11', name: 'Leather Crossbody Bag',     shop: 'Mandalay Craft', price: '35,000 Ks', cat: 'accessories', rating: 4.9, color: '#D8C8B8' },
+    { id: 'p12', name: 'Linen Summer Dress',        shop: 'Paw Sandy',      price: '42,000 Ks', cat: 'dresses',     rating: 4.5, color: '#F0F0E8' },
+    { id: 'p13', name: 'Suede Ankle Boots',         shop: 'Street Yangon',  price: '55,000 Ks', cat: 'shoes',       rating: 4.7, color: '#C8B8A0' },
+    { id: 'p14', name: 'Oversized Cotton Tee',      shop: 'Thiri Store',    price: '12,000 Ks', cat: 'tops',        rating: 4.1, color: '#E8E8E8' },
+    { id: 'p15', name: 'High-Rise Cargo Pants',     shop: 'Street Yangon',  price: '38,000 Ks', cat: 'bottoms',     rating: 4.4, color: '#C8C8C0' },
+    { id: 'p16', name: 'Gold Hoop Earrings',        shop: 'Nora Boutique',  price: '8,000 Ks',  cat: 'accessories', rating: 4.9, color: '#F0E8D0' },
+    { id: 'p17', name: 'Wrap Blouse',               shop: 'Yangon Atelier', price: '25,000 Ks', cat: 'tops',        rating: 4.6, color: '#E8D8D0' },
+    { id: 'p18', name: 'Knit Bodycon Dress',        shop: 'Paw Sandy',      price: '32,000 Ks', cat: 'dresses',     rating: 4.3, color: '#D8D0E0' },
+  ];
+
+  function getWishlistIds() {
+    try {
+      return JSON.parse(localStorage.getItem(userKey('wutt_wishlist')) || '[]');
+    } catch (e) { return []; }
+  }
+
+  function toggleWishlist(productId) {
+    var ids = getWishlistIds();
+    var idx = ids.indexOf(productId);
+    if (idx >= 0) { ids.splice(idx, 1); } else { ids.push(productId); }
+    localStorage.setItem(userKey('wutt_wishlist'), JSON.stringify(ids));
+  }
+
+  function isWishlisted(productId) {
+    return getWishlistIds().indexOf(productId) >= 0;
+  }
+
+  function renderProductCard(product) {
+    var wishClass = isWishlisted(product.id) ? 'product-card__wish product-card__wish--active' : 'product-card__wish';
+    var heartFill = isWishlisted(product.id) ? 'fill="#e25555"' : '';
+    var ratingVal = product.rating || 4.5;
+    return '<div class="product-card" data-product-id="' + product.id + '">' +
+      '<div class="product-card__img" style="background:' + product.color + '">' +
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>' +
+        '<button class="' + wishClass + '" data-wish-id="' + product.id + '" aria-label="Toggle wishlist" type="button">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ' + heartFill + '/></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div class="product-card__info">' +
+        '<p class="product-card__name">' + escapeHtml(product.name) + '</p>' +
+        '<p class="product-card__shop">' + escapeHtml(product.shop) + '</p>' +
+        '<div class="product-card__row">' +
+          '<span class="product-card__price">' + escapeHtml(product.price) + '</span>' +
+          '<span class="product-card__tag">★ ' + ratingVal + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="product-card__actions">' +
+        '<button class="product-card__btn" data-view-id="' + product.id + '" type="button">View</button>' +
+        '<button class="product-card__btn product-card__btn--primary" data-add-id="' + product.id + '" type="button">+ Wardrobe</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderShopProducts(filterCat) {
+    var grid = document.getElementById('shopGrid');
+    var picksGrid = document.getElementById('shopPicksGrid');
+    var cat = filterCat || 'all';
+
+    var filtered = cat === 'all' ? MOCK_PRODUCTS : MOCK_PRODUCTS.filter(function(p) { return p.cat === cat; });
+    var trending = filtered.slice(0, 4);
+    var picks = MOCK_PRODUCTS.slice(0, 6);
+
+    // Trending grid: 4 product cards + explore card
+    var exploreHtml = '<button class="product-card product-card--explore" type="button" aria-label="Explore more trending items">' +
+      '<span class="product-card--explore__icon" aria-hidden="true">+</span>' +
+      '<span class="product-card--explore__label">Explore more</span>' +
+    '</button>';
+    if (grid) grid.innerHTML = trending.map(renderProductCard).join('') + exploreHtml;
+    if (picksGrid) picksGrid.innerHTML = picks.map(renderProductCard).join('');
+
+    // Wire explore card
+    var exploreBtn = grid ? grid.querySelector('.product-card--explore') : null;
+    if (exploreBtn) {
+      exploreBtn.addEventListener('click', function() {
+        showShopSearchPlaceholder();
+      });
+    }
+
+    // Wire wishlist buttons
+    document.querySelectorAll('.product-card__wish').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var pid = btn.getAttribute('data-wish-id');
+        toggleWishlist(pid);
+        renderShopProducts(cat);
+      });
+    });
+
+    // Wire + Wardrobe buttons
+    document.querySelectorAll('.product-card__btn--primary').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var pid = btn.getAttribute('data-add-id');
+        var product = MOCK_PRODUCTS.find(function(p) { return p.id === pid; });
+        if (product) {
+          saveWardrobeItem({
+            category: product.cat.charAt(0).toUpperCase() + product.cat.slice(1, -1) || 'Item',
+            name: product.name,
+            color: product.color,
+            styleVibe: product.shop,
+            material: '',
+            occasions: '',
+            notes: 'Added from shop'
+          });
+          btn.textContent = '✓ Added';
+          btn.disabled = true;
+          showToast('Added to wardrobe', 'success');
+        }
+      });
+    });
+  }
+
+  // Shop search placeholder — opens when explore card is tapped
+  function showShopSearchPlaceholder() {
+    var overlay = document.createElement('div');
+    overlay.className = 'shop-search-overlay';
+    overlay.innerHTML =
+      '<div class="shop-search-card">' +
+        '<div class="shop-search-card__header">' +
+          '<h3 class="shop-search-card__title">Search & Explore</h3>' +
+          '<button class="shop-search-card__close" aria-label="Close">&times;</button>' +
+        '</div>' +
+        '<div class="shop-search-card__body">' +
+          '<input class="shop-search-card__input" type="text" placeholder="Search styles, shops, items..." disabled>' +
+          '<p class="shop-search-card__msg">Shop search coming soon — explore local styles in your area.</p>' +
+          '<div class="shop-search-card__tags">' +
+            '<span class="shop-search-card__tag">Streetwear</span>' +
+            '<span class="shop-search-card__tag">Minimal</span>' +
+            '<span class="shop-search-card__tag">Vintage</span>' +
+            '<span class="shop-search-card__tag">Office</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function() { overlay.classList.add('shop-search-overlay--open'); });
+
+    function close() {
+      overlay.classList.remove('shop-search-overlay--open');
+      setTimeout(function() { overlay.remove(); }, 250);
+    }
+    overlay.querySelector('.shop-search-card__close').addEventListener('click', close);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+  }
+
+  // Category chips
+  var shopChips = document.getElementById('shopCategoryChips');
+  if (shopChips) {
+    shopChips.addEventListener('click', function(e) {
+      var chip = e.target.closest('.shop-chip');
+      if (!chip) return;
+      shopChips.querySelectorAll('.shop-chip').forEach(function(c) { c.classList.remove('shop-chip--active'); });
+      chip.classList.add('shop-chip--active');
+      renderShopProducts(chip.getAttribute('data-cat'));
     });
   }
 
   /* ============================================================
-     Style Feed — mock social fashion feed (frontend-only)
-     TODO: Backend feed API, image upload, privacy, moderation
+     Wishlist — rendering
      ============================================================ */
-  var FEED_STORAGE_KEY = 'wutt_style_feed_posts';
+  function renderWishlist() {
+    var grid = document.getElementById('wishlistGrid');
+    var empty = document.getElementById('wishlistEmpty');
+    var count = document.getElementById('wishlistCount');
+    var ids = getWishlistIds();
+    var items = MOCK_PRODUCTS.filter(function(p) { return ids.indexOf(p.id) >= 0; });
 
-  var mockFeedPosts = [
-    { id: 'mock-1', user: 'Mia', mood: 'Chic', caption: 'Black blazer + gold hoops. Instant confidence.', item: 'Blazer', time: '2h ago', color: '#3a3540' },
-    { id: 'mock-2', user: 'Lena', mood: 'Casual', caption: 'Weekend errand fit — oversized tee and white sneakers.', item: 'T-shirt', time: '5h ago', color: '#88A2FF' },
-    { id: 'mock-3', user: 'Yuki', mood: 'Minimal', caption: 'Less is more. Cream knit, straight leg denim.', item: 'Knit sweater', time: '1d ago', color: '#E3FC87' },
-    { id: 'mock-4', user: 'Ava', mood: 'Bold', caption: 'Red dress for dinner. Sometimes you just commit.', item: 'Dress', time: '1d ago', color: '#FFB2F7' },
-    { id: 'mock-5', user: 'Sora', mood: 'Street', caption: 'Cargo pants + cropped hoodie. City walk ready.', item: 'Hoodie', time: '2d ago', color: '#C0E0FF' },
-  ];
+    if (count) count.textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
 
-  function loadFeedPosts() {
-    try {
-      var saved = localStorage.getItem(FEED_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
-  }
-
-  function saveFeedPosts(posts) {
-    try { localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(posts)); } catch (e) { /* silent */ }
-  }
-
-  function renderFeedCards() {
-    var grid = document.getElementById('feedGrid');
-    if (!grid) return;
-    var userPosts = loadFeedPosts();
-    var allPosts = userPosts.concat(mockFeedPosts);
-
-    if (allPosts.length === 0) {
-      grid.innerHTML = '<div class="feed-empty">' +
-        '<svg class="feed-empty__icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M6 8h12M6 12h8M6 16h10"/></svg>' +
-        'No looks yet.<br>Share your first outfit!</div>';
+    if (items.length === 0) {
+      if (grid) grid.innerHTML = '';
+      if (empty) empty.classList.remove('u-hidden');
       return;
     }
 
-    var html = '';
-    allPosts.forEach(function(post) {
-      var moodTag = post.mood ? '<span class="feed-card__mood">' + escapeHtml(post.mood) + '</span>' : '';
-      var itemTag = post.item ? '<span class="feed-card__item-tag"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>' + escapeHtml(post.item) + '</span>' : '';
-      var timeLabel = post.time || 'just now';
-      var bgColor = post.color || '#f3eee8';
-
-      html += '<div class="feed-card">' +
-        '<div class="feed-card__image feed-card__image--placeholder" style="background:' + bgColor + '">' +
-          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>' +
-        '</div>' +
-        '<div class="feed-card__body">' +
-          '<div class="feed-card__meta">' +
-            '<span class="feed-card__user">' + escapeHtml(post.user) + '</span>' +
-            moodTag +
-          '</div>' +
-          '<p class="feed-card__caption">' + escapeHtml(post.caption) + '</p>' +
-          '<span class="feed-card__time">' + escapeHtml(timeLabel) + '</span>' +
-          itemTag +
-        '</div>' +
-      '</div>';
-    });
-    grid.innerHTML = html;
-  }
-
-  // Composer toggle
-  var feedShareBtn = document.getElementById('feedShareBtn');
-  var feedComposer = document.getElementById('feedComposer');
-  var feedComposerCancel = document.getElementById('feedComposerCancel');
-  var feedComposerPost = document.getElementById('feedComposerPost');
-
-  if (feedShareBtn && feedComposer) {
-    feedShareBtn.addEventListener('click', function() {
-      feedComposer.classList.toggle('u-hidden');
-      if (!feedComposer.classList.contains('u-hidden')) {
-        var captionInput = document.getElementById('feedComposerCaption');
-        if (captionInput) captionInput.focus();
-      }
-    });
-  }
-
-  if (feedComposerCancel && feedComposer) {
-    feedComposerCancel.addEventListener('click', function() {
-      feedComposer.classList.add('u-hidden');
-    });
-  }
-
-  if (feedComposerPost) {
-    feedComposerPost.addEventListener('click', function() {
-      var captionInput = document.getElementById('feedComposerCaption');
-      var moodSelect = document.getElementById('feedComposerMood');
-
-      var caption = captionInput ? captionInput.value.trim() : '';
-      if (!caption) {
-        if (captionInput) captionInput.focus();
-        return;
-      }
-
-      var newPost = {
-        id: 'user-' + Date.now(),
-        user: 'You',
-        mood: moodSelect ? moodSelect.value : '',
-        caption: caption,
-        time: 'just now',
-        color: '#f3eee8'
-      };
-
-      var posts = loadFeedPosts();
-      posts.unshift(newPost);
-      saveFeedPosts(posts);
-
-      if (captionInput) captionInput.value = '';
-      if (moodSelect) moodSelect.selectedIndex = 0;
-      feedComposer.classList.add('u-hidden');
-
-      renderFeedCards();
-    });
-  }
-
-  // Back button in feed header
-  var feedBackBtn = document.getElementById('feedBackBtn');
-  if (feedBackBtn) {
-    feedBackBtn.addEventListener('click', function() {
-      showChatView();
-      setActiveSidebar('chat');
-    });
+    if (empty) empty.classList.add('u-hidden');
+    if (grid) {
+      grid.innerHTML = items.map(renderProductCard).join('');
+      // Wire wishlist buttons
+      grid.querySelectorAll('.product-card__wish').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var pid = btn.getAttribute('data-wish-id');
+          toggleWishlist(pid);
+          renderWishlist();
+        });
+      });
+    }
   }
 
   /* ---- Apply saved chat preferences ---- */
@@ -1107,10 +1320,10 @@ function initChatApp() {
   var moodChips = document.getElementById('moodChips');
   if (moodChips) {
     moodChips.addEventListener('click', function(e) {
-      var chip = e.target.closest('.settings-chip');
+      var chip = e.target.closest('.pf-settings-chip');
       if (!chip) return;
-      moodChips.querySelectorAll('.settings-chip').forEach(function(c) { c.classList.remove('settings-chip--active'); });
-      chip.classList.add('settings-chip--active');
+      moodChips.querySelectorAll('.pf-settings-chip').forEach(function(c) { c.classList.remove('pf-settings-chip--active'); });
+      chip.classList.add('pf-settings-chip--active');
       var prefs = getChatPreferences();
       prefs.mood = chip.getAttribute('data-mood');
       saveChatPreferences(prefs);
@@ -1122,10 +1335,10 @@ function initChatApp() {
   var bgChips = document.getElementById('bgChips');
   if (bgChips) {
     bgChips.addEventListener('click', function(e) {
-      var chip = e.target.closest('.settings-bg-chip');
+      var chip = e.target.closest('.pf-settings-bg-chip');
       if (!chip) return;
-      bgChips.querySelectorAll('.settings-bg-chip').forEach(function(c) { c.classList.remove('settings-bg-chip--active'); });
-      chip.classList.add('settings-bg-chip--active');
+      bgChips.querySelectorAll('.pf-settings-bg-chip').forEach(function(c) { c.classList.remove('pf-settings-bg-chip--active'); });
+      chip.classList.add('pf-settings-bg-chip--active');
       var prefs = getChatPreferences();
       prefs.background = chip.getAttribute('data-bg');
       saveChatPreferences(prefs);
@@ -1188,6 +1401,185 @@ function initChatApp() {
     });
   }
 
+  /* ---- Chat send handler ---- */
+  var chatSendBtn = document.getElementById('chatSendBtn');
+  var chatInputField = document.getElementById('chatInput');
+  var _chatSending = false;
+
+  /** Detect if message is an outfit request (should use /recommend) */
+  function isOutfitRequest(text) {
+    var lower = text.toLowerCase();
+    var outfitKeywords = [
+      'wear', 'outfit', 'dress', 'put on', 'should i',
+      'what to', 'recommend', 'suggest', 'style for',
+      'look for', 'going to', 'attending', 'event',
+      'wedding', 'party', 'date', 'interview', 'work outfit',
+      'casual', 'formal', 'coffee date', 'dinner',
+      'ဘာဝတ်', 'ဝတ်စုံ', 'ဖို့', 'ပွဲ', 'လောင်း'
+    ];
+    return outfitKeywords.some(function(kw) { return lower.includes(kw); });
+  }
+
+  function sendChatMessage() {
+    if (_chatSending) return;
+    var text = chatInputField ? chatInputField.value.trim() : '';
+    if (!text) return;
+
+    // Show messages container, hide welcome
+    var welcomeEl = document.getElementById('chatWelcome');
+    var messagesEl = document.getElementById('chatMessages');
+    if (welcomeEl) welcomeEl.classList.add('u-hidden');
+    if (messagesEl) messagesEl.classList.remove('u-hidden');
+
+    // Add user message to UI and history
+    addUserMessage(escapeHtml(text));
+    addToChatHistory('user', text);
+    chatInputField.value = '';
+
+    // Show typing indicator
+    var typingEl = document.createElement('div');
+    typingEl.className = 'chat-msg chat-msg--bot';
+    typingEl.id = 'chatTypingIndicator';
+    typingEl.innerHTML =
+      '<div class="chat-msg__avatar" aria-hidden="true">' +
+        '<svg width="28" height="28" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="12" fill="#1F1F1F"/><path d="M9 25V12l8 5.5-8 5.5zm8 0h8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</div>' +
+      '<div class="chat-msg__bubble"><p class="chat-typing"><span class="chat-typing__dot"></span><span class="chat-typing__dot"></span><span class="chat-typing__dot"></span></p></div>';
+    messagesEl.appendChild(typingEl);
+    scrollChatToBottom();
+
+    _chatSending = true;
+    if (chatSendBtn) chatSendBtn.disabled = true;
+
+    var token = localStorage.getItem('wutt_token');
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    // Get conversation history for context
+    var history = getChatHistory();
+    var recentHistory = history.slice(-10); // Last 10 messages
+
+    // Decide endpoint based on message content
+    var endpoint, body;
+    if (isOutfitRequest(text)) {
+      endpoint = '/stylist/recommend';
+      body = { occasion: text };
+    } else {
+      endpoint = '/stylist/chat';
+      body = {
+        message: text,
+        conversation_history: recentHistory.slice(0, -1), // Exclude current message
+      };
+    }
+
+    fetch(CONFIG.API_BASE + endpoint, {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+      body: JSON.stringify(body),
+    }).then(function(resp) {
+      return resp.json();
+    }).then(function(data) {
+      // Remove typing indicator
+      var typing = document.getElementById('chatTypingIndicator');
+      if (typing) typing.remove();
+
+      if (data.status === 'success' && data.data) {
+        var d = data.data;
+        var reply = '';
+
+        // Check source — show styled error for api_error
+        var src = d.source || '';
+        if (src === 'api_error') {
+          reply = '<div class="chat-msg__error">'
+            + '⚠️ ' + escapeHtml(d.response || d.explanation || 'Real AI is unavailable.')
+            + '</div>';
+        }
+        // Handle chat response (from /stylist/chat)
+        else if (d.response) {
+          reply = escapeHtml(d.response).replace(/\n/g, '<br>');
+          // Save bot response to history
+          addToChatHistory('bot', d.response);
+        }
+        // Handle outfit recommendation (from /stylist/recommend)
+        else if (d.explanation || (d.outfit && d.outfit.length > 0)) {
+          if (d.explanation) {
+            reply += '<strong>' + escapeHtml(d.explanation) + '</strong>';
+          }
+
+          if (d.outfit && d.outfit.length > 0) {
+            reply += '<br><br><strong>Recommended outfit:</strong><br>';
+            reply += '<ol style="margin:6px 0 0 18px;padding:0;">';
+            d.outfit.forEach(function(item) {
+              reply += '<li style="margin-bottom:3px;">' + escapeHtml(item) + '</li>';
+            });
+            reply += '</ol>';
+          }
+
+          if (d.weather_based_tip) {
+            reply += '<br><em style="color:var(--wutt-text-muted);font-size:0.8125rem;">' + escapeHtml(d.weather_based_tip) + '</em>';
+          }
+
+          // Save to history
+          var historyText = d.explanation || '';
+          if (d.outfit && d.outfit.length > 0) {
+            historyText += ' Outfit: ' + d.outfit.join(', ');
+          }
+          addToChatHistory('bot', historyText);
+        }
+
+        if (!reply) {
+          reply = 'I\'m not sure how to help with that. Try asking about an outfit for a specific occasion like "What should I wear to a wedding?"';
+        }
+
+        addChatMessage('bot', reply);
+      } else {
+        addChatMessage('bot', 'Sorry, something went wrong. Please try again.');
+      }
+    }).catch(function(err) {
+      console.error('[WUTT] Chat error:', err);
+      var typing = document.getElementById('chatTypingIndicator');
+      if (typing) typing.remove();
+      addChatMessage('bot', 'Connection error. Please check your connection and try again.');
+    }).finally(function() {
+      _chatSending = false;
+      if (chatSendBtn) chatSendBtn.disabled = false;
+      if (chatInputField) chatInputField.focus();
+    });
+  }
+
+  if (chatSendBtn) {
+    chatSendBtn.addEventListener('click', sendChatMessage);
+  }
+  if (chatInputField) {
+    chatInputField.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+  }
+
+  /* ---- Clear chat history ---- */
+  var clearHistoryBtn = document.getElementById('chatClearHistoryBtn');
+  if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener('click', function() {
+      if (confirm('Clear all chat history? This cannot be undone.')) {
+        clearChatHistory();
+        // Clear the messages UI
+        var messagesEl = document.getElementById('chatMessages');
+        if (messagesEl) messagesEl.innerHTML = '';
+        // Show welcome again
+        var welcomeEl = document.getElementById('chatWelcome');
+        if (welcomeEl) welcomeEl.classList.remove('u-hidden');
+        // Show toast
+        if (typeof showToast === 'function') {
+          showToast('Chat history cleared', 'success');
+        }
+      }
+    });
+  }
+
   /* ---- Logout ---- */
   var logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
@@ -1208,6 +1600,10 @@ function initChatApp() {
     });
   }
 
+  // Show home view on first load
+  showHomeView();
+  setActiveSidebar('home');
+
   console.log('WUTT Chat initialized');
 }
 
@@ -1216,7 +1612,7 @@ function initChatApp() {
 /** Get all wardrobe items from localStorage */
 function getWardrobeItems() {
   try {
-    return JSON.parse(localStorage.getItem('wutt_wardrobe_items') || '[]');
+    return JSON.parse(localStorage.getItem(userKey('wutt_wardrobe_items')) || '[]');
   } catch (e) { return []; }
 }
 
@@ -1225,7 +1621,7 @@ function getWardrobeItems() {
 /** Get saved chat preferences, with defaults */
 function getChatPreferences() {
   try {
-    var saved = JSON.parse(localStorage.getItem('wutt_chat_preferences'));
+    var saved = JSON.parse(localStorage.getItem(userKey('wutt_chat_preferences')));
     if (saved && typeof saved === 'object') {
       saved.mood = saved.mood || 'day';
       saved.background = saved.background || 'clean';
@@ -1237,7 +1633,36 @@ function getChatPreferences() {
 
 /** Save chat preferences to localStorage */
 function saveChatPreferences(prefs) {
-  localStorage.setItem('wutt_chat_preferences', JSON.stringify(prefs));
+  localStorage.setItem(userKey('wutt_chat_preferences'), JSON.stringify(prefs));
+}
+
+/* ---- Chat history — conversation context ---- */
+
+/** Get chat history from localStorage */
+function getChatHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(userKey('wutt_chat_history')) || '[]');
+  } catch (e) { return []; }
+}
+
+/** Save chat history to localStorage */
+function saveChatHistory(history) {
+  // Keep only last 20 messages to avoid localStorage bloat
+  var trimmed = history.slice(-20);
+  localStorage.setItem(userKey('wutt_chat_history'), JSON.stringify(trimmed));
+}
+
+/** Add a message to chat history */
+function addToChatHistory(role, content) {
+  var history = getChatHistory();
+  history.push({ role: role, content: content });
+  saveChatHistory(history);
+}
+
+/** Clear chat history */
+function clearChatHistory() {
+  localStorage.removeItem(userKey('wutt_chat_history'));
+  console.log('[WUTT] Chat history cleared');
 }
 
 /** Apply saved preferences to the chat UI */
@@ -1261,14 +1686,484 @@ function applyChatPreferences() {
   }
 
   // Sync settings drawer active states
-  var moodChips = document.querySelectorAll('#moodChips .settings-chip');
+  var moodChips = document.querySelectorAll('#moodChips .pf-settings-chip');
   moodChips.forEach(function(c) {
-    c.classList.toggle('settings-chip--active', c.getAttribute('data-mood') === prefs.mood);
+    c.classList.toggle('pf-settings-chip--active', c.getAttribute('data-mood') === prefs.mood);
   });
-  var bgChips = document.querySelectorAll('#bgChips .settings-bg-chip');
+  var bgChips = document.querySelectorAll('#bgChips .pf-settings-bg-chip');
   bgChips.forEach(function(c) {
-    c.classList.toggle('settings-bg-chip--active', c.getAttribute('data-bg') === prefs.background);
+    c.classList.toggle('pf-settings-bg-chip--active', c.getAttribute('data-bg') === prefs.background);
   });
+}
+
+/* ---- User Profile ---- */
+
+/** Gender/style label map */
+var GENDER_LABELS = {
+  'female': 'Female',
+  'male': 'Male',
+  'unisex': 'Unisex',
+  'prefer-not': 'Prefer not to say'
+};
+
+/** Skin tone label map */
+var SKIN_LABELS = {
+  'fair': 'Fair',
+  'light': 'Light',
+  'medium': 'Medium',
+  'olive': 'Olive',
+  'tan': 'Tan',
+  'brown': 'Brown',
+  'dark': 'Dark'
+};
+
+/** Body shape label map */
+var BODY_SHAPE_LABELS = {
+  'slim': 'Slim',
+  'athletic': 'Athletic',
+  'average': 'Average',
+  'curvy': 'Curvy',
+  'plus': 'Plus'
+};
+
+/** Shopping style label map */
+var SHOPPING_STYLE_LABELS = {
+  'local-markets': 'Local Markets',
+  'online': 'Online',
+  'malls': 'Malls',
+  'thrift': 'Thrift',
+  'boutique': 'Boutique'
+};
+
+/** Skin tone background colors for swatches */
+var SKIN_TONE_COLORS = {
+  'fair': '#FDEBD0',
+  'light': '#F5CBA7',
+  'medium': '#E0B38A',
+  'olive': '#C4A76C',
+  'tan': '#B5815E',
+  'brown': '#8D5E3C',
+  'dark': '#5D3A1A'
+};
+
+/** Fit preference labels */
+var FIT_LABELS = {
+  'oversized': 'Oversized',
+  'regular': 'Regular',
+  'slim': 'Slim'
+};
+
+/** Outfit vibe labels */
+var VIBE_LABELS = {
+  'simple': 'Simple',
+  'confident': 'Confident',
+  'soft': 'Soft',
+  'statement': 'Statement'
+};
+
+/** Budget range labels */
+var BUDGET_LABELS = {
+  'under-30k': 'Under 30k Ks',
+  '30k-80k': '30k – 80k Ks',
+  '80k-150k': '80k – 150k Ks',
+  '150k-plus': '150k+ Ks'
+};
+
+/** Shopping preference labels */
+var SHOPPING_PREF_LABELS = {
+  'wardrobe-first': 'Use wardrobe first',
+  'shop-missing': 'Shop missing pieces'
+};
+
+/** Style quiz labels (for display) */
+var STYLE_LABELS = {
+  'minimal': 'Minimal',
+  'streetwear': 'Streetwear',
+  'old-money': 'Old Money',
+  'clean-fit': 'Clean Fit',
+  'korean-casual': 'Korean Casual',
+  'vintage': 'Vintage',
+  'y2k': 'Y2K',
+  'dark-academia': 'Dark Academia'
+};
+
+/** Preferred color display colors */
+var PREF_COLOR_MAP = {
+  'black': '#1a1a1a',
+  'white': '#f5f5f5',
+  'beige': '#E8DCC8',
+  'navy': '#253A82',
+  'brown': '#8B6F47',
+  'olive': '#6B7B3A',
+  'blush': '#E8B4B8',
+  'grey': '#9E9E9E'
+};
+
+/** Get user profile from localStorage */
+function getUserProfile() {
+  try {
+    var saved = JSON.parse(localStorage.getItem(userKey('wutt_user_profile')));
+    if (saved && typeof saved === 'object') return saved;
+  } catch (e) { /* ignore */ }
+  return {
+    name: '', gender: '', height: '',
+    topSize: '', bottomSize: '', shoeSize: '',
+    skinTone: '', city: '', area: '', shoppingStyle: '',
+    fitPreference: '', outfitVibe: '',
+    preferredColors: [], budgetRange: '',
+    favoriteShops: '', preferredCategories: [],
+    shoppingPreference: '', favoriteStyles: []
+  };
+}
+
+/** Save user profile to localStorage */
+function saveUserProfile(profile) {
+  localStorage.setItem(userKey('wutt_user_profile'), JSON.stringify(profile));
+}
+
+/** Render the profile view card and sections */
+function renderProfileView() {
+  var profile = getUserProfile();
+  var user = getCurrentUser();
+
+  // Sidebar avatars
+  var initial = profile.name ? profile.name.charAt(0).toUpperCase() : (user ? user.charAt(0).toUpperCase() : '?');
+  var avatarEl = document.getElementById('profileCardAvatar');
+  if (avatarEl) avatarEl.textContent = initial;
+  var editAvatar = document.getElementById('profileEditAvatar');
+  if (editAvatar) editAvatar.textContent = initial;
+
+  // Sidebar name + email
+  var nameEl = document.getElementById('profileCardName');
+  if (nameEl) nameEl.textContent = profile.name || 'Your Name';
+  var emailEl = document.getElementById('profileCardEmail');
+  if (emailEl) emailEl.textContent = user || '';
+
+  // Sidebar badges
+  var styleTag = document.getElementById('profileCardStyle');
+  if (styleTag) styleTag.textContent = profile.gender ? (GENDER_LABELS[profile.gender] || profile.gender) : '—';
+  var cityTag = document.getElementById('profileCardCity');
+  if (cityTag) cityTag.textContent = profile.city ? (profile.city + (profile.area ? ', ' + profile.area : '')) : '—';
+
+  // Public Profile section
+  var name2 = document.getElementById('profileCardName2');
+  if (name2) name2.textContent = profile.name || '—';
+  var genderEl = document.getElementById('profileCardGender');
+  if (genderEl) genderEl.textContent = profile.gender ? (GENDER_LABELS[profile.gender] || profile.gender) : '—';
+  var locEl = document.getElementById('profileCardLocation');
+  if (locEl) locEl.textContent = profile.city ? (profile.city + (profile.area ? ', ' + profile.area : '')) : '—';
+
+  // Style Identity
+  var savedStyles = [];
+  try { savedStyles = JSON.parse(localStorage.getItem(userKey('wutt_styles'))) || []; } catch (e) { /* ignore */ }
+  var styleTagsEl = document.getElementById('profileCardStyleTags');
+  if (styleTagsEl) {
+    if (savedStyles.length > 0) {
+      styleTagsEl.innerHTML = savedStyles.map(function(s) {
+        return '<span class="pf-tag pf-tag--active">' + escapeHtml(STYLE_LABELS[s] || s) + '</span>';
+      }).join('');
+    } else {
+      styleTagsEl.innerHTML = '<span class="pf-tag pf-tag--empty">Complete the style quiz to set preferences</span>';
+    }
+  }
+
+  var favStylesEl = document.getElementById('profileCardFavoriteStyles');
+  if (favStylesEl) {
+    var favStyles = profile.favoriteStyles || [];
+    if (favStyles.length > 0) {
+      favStylesEl.innerHTML = favStyles.map(function(s) {
+        return '<span class="pf-tag pf-tag--active">' + escapeHtml(STYLE_LABELS[s] || s) + '</span>';
+      }).join('');
+    } else {
+      favStylesEl.innerHTML = '<span class="pf-tag pf-tag--empty">—</span>';
+    }
+  }
+
+  var prefColorsEl = document.getElementById('profileCardPreferredColors');
+  if (prefColorsEl) {
+    var prefColors = profile.preferredColors || [];
+    if (prefColors.length > 0) {
+      prefColorsEl.innerHTML = prefColors.map(function(c) {
+        var bg = PREF_COLOR_MAP[c] || '#ccc';
+        var border = c === 'white' ? 'border: 1px solid #ddd; ' : '';
+        return '<span class="pf-color-chip" style="background:' + bg + '; ' + border + 'width:22px; height:22px;" title="' + escapeHtml(c) + '"></span>';
+      }).join('');
+    } else {
+      prefColorsEl.innerHTML = '<span class="pf-color-empty">—</span>';
+    }
+  }
+
+  var vibeVal = document.getElementById('profileCardOutfitVibe');
+  if (vibeVal) vibeVal.textContent = profile.outfitVibe ? (VIBE_LABELS[profile.outfitVibe] || profile.outfitVibe) : '—';
+
+  // Shopping Preferences
+  var budgetVal = document.getElementById('profileCardBudgetRange');
+  if (budgetVal) budgetVal.textContent = profile.budgetRange ? (BUDGET_LABELS[profile.budgetRange] || profile.budgetRange) : '—';
+  var shopsVal = document.getElementById('profileCardFavoriteShops');
+  if (shopsVal) shopsVal.textContent = profile.favoriteShops || '—';
+  var shopStyleVal = document.getElementById('profileCardShoppingStyle');
+  if (shopStyleVal) shopStyleVal.textContent = profile.shoppingStyle ? (SHOPPING_STYLE_LABELS[profile.shoppingStyle] || profile.shoppingStyle) : '—';
+  var shopPrefVal = document.getElementById('profileCardShoppingPreference');
+  if (shopPrefVal) shopPrefVal.textContent = profile.shoppingPreference ? (SHOPPING_PREF_LABELS[profile.shoppingPreference] || profile.shoppingPreference) : '—';
+
+  // Sizes & Fit
+  var heightVal = document.getElementById('profileCardHeight');
+  if (heightVal) heightVal.textContent = profile.height || '—';
+  var topSizeVal = document.getElementById('profileCardTopSize');
+  if (topSizeVal) topSizeVal.textContent = profile.topSize || '—';
+  var bottomSizeVal = document.getElementById('profileCardBottomSize');
+  if (bottomSizeVal) bottomSizeVal.textContent = profile.bottomSize || '—';
+  var shoeSizeVal = document.getElementById('profileCardShoeSize');
+  if (shoeSizeVal) shoeSizeVal.textContent = profile.shoeSize || '—';
+  var fitPrefVal = document.getElementById('profileCardFitPreference');
+  if (fitPrefVal) fitPrefVal.textContent = profile.fitPreference ? (FIT_LABELS[profile.fitPreference] || profile.fitPreference) : '—';
+  var skinVal = document.getElementById('profileCardSkinTone');
+  if (skinVal) skinVal.textContent = profile.skinTone ? (SKIN_LABELS[profile.skinTone] || profile.skinTone) : '—';
+
+  // Wardrobe Preferences
+  var categoriesEl = document.getElementById('profileCardCategories');
+  if (categoriesEl) {
+    var cats = profile.preferredCategories || [];
+    if (cats.length > 0) {
+      categoriesEl.innerHTML = cats.map(function(c) {
+        return '<span class="pf-tag pf-tag--active">' + escapeHtml(c.charAt(0).toUpperCase() + c.slice(1)) + '</span>';
+      }).join('');
+    } else {
+      categoriesEl.innerHTML = '<span class="pf-tag pf-tag--empty">—</span>';
+    }
+  }
+
+  var prefColors2El = document.getElementById('profileCardPrefColors2');
+  if (prefColors2El) {
+    var prefColors2 = profile.preferredColors || [];
+    if (prefColors2.length > 0) {
+      prefColors2El.innerHTML = prefColors2.map(function(c) {
+        var bg = PREF_COLOR_MAP[c] || '#ccc';
+        var border = c === 'white' ? 'border: 1px solid #ddd; ' : '';
+        return '<span class="pf-color-chip" style="background:' + bg + '; ' + border + 'width:22px; height:22px;" title="' + escapeHtml(c) + '"></span>';
+      }).join('');
+    } else {
+      prefColors2El.innerHTML = '<span class="pf-color-empty">—</span>';
+    }
+  }
+
+  var budget2Val = document.getElementById('profileCardBudgetRange2');
+  if (budget2Val) budget2Val.textContent = profile.budgetRange ? (BUDGET_LABELS[profile.budgetRange] || profile.budgetRange) : '—';
+
+  // Wardrobe Summary + Sidebar stats
+  var wardrobeItems = getWardrobeItems();
+  var uniqueCats = {};
+  var uniqueColors = {};
+  wardrobeItems.forEach(function(item) {
+    if (item.category) uniqueCats[item.category] = true;
+    if (item.color) uniqueColors[item.color] = true;
+  });
+
+  // Sidebar stats
+  var sc = document.getElementById('profileCardWardrobeCount');
+  if (sc) sc.textContent = wardrobeItems.length;
+  var ss = document.getElementById('profileCardWardrobeCats');
+  if (ss) ss.textContent = Object.keys(uniqueCats).length;
+  var sd = document.getElementById('profileCardWardrobeColors');
+  if (sd) sd.textContent = Object.keys(uniqueColors).length;
+
+  // Main section stats
+  var lc = document.getElementById('profileCardWardrobeCountLg');
+  if (lc) lc.textContent = wardrobeItems.length;
+  var ls = document.getElementById('profileCardWardrobeCatsLg');
+  if (ls) ls.textContent = Object.keys(uniqueCats).length;
+  var ld = document.getElementById('profileCardWardrobeColorsLg');
+  if (ld) ld.textContent = Object.keys(uniqueColors).length;
+
+  var wardrobeHint = document.getElementById('profileCardWardrobeHint');
+  if (wardrobeHint) {
+    if (wardrobeItems.length === 0) {
+      wardrobeHint.textContent = 'Add items through the chat to build your wardrobe.';
+    } else {
+      wardrobeHint.textContent = wardrobeItems.length + ' item' + (wardrobeItems.length !== 1 ? 's' : '') + ' in your wardrobe.';
+    }
+  }
+
+  // Photo upload
+  renderProfilePhoto();
+}
+
+/** Render profile photo from localStorage */
+function renderProfilePhoto() {
+  var photoData = localStorage.getItem(userKey('wutt_profile_photo'));
+  var img = document.getElementById('profilePhotoImg');
+  var avatar = document.getElementById('profileCardAvatar');
+  var editAvatar = document.getElementById('profileEditAvatar');
+
+  if (photoData) {
+    if (img) { img.src = photoData; img.classList.remove('u-hidden'); }
+    if (editAvatar) {
+      editAvatar.style.backgroundImage = 'url(' + photoData + ')';
+      editAvatar.style.backgroundSize = 'cover';
+      editAvatar.style.backgroundPosition = 'center';
+      editAvatar.textContent = '';
+    }
+  } else {
+    if (img) { img.src = ''; img.classList.add('u-hidden'); }
+    if (editAvatar) {
+      editAvatar.style.backgroundImage = '';
+      var profile = getUserProfile();
+      var user = getCurrentUser();
+      editAvatar.textContent = profile.name ? profile.name.charAt(0).toUpperCase() : (user ? user.charAt(0).toUpperCase() : '?');
+    }
+  }
+}
+
+/** Wire chip-row and size-pill single-select groups */
+function wireSingleSelectGroup(containerId, activeClass) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  container.addEventListener('click', function(e) {
+    var chip = e.target.closest('[data-value]');
+    if (!chip) return;
+    container.querySelectorAll('[data-value]').forEach(function(c) { c.classList.remove(activeClass); });
+    chip.classList.add(activeClass);
+  });
+}
+
+/** Wire multi-select chip group (toggle on/off) */
+function wireMultiSelectGroup(containerId, activeClass) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  container.addEventListener('click', function(e) {
+    var chip = e.target.closest('[data-value]');
+    if (!chip) return;
+    chip.classList.toggle(activeClass);
+  });
+}
+
+/** Wire skin tone swatches */
+function wireSkinToneSwatches() {
+  var container = document.getElementById('profileSkinToneSwatches');
+  var label = document.getElementById('profileSkinToneName');
+  if (!container) return;
+  container.addEventListener('click', function(e) {
+    var chip = e.target.closest('.pf-tone-chip');
+    if (!chip) return;
+    container.querySelectorAll('.pf-tone-chip').forEach(function(c) { c.classList.remove('pf-tone-chip--active'); });
+    chip.classList.add('pf-tone-chip--active');
+    if (label) label.textContent = SKIN_LABELS[chip.getAttribute('data-value')] || '—';
+  });
+}
+
+/** Set active chip in a group by value */
+function setActiveChipInGroup(containerId, activeClass, value) {
+  var container = document.getElementById(containerId);
+  if (!container || !value) return;
+  container.querySelectorAll('[data-value]').forEach(function(c) {
+    c.classList.toggle(activeClass, c.getAttribute('data-value') === value);
+  });
+}
+
+/** Get selected value from a chip/pill group */
+function getSelectedValue(containerId, activeClass) {
+  var container = document.getElementById(containerId);
+  if (!container) return '';
+  var active = container.querySelector('.' + activeClass);
+  return active ? active.getAttribute('data-value') || '' : '';
+}
+
+/** Load edit form with saved data */
+function loadProfileForm() {
+  var profile = getUserProfile();
+
+  // Text inputs
+  var fields = ['profileName', 'profileHeight', 'profileShoeSize', 'profileCity', 'profileArea', 'profileFavoriteShops'];
+  var keys = ['name', 'height', 'shoeSize', 'city', 'area', 'favoriteShops'];
+  fields.forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (el) el.value = profile[keys[i]] || '';
+  });
+
+  // Single-select chip groups
+  setActiveChipInGroup('profileGenderChips', 'pf-chip--active', profile.gender);
+  setActiveChipInGroup('profileTopSizePills', 'pf-size-pill--active', profile.topSize);
+  setActiveChipInGroup('profileBottomSizePills', 'pf-size-pill--active', profile.bottomSize);
+  setActiveChipInGroup('profileShoppingStyleChips', 'pf-chip--active', profile.shoppingStyle);
+  setActiveChipInGroup('profileFitPreferenceChips', 'pf-chip--active', profile.fitPreference);
+  setActiveChipInGroup('profileOutfitVibeChips', 'pf-chip--active', profile.outfitVibe);
+  setActiveChipInGroup('profileBudgetRangeChips', 'pf-chip--active', profile.budgetRange);
+  setActiveChipInGroup('profileShoppingPrefChips', 'pf-chip--active', profile.shoppingPreference);
+
+  // Multi-select: favorite styles
+  var favStylesContainer = document.getElementById('profileFavoriteStylesChips');
+  if (favStylesContainer) {
+    var favStyles = profile.favoriteStyles || [];
+    favStylesContainer.querySelectorAll('[data-value]').forEach(function(c) {
+      c.classList.toggle('pf-chip--active', favStyles.indexOf(c.getAttribute('data-value')) !== -1);
+    });
+  }
+
+  // Multi-select: preferred colors
+  var prefColorsContainer = document.getElementById('profilePreferredColorsChips');
+  if (prefColorsContainer) {
+    var prefColors = profile.preferredColors || [];
+    prefColorsContainer.querySelectorAll('[data-value]').forEach(function(c) {
+      c.classList.toggle('pf-color-chip--active', prefColors.indexOf(c.getAttribute('data-value')) !== -1);
+    });
+  }
+
+  // Multi-select: preferred categories
+  var catsContainer = document.getElementById('profileCategoriesChips');
+  if (catsContainer) {
+    var cats = profile.preferredCategories || [];
+    catsContainer.querySelectorAll('[data-value]').forEach(function(c) {
+      c.classList.toggle('pf-chip--active', cats.indexOf(c.getAttribute('data-value')) !== -1);
+    });
+  }
+
+  // Skin tone swatches
+  var toneContainer = document.getElementById('profileSkinToneSwatches');
+  var toneLabel = document.getElementById('profileSkinToneName');
+  if (toneContainer) {
+    toneContainer.querySelectorAll('.pf-tone-chip').forEach(function(c) {
+      c.classList.toggle('pf-tone-chip--active', c.getAttribute('data-value') === profile.skinTone);
+    });
+  }
+  if (toneLabel) toneLabel.textContent = profile.skinTone ? (SKIN_LABELS[profile.skinTone] || profile.skinTone) : '—';
+}
+
+/** Save profile from edit form */
+function saveProfileForm() {
+  var profile = {
+    name: (document.getElementById('profileName') || {}).value.trim() || '',
+    gender: getSelectedValue('profileGenderChips', 'pf-chip--active'),
+    height: (document.getElementById('profileHeight') || {}).value.trim() || '',
+    topSize: getSelectedValue('profileTopSizePills', 'pf-size-pill--active'),
+    bottomSize: getSelectedValue('profileBottomSizePills', 'pf-size-pill--active'),
+    shoeSize: (document.getElementById('profileShoeSize') || {}).value.trim() || '',
+    skinTone: getSelectedValue('profileSkinToneSwatches', 'pf-tone-chip--active'),
+    city: (document.getElementById('profileCity') || {}).value.trim() || '',
+    area: (document.getElementById('profileArea') || {}).value.trim() || '',
+    shoppingStyle: getSelectedValue('profileShoppingStyleChips', 'pf-chip--active'),
+    fitPreference: getSelectedValue('profileFitPreferenceChips', 'pf-chip--active'),
+    outfitVibe: getSelectedValue('profileOutfitVibeChips', 'pf-chip--active'),
+    preferredColors: getMultiSelectValues('profilePreferredColorsChips', 'pf-color-chip--active'),
+    budgetRange: getSelectedValue('profileBudgetRangeChips', 'pf-chip--active'),
+    favoriteShops: (document.getElementById('profileFavoriteShops') || {}).value.trim() || '',
+    preferredCategories: getMultiSelectValues('profileCategoriesChips', 'pf-chip--active'),
+    shoppingPreference: getSelectedValue('profileShoppingPrefChips', 'pf-chip--active'),
+    favoriteStyles: getMultiSelectValues('profileFavoriteStylesChips', 'pf-chip--active')
+  };
+  saveUserProfile(profile);
+  showToast('Profile saved', 'success');
+}
+
+/** Get all selected values from a multi-select chip group */
+function getMultiSelectValues(containerId, activeClass) {
+  var container = document.getElementById(containerId);
+  if (!container) return [];
+  var values = [];
+  container.querySelectorAll('.' + activeClass).forEach(function(c) {
+    var v = c.getAttribute('data-value');
+    if (v) values.push(v);
+  });
+  return values;
 }
 
 /** Save a wardrobe item to localStorage */
@@ -1277,7 +2172,7 @@ function saveWardrobeItem(item) {
   item.id = Date.now();
   item.createdAt = new Date().toISOString();
   items.push(item);
-  localStorage.setItem('wutt_wardrobe_items', JSON.stringify(items));
+  localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
   renderWardrobeSidebar();
 }
 
@@ -1383,16 +2278,52 @@ function showUploadPreview(category, dataUrl, fileName) {
 
     scrollChatToBottom();
 
-    // Simulate AI analysis
-    setTimeout(function() {
+    // Real AI analysis via backend
+    var token = localStorage.getItem('wutt_token');
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    fetch(CONFIG.API_BASE + '/stylist/analyze', {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+      body: JSON.stringify({
+        image_data: img,
+        mime_type: 'image/jpeg',
+      }),
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
       clearInterval(interval);
       analyzing.remove();
 
-      var analysis = mockAnalyzeWardrobeItem(cat);
-      showAnalysisCard(cat, img, fname, analysis);
-
+      if (data.status === 'success' && data.data) {
+        showAnalysisCard(cat, img, fname, data.data);
+      } else {
+        // Vision failed — show error
+        var errMsg = document.createElement('div');
+        errMsg.className = 'chat-msg chat-msg--bot';
+        errMsg.innerHTML = '<div class="chat-msg__bubble"><p class="chat-msg__error">'
+          + '⚠️ ' + escapeHtml(data.message || 'AI analysis unavailable. Please check API key or quota.')
+          + '</p></div>';
+        var messagesEl = document.getElementById('chatMessages');
+        if (messagesEl) messagesEl.appendChild(errMsg);
+      }
       scrollChatToBottom();
-    }, 1400);
+    })
+    .catch(function(err) {
+      console.error('[WUTT] Vision analysis error:', err);
+      clearInterval(interval);
+      analyzing.remove();
+      var errMsg = document.createElement('div');
+      errMsg.className = 'chat-msg chat-msg--bot';
+      errMsg.innerHTML = '<div class="chat-msg__bubble"><p class="chat-msg__error">'
+        + '⚠️ Connection error. Please check your connection and try again.'
+        + '</p></div>';
+      var messagesEl = document.getElementById('chatMessages');
+      if (messagesEl) messagesEl.appendChild(errMsg);
+      scrollChatToBottom();
+    });
   });
 }
 
@@ -1620,6 +2551,13 @@ function handleWardrobeDescribe(category) {
 }
 
 /** Render wardrobe items in sidebar drawer */
+function deleteWardrobeItem(itemId) {
+  var items = getWardrobeItems();
+  items = items.filter(function(item) { return item.id !== itemId; });
+  localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
+  renderWardrobeSidebar();
+}
+
 function renderWardrobeSidebar() {
   var container = document.getElementById('sidebarWardrobe');
   if (!container) return;
@@ -1650,11 +2588,24 @@ function renderWardrobeSidebar() {
         '<div class="sidebar-wardrobe__item-cat">' + escapeHtml(item.category) +
           (item.occasions ? ' · ' + escapeHtml(item.occasions) : '') +
         '</div>' +
-      '</div></div>';
+      '</div>' +
+      '<button class="sidebar-wardrobe__delete" data-delete-id="' + item.id + '" aria-label="Delete item" type="button">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button>' +
+    '</div>';
   });
   html += '</div>';
 
   container.innerHTML = html;
+
+  // Wire delete buttons
+  container.querySelectorAll('.sidebar-wardrobe__delete').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var itemId = parseInt(btn.getAttribute('data-delete-id'), 10);
+      deleteWardrobeItem(itemId);
+    });
+  });
 }
 
 /** Add a user message */

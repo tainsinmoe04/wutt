@@ -438,22 +438,16 @@
       <button class="chat-sidebar__item chat-sidebar__item--active" aria-label="Home" data-panel="home">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </button>
-      <button class="chat-sidebar__item" aria-label="Chat" data-panel="chat">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      </button>
       <button class="chat-sidebar__item" aria-label="Wardrobe" data-panel="wardrobe">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>
       </button>
-      <button class="chat-sidebar__item" aria-label="Saved Looks" data-panel="saved">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-      </button>
-      <button class="chat-sidebar__item" aria-label="Style Feed" data-panel="feed">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M6 8h12M6 12h8M6 16h10"/></svg>
-      </button>
-      <button class="chat-sidebar__item" aria-label="Settings" data-panel="settings">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <button class="chat-sidebar__item" aria-label="Wishlist" data-panel="wishlist">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
       </button>
       <div class="chat-sidebar__spacer"></div>
+      <button class="chat-sidebar__item" aria-label="Profile" data-panel="profile">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
       <button class="chat-sidebar__item" aria-label="Log out" id="logoutBtn">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
@@ -472,103 +466,539 @@
       </div>
     </aside>
 
-    <!-- Settings drawer -->
-    <aside class="settings-drawer u-hidden" id="settingsDrawer" aria-hidden="true">
-      <div class="settings-drawer__header">
-        <h3 class="settings-drawer__title">Chat Settings</h3>
-        <button class="settings-drawer__close" id="settingsDrawerClose" aria-label="Close settings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="settings-drawer__body">
-        <!-- Mood -->
-        <div class="settings-section">
-          <div class="settings-section__title">Mood</div>
-          <div class="settings-chips" id="moodChips">
-            <button class="settings-chip settings-chip--active" data-mood="day">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-              Day
-            </button>
-            <button class="settings-chip" data-mood="night">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              Night
-            </button>
-          </div>
-        </div>
-        <!-- Background -->
-        <div class="settings-section">
-          <div class="settings-section__title">Background</div>
-          <div class="settings-bg-chips" id="bgChips">
-            <button class="settings-bg-chip settings-bg-chip--clean settings-bg-chip--active" data-bg="clean" aria-label="Clean background">
-              <div class="settings-bg-chip__preview"></div>
-            </button>
-            <button class="settings-bg-chip settings-bg-chip--grid" data-bg="grid" aria-label="Grid background">
-              <div class="settings-bg-chip__preview"></div>
-            </button>
-            <button class="settings-bg-chip settings-bg-chip--fabric" data-bg="fabric" aria-label="Fabric texture background">
-              <div class="settings-bg-chip__preview"></div>
-            </button>
-            <button class="settings-bg-chip settings-bg-chip--wardrobe" data-bg="wardrobe" aria-label="Wardrobe beige background">
-              <div class="settings-bg-chip__preview"></div>
-            </button>
-            <button class="settings-bg-chip settings-bg-chip--midnight" data-bg="midnight" aria-label="Midnight background">
-              <div class="settings-bg-chip__preview"></div>
-            </button>
-          </div>
-        </div>
-      </div>
-    </aside>
-
     <!-- Main chat area -->
     <div class="chat-main">
-      <!-- Style Feed — full-page view (replaces chat content when active) -->
-      <div class="feed-view u-hidden" id="feedView">
-        <header class="feed-view__header">
-          <div class="feed-view__header-left">
-            <button class="feed-view__back" id="feedBackBtn" aria-label="Back to chat">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-            </button>
-            <h2 class="feed-view__title">Style Feed</h2>
+      <!-- Shop Home — style-led product discovery -->
+      <div class="shop-view u-hidden" id="shopView">
+        <div class="shop-view__scroll">
+          <!-- Hero banner -->
+          <div class="shop-hero">
+            <div class="shop-hero__bg"></div>
+            <div class="shop-hero__content">
+              <h2 class="shop-hero__title">Discover your style</h2>
+              <p class="shop-hero__sub">Curated picks from local shops near you</p>
+            </div>
           </div>
-          <button class="feed-view__share-btn" id="feedShareBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Share Look
-          </button>
-        </header>
 
-        <div class="feed-view__body">
-          <div class="feed-masonry" id="feedGrid"></div>
+          <!-- Category chips -->
+          <div class="shop-chips" id="shopCategoryChips">
+            <button class="shop-chip shop-chip--active" data-cat="all">All</button>
+            <button class="shop-chip" data-cat="tops">Tops</button>
+            <button class="shop-chip" data-cat="bottoms">Bottoms</button>
+            <button class="shop-chip" data-cat="shoes">Shoes</button>
+            <button class="shop-chip" data-cat="dresses">Dresses</button>
+            <button class="shop-chip" data-cat="accessories">Accessories</button>
+          </div>
+
+          <!-- Trending section -->
+          <div class="shop-section">
+            <h3 class="shop-section__title">Trending near you</h3>
+            <div class="shop-grid" id="shopGrid"></div>
+          </div>
+
+          <!-- Style picks section -->
+          <div class="shop-section">
+            <h3 class="shop-section__title">Style picks for you</h3>
+            <div class="shop-grid" id="shopPicksGrid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wishlist — saved products -->
+      <div class="wishlist-view u-hidden" id="wishlistView">
+        <div class="wishlist-view__header">
+          <h2 class="wishlist-view__title">Wishlist</h2>
+          <span class="wishlist-view__count" id="wishlistCount">0 items</span>
+        </div>
+        <div class="wishlist-view__body">
+          <div class="wishlist-grid" id="wishlistGrid"></div>
+          <div class="wishlist-empty u-hidden" id="wishlistEmpty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <p>Your wishlist is empty</p>
+            <span>Tap the heart on any product to save it here</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Chat FAB — top-right corner -->
+      <button class="ai-chat-fab" id="aiChatFab" aria-label="Open AI Stylist" type="button">
+        <svg width="22" height="22" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="12" fill="currentColor" opacity="0.15"/><path d="M9 25V12l8 5.5-8 5.5zm8 0h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+
+      <!-- Profile — premium 2-column dashboard -->
+      <div class="profile-view u-hidden" id="profileView">
+        <div class="profile-view__scroll">
+
+          <div class="pf-layout">
+
+            <!-- LEFT: Sticky profile summary sidebar -->
+            <aside class="pf-sidebar">
+              <div class="pf-sidebar__card">
+
+                <!-- Photo upload area -->
+                <div class="pf-photo-upload" id="profilePhotoUpload" role="button" tabindex="0" aria-label="Upload profile photo">
+                  <div class="pf-photo-upload__avatar" id="profileCardAvatar">?</div>
+                  <div class="pf-photo-upload__overlay">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span>Change Photo</span>
+                  </div>
+                  <img class="pf-photo-upload__img u-hidden" id="profilePhotoImg" alt="Profile photo">
+                </div>
+                <input type="file" id="profilePhotoInput" accept="image/*" class="u-hidden" aria-hidden="true">
+
+                <h2 class="pf-sidebar__name" id="profileCardName">Your Name</h2>
+                <p class="pf-sidebar__email" id="profileCardEmail">—</p>
+
+                <div class="pf-sidebar__badges">
+                  <span class="pf-badge" id="profileCardStyle">—</span>
+                  <span class="pf-badge pf-badge--location" id="profileCardCity">—</span>
+                </div>
+
+                <button class="pf-sidebar__edit-btn" id="profileEditBtn" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Edit Profile
+                </button>
+
+                <!-- Quick wardrobe stats -->
+                <div class="pf-sidebar__stats">
+                  <div class="pf-sidebar__stat">
+                    <span class="pf-sidebar__stat-num" id="profileCardWardrobeCount">0</span>
+                    <span class="pf-sidebar__stat-label">Items</span>
+                  </div>
+                  <div class="pf-sidebar__stat">
+                    <span class="pf-sidebar__stat-num" id="profileCardWardrobeCats">0</span>
+                    <span class="pf-sidebar__stat-label">Styles</span>
+                  </div>
+                  <div class="pf-sidebar__stat">
+                    <span class="pf-sidebar__stat-num" id="profileCardWardrobeColors">0</span>
+                    <span class="pf-sidebar__stat-label">Colors</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            <!-- RIGHT: Profile sections -->
+            <div class="pf-main">
+
+              <!-- Public Profile -->
+              <div class="pf-section">
+                <div class="pf-section__header">
+                  <h3 class="pf-section__title">Public Profile</h3>
+                  <button class="pf-section__edit" data-edit-section="public" type="button">Edit</button>
+                </div>
+                <div class="pf-section__body">
+                  <div class="pf-field">
+                    <span class="pf-field__label">Name</span>
+                    <span class="pf-field__value" id="profileCardName2">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Gender</span>
+                    <span class="pf-field__value" id="profileCardGender">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Location</span>
+                    <span class="pf-field__value" id="profileCardLocation">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Style Identity -->
+              <div class="pf-section">
+                <div class="pf-section__header">
+                  <h3 class="pf-section__title">Style Identity</h3>
+                  <button class="pf-section__edit" data-edit-section="style" type="button">Edit</button>
+                </div>
+                <div class="pf-section__body">
+                  <div class="pf-field pf-field--block">
+                    <span class="pf-field__label">Style Quiz Results</span>
+                    <div class="pf-field__tags" id="profileCardStyleTags">
+                      <span class="pf-tag pf-tag--empty">Complete the style quiz to set preferences</span>
+                    </div>
+                  </div>
+                  <div class="pf-field pf-field--block">
+                    <span class="pf-field__label">Favorite Styles</span>
+                    <div class="pf-field__tags" id="profileCardFavoriteStyles">
+                      <span class="pf-tag pf-tag--empty">—</span>
+                    </div>
+                  </div>
+                  <div class="pf-field pf-field--block">
+                    <span class="pf-field__label">Preferred Colors</span>
+                    <div class="pf-field__colors" id="profileCardPreferredColors">
+                      <span class="pf-color-empty">—</span>
+                    </div>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Outfit Vibe</span>
+                    <span class="pf-field__value" id="profileCardOutfitVibe">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Shopping Preferences -->
+              <div class="pf-section">
+                <div class="pf-section__header">
+                  <h3 class="pf-section__title">Shopping Preferences</h3>
+                  <button class="pf-section__edit" data-edit-section="shopping" type="button">Edit</button>
+                </div>
+                <div class="pf-section__body">
+                  <div class="pf-field">
+                    <span class="pf-field__label">Budget Range</span>
+                    <span class="pf-field__value" id="profileCardBudgetRange">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Favorite Shops</span>
+                    <span class="pf-field__value" id="profileCardFavoriteShops">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Shopping Style</span>
+                    <span class="pf-field__value" id="profileCardShoppingStyle">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Shopping Preference</span>
+                    <span class="pf-field__value" id="profileCardShoppingPreference">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sizes & Fit -->
+              <div class="pf-section">
+                <div class="pf-section__header">
+                  <h3 class="pf-section__title">Sizes &amp; Fit</h3>
+                  <button class="pf-section__edit" data-edit-section="sizes" type="button">Edit</button>
+                </div>
+                <div class="pf-section__body">
+                  <div class="pf-field">
+                    <span class="pf-field__label">Height</span>
+                    <span class="pf-field__value" id="profileCardHeight">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Top Size</span>
+                    <span class="pf-field__value" id="profileCardTopSize">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Bottom Size</span>
+                    <span class="pf-field__value" id="profileCardBottomSize">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Shoe Size</span>
+                    <span class="pf-field__value" id="profileCardShoeSize">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Fit Preference</span>
+                    <span class="pf-field__value" id="profileCardFitPreference">—</span>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Skin Tone</span>
+                    <span class="pf-field__value" id="profileCardSkinTone">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Wardrobe Preferences -->
+              <div class="pf-section">
+                <div class="pf-section__header">
+                  <h3 class="pf-section__title">Wardrobe Preferences</h3>
+                  <button class="pf-section__edit" data-edit-section="preferences" type="button">Edit</button>
+                </div>
+                <div class="pf-section__body">
+                  <div class="pf-field pf-field--block">
+                    <span class="pf-field__label">Preferred Categories</span>
+                    <div class="pf-field__tags" id="profileCardCategories">
+                      <span class="pf-tag pf-tag--empty">—</span>
+                    </div>
+                  </div>
+                  <div class="pf-field pf-field--block">
+                    <span class="pf-field__label">Preferred Colors</span>
+                    <div class="pf-field__colors" id="profileCardPrefColors2">
+                      <span class="pf-color-empty">—</span>
+                    </div>
+                  </div>
+                  <div class="pf-field">
+                    <span class="pf-field__label">Budget Range</span>
+                    <span class="pf-field__value" id="profileCardBudgetRange2">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Coupons / Offers -->
+              <div class="pf-section">
+                <div class="pf-section__header">
+                  <h3 class="pf-section__title">Coupons &amp; Offers</h3>
+                </div>
+                <div class="pf-section__body">
+                  <div class="pf-coupons" id="profileCoupons">
+                    <div class="pf-coupon">
+                      <div class="pf-coupon__badge">10% OFF</div>
+                      <div class="pf-coupon__info">
+                        <span class="pf-coupon__code">STYLE10</span>
+                        <span class="pf-coupon__desc">First purchase discount</span>
+                      </div>
+                      <button class="pf-coupon__copy" type="button" data-code="STYLE10" aria-label="Copy coupon code">Copy</button>
+                    </div>
+                    <div class="pf-coupon">
+                      <div class="pf-coupon__badge pf-coupon__badge--green">FREE SHIP</div>
+                      <div class="pf-coupon__info">
+                        <span class="pf-coupon__code">SHIPFREE</span>
+                        <span class="pf-coupon__desc">Free delivery on orders over 50k</span>
+                      </div>
+                      <button class="pf-coupon__copy" type="button" data-code="SHIPFREE" aria-label="Copy coupon code">Copy</button>
+                    </div>
+                    <div class="pf-coupon pf-coupon--empty">
+                      <p class="pf-coupon__empty-text">More offers coming soon. Keep shopping to unlock rewards.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Wardrobe Summary (full) -->
+              <div class="pf-section">
+                <div class="pf-section__header">
+                  <h3 class="pf-section__title">Wardrobe Summary</h3>
+                </div>
+                <div class="pf-section__body">
+                  <div class="pf-wardrobe-stats">
+                    <div class="pf-stat">
+                      <span class="pf-stat__number" id="profileCardWardrobeCountLg">0</span>
+                      <span class="pf-stat__label">Total Items</span>
+                    </div>
+                    <div class="pf-stat">
+                      <span class="pf-stat__number" id="profileCardWardrobeCatsLg">0</span>
+                      <span class="pf-stat__label">Categories</span>
+                    </div>
+                    <div class="pf-stat">
+                      <span class="pf-stat__number" id="profileCardWardrobeColorsLg">0</span>
+                      <span class="pf-stat__label">Unique Colors</span>
+                    </div>
+                  </div>
+                  <p class="pf-wardrobe-hint" id="profileCardWardrobeHint">Add items through the chat to build your wardrobe.</p>
+                </div>
+              </div>
+
+              <!-- Appearance -->
+              <div class="pf-section">
+                <div class="pf-section__header">
+                  <h3 class="pf-section__title">Appearance</h3>
+                </div>
+                <div class="pf-section__body">
+                  <div class="pf-field pf-field--block">
+                    <span class="pf-field__label">Mood</span>
+                    <div class="pf-settings-chips" id="moodChips">
+                      <button class="pf-settings-chip pf-settings-chip--active" data-mood="day" type="button">Day</button>
+                      <button class="pf-settings-chip" data-mood="night" type="button">Night</button>
+                    </div>
+                  </div>
+                  <div class="pf-field pf-field--block">
+                    <span class="pf-field__label">Background</span>
+                    <div class="pf-settings-bg-chips" id="bgChips">
+                      <button class="pf-settings-bg-chip pf-settings-bg-chip--active" data-bg="clean" type="button" aria-label="Clean"><span></span></button>
+                      <button class="pf-settings-bg-chip" data-bg="grid" type="button" aria-label="Grid"><span></span></button>
+                      <button class="pf-settings-bg-chip" data-bg="fabric" type="button" aria-label="Fabric"><span></span></button>
+                      <button class="pf-settings-bg-chip" data-bg="midnight" type="button" aria-label="Midnight"><span></span></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
 
-        <!-- Composer overlay -->
-        <div class="feed-composer-overlay u-hidden" id="feedComposer">
-          <div class="feed-composer">
-            <div class="feed-composer__header">
-              <span class="feed-composer__title">New Look</span>
-              <button class="feed-composer__cancel" id="feedComposerCancel" aria-label="Cancel">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <!-- Edit modal overlay -->
+        <div class="pf-edit-overlay" id="profileEditOverlay">
+          <div class="pf-edit-modal">
+            <div class="pf-edit-modal__header">
+              <h3 class="pf-edit-modal__title">Edit Profile</h3>
+              <button class="pf-edit-modal__close" id="profileEditClose" aria-label="Close edit" type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div class="feed-composer__body">
-              <div class="feed-composer__dropzone" id="feedDropzone">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span>Drop image or tap to upload</span>
-                <input type="file" id="feedFileInput" accept="image/*" class="u-hidden" aria-label="Upload outfit image">
-              </div>
-              <img class="feed-composer__preview u-hidden" id="feedPreview" alt="Preview">
-              <input class="feed-composer__input" id="feedComposerCaption" type="text" placeholder="Caption your look..." maxlength="120" aria-label="Caption">
-              <select class="feed-composer__select" id="feedComposerMood" aria-label="Mood tag">
-                <option value="">Mood tag</option>
-                <option value="Casual">Casual</option>
-                <option value="Chic">Chic</option>
-                <option value="Street">Street</option>
-                <option value="Minimal">Minimal</option>
-                <option value="Bold">Bold</option>
-                <option value="Cozy">Cozy</option>
-                <option value="Work">Work</option>
-                <option value="Date Night">Date Night</option>
-              </select>
-              <button class="feed-composer__post" id="feedComposerPost">Post Look</button>
+            <div class="pf-edit-modal__body">
+              <form id="profileForm" class="pf-edit-form">
+
+                <!-- Photo upload in edit drawer -->
+                <div class="pf-edit-photo">
+                  <div class="pf-edit-photo__avatar" id="profileEditAvatar">?</div>
+                  <button class="pf-edit-photo__btn" id="profileEditPhotoBtn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Change Photo
+                  </button>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Name</label>
+                  <input class="pf-edit-input" id="profileName" type="text" placeholder="Your name" autocomplete="name">
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Gender / Style Preference</label>
+                  <div class="pf-chip-row" id="profileGenderChips">
+                    <button type="button" class="pf-chip" data-value="female">Female</button>
+                    <button type="button" class="pf-chip" data-value="male">Male</button>
+                    <button type="button" class="pf-chip" data-value="unisex">Unisex</button>
+                    <button type="button" class="pf-chip" data-value="prefer-not">Prefer not</button>
+                  </div>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Height</label>
+                  <input class="pf-edit-input" id="profileHeight" type="text" placeholder="e.g. 170 cm / 5'7&quot;">
+                </div>
+
+                <div class="pf-edit-row-2col">
+                  <div class="pf-edit-group">
+                    <label class="pf-edit-label">Top Size</label>
+                    <div class="pf-size-pills" id="profileTopSizePills">
+                      <button type="button" class="pf-size-pill" data-value="XS">XS</button>
+                      <button type="button" class="pf-size-pill" data-value="S">S</button>
+                      <button type="button" class="pf-size-pill" data-value="M">M</button>
+                      <button type="button" class="pf-size-pill" data-value="L">L</button>
+                      <button type="button" class="pf-size-pill" data-value="XL">XL</button>
+                      <button type="button" class="pf-size-pill" data-value="XXL">XXL</button>
+                    </div>
+                  </div>
+                  <div class="pf-edit-group">
+                    <label class="pf-edit-label">Bottom Size</label>
+                    <div class="pf-size-pills" id="profileBottomSizePills">
+                      <button type="button" class="pf-size-pill" data-value="XS">XS</button>
+                      <button type="button" class="pf-size-pill" data-value="S">S</button>
+                      <button type="button" class="pf-size-pill" data-value="M">M</button>
+                      <button type="button" class="pf-size-pill" data-value="L">L</button>
+                      <button type="button" class="pf-size-pill" data-value="XL">XL</button>
+                      <button type="button" class="pf-size-pill" data-value="XXL">XXL</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Shoe Size</label>
+                  <input class="pf-edit-input pf-edit-input--sm" id="profileShoeSize" type="text" placeholder="e.g. EU 40 / US 9">
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Fit Preference</label>
+                  <div class="pf-chip-row" id="profileFitPreferenceChips">
+                    <button type="button" class="pf-chip" data-value="oversized">Oversized</button>
+                    <button type="button" class="pf-chip" data-value="regular">Regular</button>
+                    <button type="button" class="pf-chip" data-value="slim">Slim</button>
+                  </div>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Skin Tone</label>
+                  <div class="pf-tone-row" id="profileSkinToneSwatches">
+                    <button type="button" class="pf-tone-chip" data-value="fair" title="Fair" style="background:#FDEBD0"></button>
+                    <button type="button" class="pf-tone-chip" data-value="light" title="Light" style="background:#F5CBA7"></button>
+                    <button type="button" class="pf-tone-chip" data-value="medium" title="Medium" style="background:#E0B38A"></button>
+                    <button type="button" class="pf-tone-chip" data-value="olive" title="Olive" style="background:#C4A76C"></button>
+                    <button type="button" class="pf-tone-chip" data-value="tan" title="Tan" style="background:#B5815E"></button>
+                    <button type="button" class="pf-tone-chip" data-value="brown" title="Brown" style="background:#8D5E3C"></button>
+                    <button type="button" class="pf-tone-chip" data-value="dark" title="Dark" style="background:#5D3A1A"></button>
+                  </div>
+                  <span class="pf-tone-label" id="profileSkinToneName">—</span>
+                </div>
+
+                <div class="pf-edit-row-2col">
+                  <div class="pf-edit-group">
+                    <label class="pf-edit-label">City</label>
+                    <input class="pf-edit-input" id="profileCity" type="text" placeholder="e.g. Yangon" autocomplete="address-level2">
+                  </div>
+                  <div class="pf-edit-group">
+                    <label class="pf-edit-label">Area / District</label>
+                    <input class="pf-edit-input" id="profileArea" type="text" placeholder="e.g. Bahan">
+                  </div>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Preferred Shopping Style</label>
+                  <div class="pf-chip-row" id="profileShoppingStyleChips">
+                    <button type="button" class="pf-chip" data-value="local-markets">Local Markets</button>
+                    <button type="button" class="pf-chip" data-value="online">Online</button>
+                    <button type="button" class="pf-chip" data-value="malls">Malls</button>
+                    <button type="button" class="pf-chip" data-value="thrift">Thrift</button>
+                    <button type="button" class="pf-chip" data-value="boutique">Boutique</button>
+                  </div>
+                </div>
+
+                <!-- Style Identity fields -->
+                <div class="pf-edit-divider"><span>Style Identity</span></div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Favorite Styles</label>
+                  <div class="pf-chip-row" id="profileFavoriteStylesChips">
+                    <button type="button" class="pf-chip" data-value="minimal">Minimal</button>
+                    <button type="button" class="pf-chip" data-value="streetwear">Streetwear</button>
+                    <button type="button" class="pf-chip" data-value="korean-casual">Korean Casual</button>
+                    <button type="button" class="pf-chip" data-value="old-money">Old Money</button>
+                    <button type="button" class="pf-chip" data-value="clean-fit">Clean Fit</button>
+                    <button type="button" class="pf-chip" data-value="vintage">Vintage</button>
+                    <button type="button" class="pf-chip" data-value="y2k">Y2K</button>
+                    <button type="button" class="pf-chip" data-value="dark-academia">Dark Academia</button>
+                  </div>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Preferred Colors</label>
+                  <div class="pf-color-row pf-color-row--edit" id="profilePreferredColorsChips">
+                    <button type="button" class="pf-color-chip" data-value="black" style="background:#1a1a1a" title="Black"></button>
+                    <button type="button" class="pf-color-chip" data-value="white" style="background:#f5f5f5; border-color: #ddd" title="White"></button>
+                    <button type="button" class="pf-color-chip" data-value="beige" style="background:#E8DCC8" title="Beige"></button>
+                    <button type="button" class="pf-color-chip" data-value="navy" style="background:#253A82" title="Navy"></button>
+                    <button type="button" class="pf-color-chip" data-value="brown" style="background:#8B6F47" title="Brown"></button>
+                    <button type="button" class="pf-color-chip" data-value="olive" style="background:#6B7B3A" title="Olive"></button>
+                    <button type="button" class="pf-color-chip" data-value="blush" style="background:#E8B4B8" title="Blush"></button>
+                    <button type="button" class="pf-color-chip" data-value="grey" style="background:#9E9E9E" title="Grey"></button>
+                  </div>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Outfit Vibe</label>
+                  <div class="pf-chip-row" id="profileOutfitVibeChips">
+                    <button type="button" class="pf-chip" data-value="simple">Simple</button>
+                    <button type="button" class="pf-chip" data-value="confident">Confident</button>
+                    <button type="button" class="pf-chip" data-value="soft">Soft</button>
+                    <button type="button" class="pf-chip" data-value="statement">Statement</button>
+                  </div>
+                </div>
+
+                <!-- Shopping Profile fields -->
+                <div class="pf-edit-divider"><span>Shopping Profile</span></div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Budget Range</label>
+                  <div class="pf-chip-row" id="profileBudgetRangeChips">
+                    <button type="button" class="pf-chip" data-value="under-30k">Under 30k</button>
+                    <button type="button" class="pf-chip" data-value="30k-80k">30k – 80k</button>
+                    <button type="button" class="pf-chip" data-value="80k-150k">80k – 150k</button>
+                    <button type="button" class="pf-chip" data-value="150k-plus">150k+</button>
+                  </div>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Favorite Local Shops</label>
+                  <input class="pf-edit-input" id="profileFavoriteShops" type="text" placeholder="e.g. Yangon Atelier, Nora Boutique">
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Preferred Categories</label>
+                  <div class="pf-chip-row" id="profileCategoriesChips">
+                    <button type="button" class="pf-chip" data-value="tops">Tops</button>
+                    <button type="button" class="pf-chip" data-value="pants">Pants</button>
+                    <button type="button" class="pf-chip" data-value="shoes">Shoes</button>
+                    <button type="button" class="pf-chip" data-value="bags">Bags</button>
+                    <button type="button" class="pf-chip" data-value="accessories">Accessories</button>
+                  </div>
+                </div>
+
+                <div class="pf-edit-group">
+                  <label class="pf-edit-label">Shopping Preference</label>
+                  <div class="pf-chip-row" id="profileShoppingPrefChips">
+                    <button type="button" class="pf-chip" data-value="wardrobe-first">Use wardrobe first</button>
+                    <button type="button" class="pf-chip" data-value="shop-missing">Shop missing pieces</button>
+                  </div>
+                </div>
+
+                <button class="pf-edit-submit" type="submit">Save Changes</button>
+              </form>
             </div>
           </div>
         </div>
@@ -586,6 +1016,12 @@
           <h2 class="chat-header__title">WUTT Stylist</h2>
           <p class="chat-header__subtitle">Your wardrobe companion</p>
         </div>
+        <button class="chat-header__clear" id="chatClearHistoryBtn" title="Clear chat history" aria-label="Clear chat history">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
       </header>
 
       <!-- Chat body -->

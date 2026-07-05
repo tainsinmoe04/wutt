@@ -1,10 +1,11 @@
-"""Stylist routes: get outfit recommendations and view history.
+"""Stylist routes: get outfit recommendations, chat, and view history.
 
 Endpoints
     POST /stylist/recommend        —  AI-powered outfit recommendation.
+    POST /stylist/chat             —  General chat with AI stylist.
     GET  /stylist/history/{user_id} —  List past style sessions.
 
-Requires authentication on both endpoints.
+Requires authentication on all endpoints.
 """
 
 import json
@@ -21,7 +22,11 @@ from database import get_db
 from models import User, Profile, Wardrobe, StyleSession
 from routes.auth import get_current_user
 from services.weather_svc import get_current_weather, WeatherData
-from services.openai_svc import get_outfit_recommendation
+from services.openai_svc import get_outfit_recommendation as openai_recommend
+from services.gemini_svc import get_outfit_recommendation as gemini_recommend
+from services.gemini_svc import get_chat_response
+from services.gemini_svc import analyze_clothing_image
+from services.gemini_svc import FASHION_KNOWLEDGE, APP_GUIDE
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -38,6 +43,32 @@ class RecommendRequest(BaseModel):
     occasion: str = Field(
         ..., min_length=1, max_length=100,
         description="e.g. wedding, work, party, dinner date",
+    )
+
+
+class ChatRequest(BaseModel):
+    """Payload for POST /stylist/chat — general conversation."""
+
+    message: str = Field(
+        ..., min_length=1, max_length=500,
+        description="User's chat message",
+    )
+    conversation_history: list[dict[str, str]] = Field(
+        default_factory=list,
+        description='Previous messages as [{"role": "user"|"bot", "content": "..."}]',
+    )
+
+
+class AnalyzeRequest(BaseModel):
+    """Payload for POST /stylist/analyze — send image for vision analysis."""
+
+    image_data: str = Field(
+        ..., min_length=100,
+        description="Base64-encoded image data",
+    )
+    mime_type: str = Field(
+        default="image/jpeg",
+        description="MIME type of the image",
     )
 
 
@@ -550,97 +581,6 @@ def _pick_best(
     return random.choice(candidates) if candidates else entries[0][1]
 
 
-def _generate_fallback(
-    wardrobe_items: list[dict[str, Any]],
-    occasion: str,
-    weather_desc: str | None = None,
-    temperature_c: float | None = None,
-    skin_tone: str | None = None,
-    style_preference: str | None = None,
-) -> dict[str, Any]:
-    """Generate a rule-based outfit recommendation from wardrobe metadata.
-
-    Guarantees valid outfit composition:
-    • One dress only — OR —
-    • One top + one bottom — OR —
-    • One traditional/formal set
-    • Optional: one outerwear or accessory
-
-    Never returns dress+dress, top+top, bottom+bottom, or
-    dress+top+bottom.
-
-    Returns:
-        Dict with ``outfit`` (list[str]), ``explanation`` (str),
-        ``weather_based_tip`` (str), ``suitability`` (int 0–100).
-    """
-    if not wardrobe_items:
-        return {
-            "outfit": [],
-            "explanation": "ဗီရိုထဲမှာ အဝတ်အစားမရှိသေးပါ။ ဓာတ်ပုံရိုက်ပြီး upload လုပ်ပါ။",
-            "weather_based_tip": "",
-        }
-
-    occ_lower = occasion.lower().strip()
-
-    # ── Classify all items ─────────────────────────────
-    classified: dict[str, list[dict[str, Any]]] = {
-        "dress": [], "top": [], "bottom": [], "traditional": [],
-        "outerwear": [], "accessory": [], "shoes": [], "unknown": [],
-    }
-    for item in wardrobe_items:
-        broad = _classify_item(item)
-        if broad in classified:
-            classified[broad].append(item)
-        else:
-            classified["unknown"].append(item)
-
-    # Score each item (with style preference for variety)
-    scored: dict[str, list[tuple[int, dict[str, Any]]]] = {}
-    for key, items in classified.items():
-        scored[key] = sorted(
-            ((_score_item(it, key, occasion, temperature_c, style_preference), it)
-             for it in items),
-            key=lambda x: x[0],
-            reverse=True,
-        )
-
-    outfit: list[str] = []
-    explanation: str = ""
-    suitability: int = 0
-
-    # ── Select outfit based on occasion ─────────────────
-
-    if occ_lower == "interview":
-        outfit, explanation, suitability = _build_interview_outfit(
-            classified, scored, occ_lower, temperature_c,
-        )
-    elif occ_lower == "wedding":
-        outfit, explanation, suitability = _build_wedding_outfit(
-            classified, scored, occ_lower, temperature_c,
-        )
-    elif occ_lower == "party":
-        outfit, explanation, suitability = _build_party_outfit(
-            classified, scored, occ_lower, temperature_c,
-        )
-    elif occ_lower == "casual":
-        outfit, explanation, suitability = _build_casual_outfit(
-            classified, scored, occ_lower, temperature_c,
-        )
-    else:
-        outfit, explanation, suitability = _build_generic_outfit(
-            classified, scored, occ_lower, temperature_c,
-        )
-
-    # ── Weather tip ────────────────────────────────────
-    weather_tip = _get_weather_tip(weather_desc, temperature_c)
-
-    return {
-        "outfit": outfit,
-        "explanation": explanation,
-        "weather_based_tip": weather_tip,
-    }
-
-
 # ── Outfit builders (one per occasion type) ──────────────
 
 
@@ -1099,7 +1039,9 @@ def _build_generic_outfit(
     """Build an outfit for generic/other occasions.
 
     Rules:
-    • Prefer: one dress, OR one top + one bottom, OR one traditional set.
+    • Date/coffee date: prefer casual top+bottom (NOT traditional).
+    • Wedding: prefer traditional first.
+    • Other: top+bottom first, then dress, then traditional.
     • Optional outerwear/accessory.
     • Never invalid combinations.
     """
@@ -1108,9 +1050,37 @@ def _build_generic_outfit(
     dresses = scored.get("dress", [])
     traditionals = scored.get("traditional", [])
     occasion_my_str = _occasion_my(occasion)
+    occ_lower = occasion.lower().strip()
 
-    # Best: traditional (randomised)
-    if traditionals:
+    # ── Date/coffee date: prefer casual top+bottom, NOT traditional ──
+    if occ_lower in ("date", "coffee date", "coffee_date"):
+        if tops and bottoms:
+            top = _pick_best(tops)
+            bottom = _pick_best(bottoms)
+            s_top = tops[0][0]
+            s_bot = bottoms[0][0]
+            label_top = _item_label(top)
+            label_bot = _item_label(bottom)
+            labels = [label_top, label_bot]
+            feasibility = (s_top + s_bot) // 2
+            explanation = (
+                f"{occasion_my_str} အတွက် {label_top} နဲ့ {label_bot} တွဲဝတ်တာက "
+                f"သက်တောင့်သက်သာရှိပြီး လှပပါတယ်။ "
+                f"ရိုးရှင်းပြီး clean look က date အတွက် အကောင်းဆုံးပါ။"
+            )
+            return (labels, explanation, feasibility)
+        if dresses:
+            dress = _pick_best(dresses)
+            s = dresses[0][0]
+            label = _item_label(dress)
+            return (
+                [label],
+                f"{occasion_my_str} အတွက် {label} က သက်တောင့်သက်သာရှိပြီး လှပပါတယ်။",
+                s,
+            )
+
+    # ── Wedding: prefer traditional first ──
+    if occ_lower == "wedding" and traditionals:
         trad = _pick_best(traditionals)
         s = traditionals[0][0]
         label = _item_label(trad)
@@ -1120,18 +1090,7 @@ def _build_generic_outfit(
             s,
         )
 
-    # Good: dress (randomised)
-    if dresses:
-        dress = _pick_best(dresses)
-        s = dresses[0][0]
-        label = _item_label(dress)
-        return (
-            [label],
-            f"{occasion_my_str} အတွက် {label} က သင့်တော်ပါတယ်।",
-            s,
-        )
-
-    # Good: top + bottom (randomised)
+    # ── Default: top + bottom first (most versatile) ──
     if tops and bottoms:
         top = _pick_best(tops)
         bottom = _pick_best(bottoms)
@@ -1141,12 +1100,33 @@ def _build_generic_outfit(
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
         feasibility = (s_top + s_bot) // 2
-
         return (
             labels,
             f"{occasion_my_str} အတွက် {label_top} နဲ့ {label_bot} တွဲဝတ်တာက "
             f"သင့်တော်ပါတယ်။",
             feasibility,
+        )
+
+    # Then: dress
+    if dresses:
+        dress = _pick_best(dresses)
+        s = dresses[0][0]
+        label = _item_label(dress)
+        return (
+            [label],
+            f"{occasion_my_str} အတွက် {label} က သင့်တော်ပါတယ်။",
+            s,
+        )
+
+    # Then: traditional
+    if traditionals:
+        trad = _pick_best(traditionals)
+        s = traditionals[0][0]
+        label = _item_label(trad)
+        return (
+            [label],
+            f"{occasion_my_str} အတွက် {label} က သင့်တော်ပါတယ်။",
+            s,
         )
 
     # Only tops (randomised)
@@ -1180,7 +1160,136 @@ def _build_generic_outfit(
     )
 
 
+
+# ── General Fashion Advice (no wardrobe) ─────────────────
+
+
 # ── Routes ─────────────────────────────────────────────
+
+
+# ── Demo wardrobe items for live demo ──────────────────
+_DEMO_WARDROBE_ITEMS: list[dict[str, Any]] = [
+    {
+        "cloudinary_url": "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        "cloudinary_public_id": "demo-navy-blazer",
+        "category": "top",
+        "subtype": "blazer",
+        "color": "navy",
+        "description": "Classic navy blazer, perfect for formal occasions",
+        "style_tags": "formal,classic,versatile",
+        "material_tags": "wool blend",
+        "occasion_tags": "interview,wedding,work",
+    },
+    {
+        "cloudinary_url": "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        "cloudinary_public_id": "demo-white-shirt",
+        "category": "top",
+        "subtype": "shirt",
+        "color": "white",
+        "description": "Crisp white cotton shirt",
+        "style_tags": "formal,clean,minimal",
+        "material_tags": "cotton",
+        "occasion_tags": "interview,work,wedding",
+    },
+    {
+        "cloudinary_url": "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        "cloudinary_public_id": "demo-beige-chinos",
+        "category": "bottom",
+        "subtype": "trousers",
+        "color": "beige",
+        "description": "Slim-fit beige chinos",
+        "style_tags": "smart-casual,versatile",
+        "material_tags": "cotton",
+        "occasion_tags": "work,casual,date",
+    },
+    {
+        "cloudinary_url": "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        "cloudinary_public_id": "demo-red-dress",
+        "category": "dress",
+        "subtype": "party dress",
+        "color": "red",
+        "description": "Elegant red party dress",
+        "style_tags": "party,elegant,bold",
+        "material_tags": "silk blend",
+        "occasion_tags": "party,wedding,date",
+    },
+    {
+        "cloudinary_url": "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        "cloudinary_public_id": "demo-casual-tee",
+        "category": "top",
+        "subtype": "t-shirt",
+        "color": "white",
+        "description": "Relaxed-fit white cotton tee",
+        "style_tags": "casual,comfortable,everyday",
+        "material_tags": "cotton",
+        "occasion_tags": "casual,sport",
+    },
+    {
+        "cloudinary_url": "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        "cloudinary_public_id": "demo-jeans",
+        "category": "bottom",
+        "subtype": "jeans",
+        "color": "blue",
+        "description": "Classic blue denim jeans",
+        "style_tags": "casual,classic,versatile",
+        "material_tags": "denim",
+        "occasion_tags": "casual,date",
+    },
+    {
+        "cloudinary_url": "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        "cloudinary_public_id": "demo-longyi",
+        "category": "traditional",
+        "subtype": "longyi",
+        "color": "green",
+        "description": "Traditional Myanmar longyi for formal events",
+        "style_tags": "traditional,formal,cultural",
+        "material_tags": "silk",
+        "occasion_tags": "wedding,temple",
+    },
+    {
+        "cloudinary_url": "https://res.cloudinary.com/demo/image/upload/v1/sample.jpg",
+        "cloudinary_public_id": "demo-leather-bag",
+        "category": "accessory",
+        "subtype": "bag",
+        "color": "brown",
+        "description": "Brown leather crossbody bag",
+        "style_tags": "classic,practical",
+        "material_tags": "leather",
+        "occasion_tags": "work,casual,date",
+    },
+]
+
+
+@router.post("/seed-demo")
+def seed_demo_wardrobe(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AuthResponse:
+    """Seed demo wardrobe items for the current user.
+
+    Only adds items if the user's wardrobe is empty.
+    Safe to call multiple times — idempotent.
+    """
+    user_id = current_user.id
+    existing = db.query(Wardrobe).filter(Wardrobe.user_id == user_id).count()
+    if existing > 0:
+        return {
+            "status": "success",
+            "data": {"count": existing},
+            "message": f"Already have {existing} items in wardrobe.",
+        }
+
+    for item_data in _DEMO_WARDROBE_ITEMS:
+        item = Wardrobe(user_id=user_id, **item_data)
+        db.add(item)
+    db.commit()
+
+    logger.info("POST /stylist/seed-demo — user_id=%d seeded %d items", user_id, len(_DEMO_WARDROBE_ITEMS))
+    return {
+        "status": "success",
+        "data": {"count": len(_DEMO_WARDROBE_ITEMS)},
+        "message": f"Seeded {len(_DEMO_WARDROBE_ITEMS)} demo wardrobe items.",
+    }
 
 
 @router.post("/recommend")
@@ -1212,19 +1321,94 @@ def recommend_outfit(
         .all()
     )
 
+    # ── No wardrobe — try real AI only ────────────────────
     if not items:
         logger.info(
-            "POST /stylist/recommend — user_id=%d no wardrobe items → 400",
+            "[WUTT] source=init endpoint=/recommend user_id=%d no_wardrobe",
             user_id,
         )
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "data": {},
-                "message": "No wardrobe items found. Please upload some clothes first.",
-            },
+
+        # Try Gemini/OpenAI for general fashion advice (no wardrobe context)
+        _ai_kwargs: dict[str, Any] = dict(
+            wardrobe_items=[],
+            occasion=body.occasion,
+            weather_desc=None,
+            temperature_c=None,
+            humidity=None,
+            height_cm=profile.height_cm if profile else None,
+            skin_tone=profile.skin_tone if profile else None,
+            style_preference=profile.style_preference if profile else None,
         )
+
+        source = "api_error"
+        ai_result: dict[str, Any] | None = None
+
+        # 1. Try OpenAI first
+        if settings.openai_api_key:
+            try:
+                ai_result = openai_recommend(**_ai_kwargs)
+                if ai_result is not None:
+                    source = "openai"
+                    logger.info("[WUTT] source=openai endpoint=/recommend no_wardrobe=True")
+            except Exception as exc:
+                logger.warning("[WUTT] source=api_error endpoint=/recommend openai_error=%s", type(exc).__qualname__)
+
+        # 2. Try Gemini
+        if ai_result is None and settings.gemini_api_key:
+            try:
+                ai_result = gemini_recommend(**_ai_kwargs)
+                if ai_result is not None:
+                    source = "gemini"
+                    logger.info("[WUTT] source=gemini endpoint=/recommend no_wardrobe=True")
+            except Exception as exc:
+                logger.warning("[WUTT] source=api_error endpoint=/recommend gemini_error=%s", type(exc).__qualname__)
+
+        # 3. No AI available — return error
+        if ai_result is None:
+            source = "api_error"
+            logger.info("[WUTT] source=api_error endpoint=/recommend reason=no_ai_no_wardrobe")
+            ai_result = {
+                "outfit": [],
+                "explanation": (
+                    "Real AI styling is currently unavailable. "
+                    "Please check API key or quota. Try again later."
+                ),
+                "weather_based_tip": "",
+            }
+
+        outfit, explanation, weather_based_tip = _extract_outfit_fields(ai_result)
+
+        # Save session for history
+        session = StyleSession(
+            user_id=user_id,
+            occasion=body.occasion,
+            weather_desc=None,
+            temperature_c=None,
+            location=None,
+            ai_response=json.dumps(ai_result, ensure_ascii=False),
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+
+        return {
+            "status": "success",
+            "data": {
+                "id": session.id,
+                "occasion": session.occasion,
+                "weather_desc": None,
+                "temperature_c": None,
+                "location": None,
+                "outfit": outfit,
+                "explanation": explanation,
+                "weather_based_tip": weather_based_tip,
+                "created_at": _isoformat(session.created_at),
+                "source": source,
+            },
+            "message": (
+                "General fashion advice — upload wardrobe items for personalised recommendations."
+            ),
+        }
 
     logger.info(
         "POST /stylist/recommend — user_id=%d item_count=%d calling OpenAI",
@@ -1259,51 +1443,67 @@ def recommend_outfit(
             "occasion_tags": item.occasion_tags,
         })
 
-    # ── Call AI ────────────────────────────────────────
-    source: str = "ai"
+    # ── Call real AI only — OpenAI → Gemini → error ──────
+    source: str = "api_error"
     ai_result: dict[str, Any] | None = None
 
-    try:
-        ai_result = get_outfit_recommendation(
-            wardrobe_items=wardrobe_images,
-            occasion=body.occasion,
-            weather_desc=weather_desc,
-            temperature_c=temperature_c,
-            humidity=humidity,
-            height_cm=profile.height_cm if profile else None,
-            skin_tone=profile.skin_tone if profile else None,
-            style_preference=profile.style_preference if profile else None,
-        )
-    except Exception as exc:
-        # ── Safe server-side logging — never log the API key ──
-        cls = type(exc).__qualname__
-        mod = type(exc).__module__
-        logger.warning(
-            "POST /stylist/recommend — user_id=%d AI raised %s.%s → falling back",
-            user_id, mod, cls,
-        )
-        ai_result = None
+    logger.info(
+        "[WUTT] source=init endpoint=/recommend user_id=%d openai_key=%s gemini_key=%s",
+        user_id, bool(settings.openai_api_key), bool(settings.gemini_api_key),
+    )
 
+    # Shared kwargs for all AI calls
+    _ai_kwargs: dict[str, Any] = dict(
+        wardrobe_items=wardrobe_images,
+        occasion=body.occasion,
+        weather_desc=weather_desc,
+        temperature_c=temperature_c,
+        humidity=humidity,
+        height_cm=profile.height_cm if profile else None,
+        skin_tone=profile.skin_tone if profile else None,
+        style_preference=profile.style_preference if profile else None,
+    )
+
+    # 1. Try OpenAI first
+    if settings.openai_api_key:
+        try:
+            ai_result = openai_recommend(**_ai_kwargs)
+            if ai_result is not None:
+                source = "openai"
+                logger.info("[WUTT] source=openai endpoint=/recommend items=%d", len(ai_result.get("outfit", [])))
+            else:
+                logger.info("[WUTT] source=openai endpoint=/recommend result=None → trying Gemini")
+        except Exception as exc:
+            cls = type(exc).__qualname__
+            mod = type(exc).__module__
+            logger.warning("[WUTT] source=api_error endpoint=/recommend openai_error=%s.%s", mod, cls)
+
+    # 2. Try Gemini if OpenAI didn't return a result
+    if ai_result is None and settings.gemini_api_key:
+        try:
+            ai_result = gemini_recommend(**_ai_kwargs)
+            if ai_result is not None:
+                source = "gemini"
+                logger.info("[WUTT] source=gemini endpoint=/recommend items=%d", len(ai_result.get("outfit", [])))
+            else:
+                logger.info("[WUTT] source=gemini endpoint=/recommend result=None")
+        except Exception as exc:
+            cls = type(exc).__qualname__
+            mod = type(exc).__module__
+            logger.warning("[WUTT] source=api_error endpoint=/recommend gemini_error=%s.%s", mod, cls)
+
+    # 3. No AI available — return error, no fallback
     if ai_result is None:
-        logger.info(
-            "POST /stylist/recommend — user_id=%d AI unavailable "
-            "(key_configured=%s) → rule-based fallback",
-            user_id, bool(settings.openai_api_key),
-        )
-        ai_result = _generate_fallback(
-            wardrobe_items=wardrobe_images,
-            occasion=body.occasion,
-            weather_desc=weather_desc,
-            temperature_c=temperature_c,
-            skin_tone=profile.skin_tone if profile else None,
-            style_preference=profile.style_preference if profile else None,
-        )
-        source = "fallback"
-    else:
-        logger.info(
-            "POST /stylist/recommend — user_id=%d outfit_items=%d → 200 (AI)",
-            user_id, len(ai_result.get("outfit", [])),
-        )
+        source = "api_error"
+        logger.info("[WUTT] source=api_error endpoint=/recommend reason=no_ai_response")
+        ai_result = {
+            "outfit": [],
+            "explanation": (
+                "Real AI styling is currently unavailable. "
+                "Please check API key or quota. Try again later."
+            ),
+            "weather_based_tip": "",
+        }
 
     outfit, explanation, weather_based_tip = _extract_outfit_fields(ai_result)
 
@@ -1320,6 +1520,8 @@ def recommend_outfit(
     db.commit()
     db.refresh(session)
 
+    logger.info("[WUTT] source=%s endpoint=/recommend user_id=%d", source, user_id)
+
     return {
         "status": "success",
         "data": {
@@ -1335,10 +1537,200 @@ def recommend_outfit(
             "source": source,
         },
         "message": (
-            "Recommendation generated successfully."
-            if source == "ai"
-            else "Recommendation generated with fallback stylist."
+            f"Recommendation generated successfully (source: {source})."
         ),
+    }
+
+
+@router.post("/chat")
+def chat_with_stylist(
+    body: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AuthResponse:
+    """General chat with the AI stylist.
+
+    Handles greetings, fashion questions, WUTT explanations, and casual chat.
+    For specific outfit requests, use /stylist/recommend instead.
+    """
+    user_id = current_user.id
+    message = body.message.strip()
+
+    logger.info(
+        "POST /stylist/chat — user_id=%d message_length=%d",
+        user_id, len(message),
+    )
+
+    # Fetch user context
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    items = (
+        db.query(Wardrobe)
+        .filter(Wardrobe.user_id == user_id)
+        .all()
+    )
+
+    # Build wardrobe context for Gemini
+    wardrobe_context: list[dict[str, Any]] = []
+    for item in items[:15]:  # Limit to 15 items for context
+        wardrobe_context.append({
+            "category": item.category,
+            "color": item.color,
+            "description": item.description,
+        })
+
+    # Detect if user is asking about WUTT / app usage
+    msg_lower = message.lower()
+    is_app_question = any(w in msg_lower for w in (
+        "wutt", "how to", "how do", "upload", "wardrobe", "save", "delete",
+        "what is", "app", "ဘာလဲ", "ဘယ်လိုသုံး",
+    ))
+    is_fashion_question = any(w in msg_lower for w in (
+        "wear", "outfit", "style", "fashion", "color", "colour", "match",
+        "trend", "season", "wedding", "date", "casual", "formal",
+        "ဝတ်", "ဖို့", "ပွဲ", "လောင်း",
+    ))
+
+    # Build knowledge context string
+    knowledge_context = ""
+    if is_app_question and APP_GUIDE:
+        knowledge_context += (
+            "\n\n[App Guide — use this to answer how-to questions]\n"
+            + json.dumps(APP_GUIDE, indent=2, ensure_ascii=False)[:2000]
+        )
+    if is_fashion_question and FASHION_KNOWLEDGE:
+        # Include relevant sections
+        sections = {}
+        for key in ("color_matching_rules", "trend_colors_2026", "myanmar_climate_style"):
+            if key in FASHION_KNOWLEDGE:
+                sections[key] = FASHION_KNOWLEDGE[key]
+        if sections:
+            knowledge_context += (
+                "\n\n[Fashion Knowledge]\n"
+                + json.dumps(sections, indent=2, ensure_ascii=False)[:2000]
+            )
+
+    # ── Call real AI only — no fake fallback ──────────────
+    source = "api_error"
+    response_text: str | None = None
+    last_error: str = ""
+
+    # 1. Try Gemini (chat-capable)
+    if settings.gemini_api_key:
+        try:
+            # Inject knowledge context into the message if available
+            enriched_message = message
+            if knowledge_context:
+                enriched_message = message + knowledge_context
+
+            response_text = get_chat_response(
+                user_message=enriched_message,
+                conversation_history=body.conversation_history,
+                wardrobe_items=wardrobe_context if wardrobe_context else None,
+            )
+            if response_text:
+                source = "gemini"
+                logger.info("[WUTT] source=gemini endpoint=/chat chars=%d", len(response_text))
+        except Exception as exc:
+            last_error = str(exc)
+            cls = type(exc).__qualname__
+            mod = type(exc).__module__
+            logger.warning("[WUTT] source=api_error endpoint=/chat gemini_error=%s.%s", mod, cls)
+
+    # 2. No AI available — return clear error, no fallback
+    if not response_text:
+        if not settings.gemini_api_key:
+            source = "api_error"
+            logger.info("[WUTT] source=api_error endpoint=/chat reason=no_api_key")
+        else:
+            source = "api_error"
+            logger.info("[WUTT] source=api_error endpoint=/chat reason=gemini_failed")
+        response_text = (
+            "Real AI styling is currently unavailable. "
+            "Please check API key or quota. Try again later."
+        )
+
+    # Save to session history
+    session = StyleSession(
+        user_id=user_id,
+        occasion="chat",
+        weather_desc=None,
+        temperature_c=None,
+        location=None,
+        ai_response=json.dumps({
+            "message": message,
+            "response": response_text,
+            "source": source,
+        }, ensure_ascii=False),
+    )
+    db.add(session)
+    db.commit()
+
+    logger.info("[WUTT] source=%s endpoint=/chat user_id=%d", source, user_id)
+
+    return {
+        "status": "success",
+        "data": {
+            "response": response_text,
+            "source": source,
+        },
+        "message": "Chat response generated.",
+    }
+
+
+@router.post("/analyze")
+def analyze_clothing(
+    body: AnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+) -> AuthResponse:
+    """Analyze a clothing image using Gemini Vision.
+
+    Sends the image to Gemini for analysis: category, color, fit, style,
+    material guess, occasion tags, and matching ideas.
+
+    Returns the analysis for the user to review and edit before saving.
+    """
+    user_id = current_user.id
+
+    logger.info(
+        "[WUTT] source=init endpoint=/analyze user_id=%d mime=%s",
+        user_id, body.mime_type,
+    )
+
+    if not settings.gemini_api_key:
+        logger.info("[WUTT] source=api_error endpoint=/analyze reason=no_api_key")
+        return {
+            "status": "error",
+            "data": {},
+            "message": "Real AI styling is currently unavailable. Please check API key or quota.",
+        }
+
+    # Strip data URI prefix if present
+    image_data = body.image_data
+    if "," in image_data and image_data.startswith("data:"):
+        image_data = image_data.split(",", 1)[1]
+
+    analysis = analyze_clothing_image(
+        image_data=image_data,
+        mime_type=body.mime_type,
+    )
+
+    if analysis is None:
+        logger.info("[WUTT] source=api_error endpoint=/analyze reason=vision_failed user_id=%d", user_id)
+        return {
+            "status": "error",
+            "data": {},
+            "message": "Real AI styling is currently unavailable. Please check API key or quota.",
+        }
+
+    logger.info(
+        "[WUTT] source=gemini endpoint=/analyze user_id=%d category=%s color=%s confidence=%d",
+        user_id, analysis.get("category"), analysis.get("color"), analysis.get("confidence", 0),
+    )
+
+    return {
+        "status": "success",
+        "data": analysis,
+        "message": "Clothing analysis complete.",
     }
 
 

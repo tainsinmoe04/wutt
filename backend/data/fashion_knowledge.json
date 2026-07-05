@@ -1,0 +1,134 @@
+{
+  "style_categories": {
+    "minimal": {
+      "description": "Clean lines, neutral tones, less is more",
+      "colors": ["white", "black", "beige", "navy", "gray"],
+      "best_for": ["work", "casual", "date"],
+      "avoid": ["loud prints", "excess accessories"]
+    },
+    "streetwear": {
+      "description": "Urban, relaxed, bold graphics and layers",
+      "colors": ["black", "white", "red", "olive", "neon accents"],
+      "best_for": ["casual", "weekend", "friends"],
+      "avoid": ["formal settings"]
+    },
+    "old_money": {
+      "description": "Classic, refined, understated luxury",
+      "colors": ["navy", "cream", "burgundy", "forest green", "camel"],
+      "best_for": ["work", "brunch", "gallery"],
+      "avoid": ["loud logos", "neon"]
+    },
+    "clean_fit": {
+      "description": "Well-fitted basics, neutral palette, polished",
+      "colors": ["white", "navy", "beige", "light blue", "gray"],
+      "best_for": ["work", "date", "interview"],
+      "avoid": ["oversized", "baggy"]
+    },
+    "korean_casual": {
+      "description": "Oversized tops, slim bottoms, soft tones",
+      "colors": ["white", "pastel blue", "lavender", "sage", "cream"],
+      "best_for": ["casual", "date", "brunch"],
+      "avoid": ["too formal"]
+    },
+    "vintage": {
+      "description": "Retro vibes, earth tones, classic patterns",
+      "colors": ["rust", "mustard", "olive", "cream", "brown"],
+      "best_for": ["casual", "weekend", "market"],
+      "avoid": ["ultra-modern"]
+    },
+    "y2k": {
+      "description": "Early 2000s revival, metallics, low-rise, bold",
+      "colors": ["silver", "hot pink", "baby blue", "white", "chrome"],
+      "best_for": ["party", "casual"],
+      "avoid": ["formal", "office"]
+    },
+    "dark_academia": {
+      "description": "Scholarly, moody, layers, earth tones",
+      "colors": ["brown", "camel", "cream", "forest green", "black"],
+      "best_for": ["library", "coffee shop", "casual"],
+      "avoid": ["bright neon"]
+    }
+  },
+  "color_matching_rules": {
+    "complementary": {
+      "description": "Colors opposite on the color wheel — bold contrast",
+      "pairs": [
+        ["navy", "orange"],
+        ["red", "green"],
+        ["purple", "yellow"],
+        ["blue", "coral"]
+      ]
+    },
+    "analogous": {
+      "description": "Colors next to each other — harmonious, safe",
+      "pairs": [
+        ["blue", "navy"],
+        ["green", "olive"],
+        ["red", "burgundy"],
+        ["beige", "camel"]
+      ]
+    },
+    "neutral_base": {
+      "description": "Any neutral + one accent color — always works",
+      "rule": "Pair black/white/gray/beige with ONE pop color"
+    },
+    "monochrome": {
+      "description": "Same color family, different shades — sophisticated",
+      "example": "Light blue shirt + navy trousers + dark blue blazer"
+    }
+  },
+  "trend_colors_2026": {
+    "spring_summer": ["butter yellow", "lavender", "sage green", "coral pink", "sky blue"],
+    "fall_winter": ["burgundy", "forest green", "chocolate brown", "deep navy", "charcoal"],
+    "myanmar_popular": ["pastel pink", "mint green", "powder blue", "warm beige", "terracotta"]
+  },
+  "occasion_rules": {
+    "wedding_guest": {
+      "do": ["Dress modestly", "Wear traditional if Myanmar wedding", "Choose elegant colors"],
+      "dont": ["Wear white (reserved for bride)", "Wear all black", "Be overdressed"],
+      "myanmar_specific": "Longyi + taikpon or formal dress. Avoid white entirely."
+    },
+    "office": {
+      "do": ["Keep it clean and pressed", "Neutral base colors", "Comfortable shoes"],
+      "dont": ["Wear jeans (unless casual office)", "Over-accessorize", "Wear strong perfume"],
+      "myanmar_specific": "Longyi is acceptable in most offices. Collared shirt preferred."
+    },
+    "coffee_date": {
+      "do": ["Keep it casual but put-together", "Clean sneakers or loafers", "One statement piece"],
+      "dont": ["Overdress", "Look like you just rolled out of bed"],
+      "myanmar_specific": "Light fabrics for Yangon heat. Linen or cotton ideal."
+    },
+    "party": {
+      "do": ["Be bold", "Dark colors work well", "Add one accessory"],
+      "dont": ["Wear the same as everyone", "Forget comfortable shoes"],
+      "myanmar_specific": "Longyi + stylish shirt works great for Myanmar parties."
+    },
+    "interview": {
+      "do": ["Look professional", "Clean, pressed clothes", "Closed shoes"],
+      "dont": ["Wear strong cologne", "Overdress", "Wear wrinkled clothes"],
+      "myanmar_specific": "Navy/white shirt + longyi is standard for men."
+    }
+  },
+  "myanmar_climate_style": {
+    "hot_season": {
+      "months": "March to May",
+      "temp_range": "35-40C",
+      "tips": ["Wear breathable cotton or linen", "Light colors reflect heat", "Loose fits for airflow"]
+    },
+    "monsoon": {
+      "months": "June to October",
+      "temp_range": "25-32C",
+      "tips": ["Quick-dry fabrics", "Waterproof shoes or sandals", "Avoid suede and leather"]
+    },
+    "cool_season": {
+      "months": "November to February",
+      "temp_range": "18-28C",
+      "tips": ["Light layers work well", "Great season for blazers", "Cardigans for evening"]
+    },
+    "fabric_recommendations": {
+      "hot": ["cotton", "linen", "chambray", "rayon", "seersucker"],
+      "monsoon": ["polyester blends", "nylon", "quick-dry cotton"],
+      "cool": ["cotton", "light wool", "denim", "corduroy"]
+    }
+  }
+}

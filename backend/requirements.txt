@@ -20,6 +20,9 @@ cloudinary==1.42.2
 # OpenAI Vision API
 openai==1.58.1
 
+# Google Gemini AI
+google-genai==2.10.0
+
 # HTTP client (OpenWeatherMap)
 httpx==0.28.1
 

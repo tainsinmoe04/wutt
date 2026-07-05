@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     openai_base_url: str = ""
     openai_model: str = "gpt-4o"
 
+    # ── Gemini ───────────────────────────────────────────
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.0-flash"
+
     # ── OpenWeatherMap ───────────────────────────────────
     weather_api_key: str = ""
 
