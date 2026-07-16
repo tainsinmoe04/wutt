@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="WUTT — Your wardrobe. Your occasion. Your perfect outfit. AI Fashion Companion.">
   <meta name="theme-color" content="#FFFFFF">
+  <!-- Open Graph -->
+  <meta property="og:title" content="WUTT — AI Personal Stylist">
+  <meta property="og:description" content="Know your wardrobe. Upgrade your style. AI fashion companion for Myanmar.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/wutt-og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/wutt-favicon.svg">
+  <link rel="apple-touch-icon" href="assets/wutt-apple-touch-icon.png">
   <title>WUTT — AI Personal Stylist</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -157,6 +167,19 @@
       </div>
     </section>
   </main>
+
+  <!-- Footer -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="site-footer__inner">
+      <span class="site-footer__brand">WUTT</span>
+      <nav class="site-footer__links" aria-label="Legal">
+        <a href="#" class="site-footer__link">Privacy Policy</a>
+        <a href="#" class="site-footer__link">Terms of Service</a>
+        <a href="#" class="site-footer__link">Contact</a>
+      </nav>
+      <span class="site-footer__copy">&copy; 2026 WUTT. All rights reserved.</span>
+    </div>
+  </footer>
 
   <!-- Login Modal -->
   <div
@@ -439,14 +462,11 @@
       <a class="chat-sidebar__logo" href="#" aria-label="WUTT home">
         <svg width="26" height="26" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="currentColor" opacity="0.12"/><path d="M10 22V10l6 4-6 4zm6 0h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
-      <button class="chat-sidebar__item chat-sidebar__item--active" aria-label="Home" data-panel="home">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <button class="chat-sidebar__item chat-sidebar__item--active" aria-label="AI Stylist" data-panel="home">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3z"/></svg>
       </button>
       <button class="chat-sidebar__item" aria-label="Wardrobe" data-panel="wardrobe">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>
-      </button>
-      <button class="chat-sidebar__item" aria-label="Wishlist" data-panel="wishlist">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
       </button>
       <div class="chat-sidebar__spacer"></div>
       <button class="chat-sidebar__item" aria-label="Profile" data-panel="profile">
@@ -466,44 +486,190 @@
         </button>
       </div>
       <div class="sidebar-wardrobe" id="sidebarWardrobe">
-        <p class="sidebar-wardrobe__empty">No items yet. Use the chat to add wardrobe pieces.</p>
+        <div class="sidebar-wardrobe__empty">
+          <p>No items yet.</p>
+          <p class="sidebar-wardrobe__hint">Add clothes through the chat — WUTT will detect category, color, and style.</p>
+          <span class="sidebar-coming-soon">Studio Cut coming soon — clean background removal for your photos.</span>
+        </div>
       </div>
     </aside>
 
     <!-- Main chat area -->
     <div class="chat-main">
-      <!-- Shop Home — style-led product discovery -->
-      <div class="shop-view u-hidden" id="shopView">
-        <div class="shop-view__scroll">
-          <!-- Hero banner -->
-          <div class="shop-hero">
-            <div class="shop-hero__bg"></div>
-            <div class="shop-hero__content">
-              <h2 class="shop-hero__title">Discover your style</h2>
-              <p class="shop-hero__sub">Curated picks from local shops near you</p>
+      <!-- Wardrobe — Full Page -->
+      <div class="wardrobe-view u-hidden" id="wardrobeView" aria-hidden="true">
+        <div class="wardrobe-view__scroll">
+          <div class="wardrobe-view__header">
+            <div class="wardrobe-view__header-text">
+              <h1 class="wardrobe-view__title">My Wardrobe</h1>
+              <p class="wardrobe-view__subtitle">Your personal fashion closet</p>
+            </div>
+            <div class="wardrobe-view__actions">
+              <button class="wardrobe-view__add-btn" id="wardrobeAddBtn" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Item
+              </button>
+              <div class="wardrobe-view__search">
+                <svg class="wardrobe-view__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input class="wardrobe-view__search-input" type="text" placeholder="Search your closet..." id="wardrobeSearchInput" autocomplete="off">
+              </div>
             </div>
           </div>
 
-          <!-- Category chips -->
-          <div class="shop-chips" id="shopCategoryChips">
-            <button class="shop-chip shop-chip--active" data-cat="all">All</button>
-            <button class="shop-chip" data-cat="tops">Tops</button>
-            <button class="shop-chip" data-cat="bottoms">Bottoms</button>
-            <button class="shop-chip" data-cat="shoes">Shoes</button>
-            <button class="shop-chip" data-cat="dresses">Dresses</button>
-            <button class="shop-chip" data-cat="accessories">Accessories</button>
+          <!-- Category Filters -->
+          <div class="wardrobe-view__filters" id="wardrobeFilters">
+            <button class="wardrobe-view__filter wardrobe-view__filter--active" data-filter="all" type="button">All</button>
+            <button class="wardrobe-view__filter" data-filter="tops" type="button">Tops</button>
+            <button class="wardrobe-view__filter" data-filter="bottoms" type="button">Bottoms</button>
+            <button class="wardrobe-view__filter" data-filter="dresses" type="button">Dresses</button>
+            <button class="wardrobe-view__filter" data-filter="outerwear" type="button">Outerwear</button>
+            <button class="wardrobe-view__filter" data-filter="shoes" type="button">Shoes</button>
+            <button class="wardrobe-view__filter" data-filter="accessories" type="button">Accessories</button>
           </div>
 
-          <!-- Trending section -->
-          <div class="shop-section">
-            <h3 class="shop-section__title">Trending near you</h3>
-            <div class="shop-grid" id="shopGrid"></div>
+          <!-- Fashion Closet Grid -->
+          <div class="wardrobe-view__grid" id="wardrobeGrid">
+            <!-- Empty state -->
+            <div class="wardrobe-view__empty" id="wardrobeEmpty">
+              <div class="wardrobe-view__empty-icon" aria-hidden="true">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="7" width="20" height="15" rx="2"/>
+                  <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
+                </svg>
+              </div>
+              <h3 class="wardrobe-view__empty-title">Your closet is empty</h3>
+              <p class="wardrobe-view__empty-hint">Add clothes through the chat — WUTT will detect category, color, and style.</p>
+            </div>
           </div>
 
-          <!-- Style picks section -->
-          <div class="shop-section">
-            <h3 class="shop-section__title">Style picks for you</h3>
-            <div class="shop-grid" id="shopPicksGrid"></div>
+          <!-- AI Closet Tools -->
+          <div class="wardrobe-tools" id="wardrobeTools">
+            <div class="wardrobe-tools__icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3z"/>
+              </svg>
+            </div>
+            <div class="wardrobe-tools__text">
+              <h3 class="wardrobe-tools__title">AI Closet Tools</h3>
+              <p class="wardrobe-tools__desc">Style recommendations, outfit builder, and wardrobe analysis — coming soon.</p>
+            </div>
+            <span class="wardrobe-tools__badge">Coming Soon</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wardrobe Upload Modal -->
+      <div class="wardrobe-modal-overlay u-hidden" id="wardrobeModal" aria-hidden="true">
+        <div class="wardrobe-modal">
+          <div class="wardrobe-modal__header">
+            <h3 class="wardrobe-modal__title">Add to Wardrobe</h3>
+            <button class="wardrobe-modal__close" id="wardrobeModalClose" aria-label="Close" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Step 1: Upload -->
+          <div class="wardrobe-modal__step" id="wardrobeModalUpload">
+            <div class="wardrobe-modal__upload-area" id="wardrobeUploadArea">
+              <div class="wardrobe-modal__upload-icon" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+              </div>
+              <p class="wardrobe-modal__upload-text">Drop a photo or tap to upload</p>
+              <p class="wardrobe-modal__upload-hint">JPG, PNG — AI will detect category, color, and style</p>
+            </div>
+            <input type="file" id="wardrobeModalFileInput" accept="image/*" class="u-hidden" aria-hidden="true">
+          </div>
+
+          <!-- Step 2: Preview + AI Detection -->
+          <div class="wardrobe-modal__step u-hidden" id="wardrobeModalPreview">
+            <div class="wardrobe-modal__preview">
+              <img class="wardrobe-modal__preview-img" id="wardrobePreviewImg" src="" alt="Preview">
+            </div>
+            <div class="wardrobe-modal__detected" id="wardrobeDetected">
+              <div class="wardrobe-modal__detected-header">
+                <span class="wardrobe-modal__ai-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3z"/></svg>
+                  AI Detected
+                </span>
+              </div>
+              <div class="wardrobe-modal__field">
+                <label class="wardrobe-modal__label">Category</label>
+                <span class="wardrobe-modal__value" id="detectedCategory">—</span>
+              </div>
+              <div class="wardrobe-modal__field">
+                <label class="wardrobe-modal__label">Color</label>
+                <span class="wardrobe-modal__value" id="detectedColor">—</span>
+              </div>
+              <div class="wardrobe-modal__field">
+                <label class="wardrobe-modal__label">Style</label>
+                <span class="wardrobe-modal__value" id="detectedStyle">—</span>
+              </div>
+              <div class="wardrobe-modal__field">
+                <label class="wardrobe-modal__label">Material</label>
+                <span class="wardrobe-modal__value" id="detectedMaterial">—</span>
+              </div>
+              <div class="wardrobe-modal__field">
+                <label class="wardrobe-modal__label">Occasions</label>
+                <span class="wardrobe-modal__value" id="detectedOccasions">—</span>
+              </div>
+            </div>
+            <div class="wardrobe-modal__footer">
+              <button class="wardrobe-modal__btn wardrobe-modal__btn--secondary" id="wardrobeModalRetake" type="button">Retake</button>
+              <button class="wardrobe-modal__btn wardrobe-modal__btn--primary" id="wardrobeModalSave" type="button">Save to Wardrobe</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Saved confirmation -->
+          <div class="wardrobe-modal__step u-hidden" id="wardrobeModalSaved">
+            <div class="wardrobe-modal__saved">
+              <div class="wardrobe-modal__saved-icon" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <h3 class="wardrobe-modal__saved-title">Saved!</h3>
+              <p class="wardrobe-modal__saved-hint">Item added to your wardrobe.</p>
+              <button class="wardrobe-modal__btn wardrobe-modal__btn--primary" id="wardrobeModalDone" type="button">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shop Home — Phase 3: Coming Soon -->
+      <div class="shop-view u-hidden" id="shopView">
+        <div class="shop-view__scroll">
+          <div class="shop-locked">
+            <div class="shop-locked__icon" aria-hidden="true">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <span class="shop-locked__badge">Phase 3</span>
+            <h2 class="shop-locked__title">Shop & Sellers</h2>
+            <p class="shop-locked__desc">Browse curated styles from local shops. Buy directly from your outfit recommendations.</p>
+            <div class="shop-locked__features">
+              <div class="shop-locked__feature">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                <span>Curated marketplace</span>
+              </div>
+              <div class="shop-locked__feature">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>AI-powered recommendations</span>
+              </div>
+              <div class="shop-locked__feature">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                <span>Save to wishlist</span>
+              </div>
+            </div>
+            <button class="btn btn--primary btn--locked" type="button" disabled>
+              <span>Coming Soon</span>
+            </button>
+            <button class="btn btn--ghost btn--back-chat" type="button" id="shopBackToChat">
+              ← Back to AI Stylist
+            </button>
           </div>
         </div>
       </div>
@@ -625,12 +791,6 @@
                       <span class="pf-tag pf-tag--empty">—</span>
                     </div>
                   </div>
-                  <div class="pf-field pf-field--block">
-                    <span class="pf-field__label">Preferred Colors</span>
-                    <div class="pf-field__colors" id="profileCardPreferredColors">
-                      <span class="pf-color-empty">—</span>
-                    </div>
-                  </div>
                   <div class="pf-field">
                     <span class="pf-field__label">Outfit Vibe</span>
                     <span class="pf-field__value" id="profileCardOutfitVibe">—</span>
@@ -638,8 +798,8 @@
                 </div>
               </div>
 
-              <!-- Shopping Preferences -->
-              <div class="pf-section">
+              <!-- Shopping Preferences — Phase 3: hidden for now -->
+              <div class="pf-section u-hidden">
                 <div class="pf-section__header">
                   <h3 class="pf-section__title">Shopping Preferences</h3>
                   <button class="pf-section__edit" data-edit-section="shopping" type="button">Edit</button>
@@ -698,57 +858,37 @@
                 </div>
               </div>
 
-              <!-- Wardrobe Preferences -->
-              <div class="pf-section">
-                <div class="pf-section__header">
-                  <h3 class="pf-section__title">Wardrobe Preferences</h3>
-                  <button class="pf-section__edit" data-edit-section="preferences" type="button">Edit</button>
-                </div>
-                <div class="pf-section__body">
-                  <div class="pf-field pf-field--block">
-                    <span class="pf-field__label">Preferred Categories</span>
-                    <div class="pf-field__tags" id="profileCardCategories">
-                      <span class="pf-tag pf-tag--empty">—</span>
-                    </div>
-                  </div>
-                  <div class="pf-field pf-field--block">
-                    <span class="pf-field__label">Preferred Colors</span>
-                    <div class="pf-field__colors" id="profileCardPrefColors2">
-                      <span class="pf-color-empty">—</span>
-                    </div>
-                  </div>
-                  <div class="pf-field">
-                    <span class="pf-field__label">Budget Range</span>
-                    <span class="pf-field__value" id="profileCardBudgetRange2">—</span>
-                  </div>
-                </div>
-              </div>
-
               <!-- Coupons / Offers -->
               <div class="pf-section">
                 <div class="pf-section__header">
-                  <h3 class="pf-section__title">Coupons &amp; Offers</h3>
+                  <h3 class="pf-section__title">Coupons & Offers</h3>
+                  <button class="pf-section__edit" id="couponSeeAllBtn" type="button">See all</button>
                 </div>
                 <div class="pf-section__body">
-                  <div class="pf-coupons" id="profileCoupons">
-                    <div class="pf-coupon">
-                      <div class="pf-coupon__badge">10% OFF</div>
-                      <div class="pf-coupon__info">
-                        <span class="pf-coupon__code">STYLE10</span>
-                        <span class="pf-coupon__desc">First purchase discount</span>
+                  <div class="pf-coupon-preview" id="profileCoupons">
+                    <!-- Coupon ticket 1 -->
+                    <div class="pf-ticket">
+                      <div class="pf-ticket__left">
+                        <span class="pf-ticket__offer">10% OFF</span>
+                        <span class="pf-ticket__desc">First purchase discount</span>
                       </div>
-                      <button class="pf-coupon__copy" type="button" data-code="STYLE10" aria-label="Copy coupon code">Copy</button>
-                    </div>
-                    <div class="pf-coupon">
-                      <div class="pf-coupon__badge pf-coupon__badge--green">FREE SHIP</div>
-                      <div class="pf-coupon__info">
-                        <span class="pf-coupon__code">SHIPFREE</span>
-                        <span class="pf-coupon__desc">Free delivery on orders over 50k</span>
+                      <div class="pf-ticket__divider"></div>
+                      <div class="pf-ticket__right">
+                        <span class="pf-ticket__code">STYLE10</span>
+                        <button class="pf-ticket__copy" type="button" data-code="STYLE10" aria-label="Copy coupon code">Copy</button>
                       </div>
-                      <button class="pf-coupon__copy" type="button" data-code="SHIPFREE" aria-label="Copy coupon code">Copy</button>
                     </div>
-                    <div class="pf-coupon pf-coupon--empty">
-                      <p class="pf-coupon__empty-text">More offers coming soon. Keep shopping to unlock rewards.</p>
+                    <!-- Coupon ticket 2 -->
+                    <div class="pf-ticket pf-ticket--green">
+                      <div class="pf-ticket__left">
+                        <span class="pf-ticket__offer">FREE SHIP</span>
+                        <span class="pf-ticket__desc">Free delivery on orders over 50k</span>
+                      </div>
+                      <div class="pf-ticket__divider"></div>
+                      <div class="pf-ticket__right">
+                        <span class="pf-ticket__code">SHIPFREE</span>
+                        <button class="pf-ticket__copy" type="button" data-code="SHIPFREE" aria-label="Copy coupon code">Copy</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -774,7 +914,7 @@
                       <span class="pf-stat__label">Unique Colors</span>
                     </div>
                   </div>
-                  <p class="pf-wardrobe-hint" id="profileCardWardrobeHint">Add items through the chat to build your wardrobe.</p>
+                  <p class="pf-wardrobe-hint" id="profileCardWardrobeHint">Add items through the chat — WUTT detects category, color, and style automatically.</p>
                 </div>
               </div>
 
@@ -786,18 +926,30 @@
                 <div class="pf-section__body">
                   <div class="pf-field pf-field--block">
                     <span class="pf-field__label">Mood</span>
-                    <div class="pf-settings-chips" id="moodChips">
-                      <button class="pf-settings-chip pf-settings-chip--active" data-mood="day" type="button">Day</button>
-                      <button class="pf-settings-chip" data-mood="night" type="button">Night</button>
-                    </div>
-                  </div>
-                  <div class="pf-field pf-field--block">
-                    <span class="pf-field__label">Background</span>
-                    <div class="pf-settings-bg-chips" id="bgChips">
-                      <button class="pf-settings-bg-chip pf-settings-bg-chip--active" data-bg="clean" type="button" aria-label="Clean"><span></span></button>
-                      <button class="pf-settings-bg-chip" data-bg="grid" type="button" aria-label="Grid"><span></span></button>
-                      <button class="pf-settings-bg-chip" data-bg="fabric" type="button" aria-label="Fabric"><span></span></button>
-                      <button class="pf-settings-bg-chip" data-bg="midnight" type="button" aria-label="Midnight"><span></span></button>
+                    <div class="pf-mood-toggle" id="moodToggle">
+                      <button class="pf-mood-toggle__btn" id="moodToggleBtn" type="button" role="switch" aria-checked="false" aria-label="Toggle night mode">
+                        <span class="pf-mood-toggle__icon pf-mood-toggle__icon--sun">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                          </svg>
+                        </span>
+                        <span class="pf-mood-toggle__track">
+                          <span class="pf-mood-toggle__thumb"></span>
+                        </span>
+                        <span class="pf-mood-toggle__icon pf-mood-toggle__icon--moon">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                          </svg>
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1008,6 +1160,26 @@
         </div>
       </div>
 
+      <!-- Coupon Drawer -->
+      <div class="coupon-drawer" id="couponDrawer">
+        <div class="coupon-drawer__header">
+          <div>
+            <h3 class="coupon-drawer__title">Coupons & Offers</h3>
+            <p class="coupon-drawer__subtitle">Use these coupons during checkout.</p>
+          </div>
+          <button class="coupon-drawer__close" id="couponDrawerClose" aria-label="Close coupons" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="coupon-drawer__body" id="couponDrawerBody">
+          <!-- All coupons populated by JS -->
+        </div>
+        <div class="coupon-drawer__footer">
+          <p class="coupon-drawer__footer-text">Only one coupon can be applied per order.</p>
+        </div>
+      </div>
+      <div class="coupon-drawer-overlay" id="couponDrawerOverlay"></div>
+
       <!-- Chat header -->
       <header class="chat-header">
         <div class="chat-header__ai-icon" aria-hidden="true">
@@ -1030,6 +1202,17 @@
 
       <!-- Chat body -->
       <div class="chat-body" id="chatBody">
+        <!-- Fashion stickers — decorative only -->
+        <div class="chat-stickers" aria-hidden="true">
+          <!-- Hanger -->
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.9l.5.5a4 4 0 0 1 0 5.7l-.5.5c.7.8 1.1 1.8 1.1 2.9a4 4 0 0 1-4 4"/><path d="M12 2a4 4 0 0 0-4 4c0 1.1.4 2.1 1.1 2.9l-.5.5a4 4 0 0 0 0 5.7l.5.5c-.7.8-1.1 1.8-1.1 2.9a4 4 0 0 0 4 4"/></svg>
+          <!-- Sparkle -->
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
+          <!-- Shirt -->
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
+          <!-- Shopping bag -->
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        </div>
         <!-- Empty/welcome state — shown initially -->
         <div class="chat-welcome" id="chatWelcome">
           <div class="chat-welcome__avatar" aria-hidden="true">
@@ -1038,36 +1221,26 @@
               <path d="M9 25V12l8 5.5-8 5.5zm8 0h8" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <h3 class="chat-welcome__greeting">Hey, ready to style something today?</h3>
-          <p class="chat-welcome__hint">Pick an action or just say what you need</p>
-          <div class="chat-welcome__cards" id="chatWelcomeCards">
-            <button class="action-card" data-action="add-top">
-              <span class="action-card__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>
-              </span>
-              <span class="action-card__label">Add Top</span>
-              <span class="action-card__desc">Start your wardrobe</span>
+          <h3 class="chat-welcome__greeting">What are you dressing for today?</h3>
+          <p class="chat-welcome__hint">Tell me the occasion, or pick one below</p>
+          <div class="chat-welcome__cards chat-welcome__cards--chips" id="chatWelcomeCards">
+            <button class="style-chip" data-action="occasion" data-value="casual">
+              <span class="style-chip__label">Casual</span>
             </button>
-            <button class="action-card" data-action="build-outfit">
-              <span class="action-card__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-              </span>
-              <span class="action-card__label">Build Outfit</span>
-              <span class="action-card__desc">Get AI-styled looks</span>
+            <button class="style-chip" data-action="occasion" data-value="work">
+              <span class="style-chip__label">Work</span>
             </button>
-            <button class="action-card" data-action="save-look">
-              <span class="action-card__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              </span>
-              <span class="action-card__label">Save Look</span>
-              <span class="action-card__desc">Keep your favorites</span>
+            <button class="style-chip" data-action="occasion" data-value="date">
+              <span class="style-chip__label">Date</span>
             </button>
-            <button class="action-card" data-action="ask-wutt">
-              <span class="action-card__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12.01" y2="16"/><line x1="12" y1="8" x2="12" y2="13"/></svg>
-              </span>
-              <span class="action-card__label">Ask WUTT</span>
-              <span class="action-card__desc">Style advice &amp; tips</span>
+            <button class="style-chip" data-action="occasion" data-value="wedding">
+              <span class="style-chip__label">Wedding</span>
+            </button>
+            <button class="style-chip" data-action="occasion" data-value="campus">
+              <span class="style-chip__label">Campus</span>
+            </button>
+            <button class="style-chip" data-action="occasion" data-value="dinner">
+              <span class="style-chip__label">Dinner</span>
             </button>
           </div>
         </div>

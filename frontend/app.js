@@ -121,6 +121,34 @@ document.addEventListener('DOMContentLoaded', function initHeroLoginModal() {
       }
     });
   }
+
+  // Hero CTA buttons
+  var getStartedBtn = document.getElementById('heroGetStartedBtn');
+  var learnMoreBtn = document.getElementById('heroLearnMoreBtn');
+
+  if (getStartedBtn) {
+    getStartedBtn.addEventListener('click', function() {
+      // Open signup modal (reuse existing register modal)
+      var regOverlay = document.getElementById('registerModalOverlay');
+      if (regOverlay) {
+        regOverlay.classList.add('landing-modal-overlay--open');
+        regOverlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        document.body.classList.add('modal-open');
+        var firstInput = regOverlay.querySelector('input');
+        if (firstInput) setTimeout(function() { firstInput.focus(); }, 150);
+      }
+    });
+  }
+
+  if (learnMoreBtn) {
+    learnMoreBtn.addEventListener('click', function() {
+      var howSection = document.querySelector('.how-it-works');
+      if (howSection) {
+        howSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
 });
 
 /* --------------------------------------------------------
@@ -621,7 +649,6 @@ async function handleLoginSubmit(e) {
         return;
       }
       saveAuth($('#loginEmail').value.trim(), token);
-      showToast('Logged in', 'success');
       closeAllModals();
       showMainApp();
     } else {
@@ -665,7 +692,6 @@ async function handleHeroLoginSubmit(e) {
         return;
       }
       saveAuth($('#heroEmail').value.trim(), token);
-      showToast('Logged in', 'success');
       closeAllLandingModals();
       showMainApp();
     } else {
@@ -710,7 +736,6 @@ async function handleRegisterSubmit(e) {
         return;
       }
       saveAuth($('#registerEmail').value.trim(), token);
-      showToast('Account created', 'success');
       closeAllLandingModals();
       showStyleQuiz();
     } else {
@@ -781,7 +806,6 @@ function showMainApp() {
     welcome.classList.remove('u-hidden');
     welcome.setAttribute('aria-hidden', 'false');
   }
-  showToast('Welcome to WUTT', 'success');
 
   // Transition to chat — inner function so we can call it from both
   // the timer and a defensive fallback
@@ -891,7 +915,7 @@ function initChatApp() {
 
   /* ---- Sidebar navigation: single-panel, view switching ---- */
   var sidebarItems = document.querySelectorAll('.chat-sidebar__item[data-panel]');
-  var allViews = ['shopView', 'wishlistView', 'profileView'];
+  var allViews = ['shopView', 'wishlistView', 'profileView', 'wardrobeView'];
 
   /** Hide all main views */
   function hideAllViews() {
@@ -943,6 +967,14 @@ function initChatApp() {
     renderProfileView();
   }
 
+  /** Show wardrobe page */
+  function showWardrobeView() {
+    hideAllViews();
+    var wardrobeView = document.getElementById('wardrobeView');
+    if (wardrobeView) { wardrobeView.classList.remove('u-hidden'); wardrobeView.setAttribute('aria-hidden', 'false'); }
+    renderWardrobeView();
+  }
+
   /** Show wishlist page */
   function showWishlistView() {
     hideAllViews();
@@ -963,10 +995,7 @@ function initChatApp() {
       var panel = item.getAttribute('data-panel');
 
       if (panel === 'wardrobe') {
-        showChatView();
-        var wd = document.getElementById('wardrobeDrawer');
-        if (wd) { wd.classList.remove('u-hidden'); wd.setAttribute('aria-hidden', 'false'); }
-        renderWardrobeSidebar();
+        showWardrobeView();
         setActiveSidebar('wardrobe');
         return;
       }
@@ -977,14 +1006,8 @@ function initChatApp() {
         return;
       }
 
-      if (panel === 'wishlist') {
-        showWishlistView();
-        setActiveSidebar('wishlist');
-        return;
-      }
-
-      // home
-      showHomeView();
+      // home — show chat (chat-first experience)
+      showChatView();
       setActiveSidebar('home');
     });
   });
@@ -1039,8 +1062,9 @@ function initChatApp() {
   if (profileEditBtn) profileEditBtn.addEventListener('click', openProfileEdit);
   if (profileEditClose) profileEditClose.addEventListener('click', closeProfileEdit);
 
-  // Section edit buttons — all open the same edit modal
+  // Section edit buttons — open the edit modal (except coupon See all)
   document.querySelectorAll('.pf-section__edit').forEach(function(btn) {
+    if (btn.id === 'couponSeeAllBtn') return;
     btn.addEventListener('click', function() {
       openProfileEdit();
     });
@@ -1094,20 +1118,87 @@ function initChatApp() {
     });
   }
 
-  /* ---- Coupon copy buttons ---- */
-  document.querySelectorAll('.pf-coupon__copy').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var code = btn.getAttribute('data-code');
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(code).then(function() {
-          btn.textContent = 'Copied';
-          setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
-        });
-      } else {
+  /* ---- Coupon copy buttons (ticket + sidebar styles) ---- */
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.pf-ticket__copy, .coupon-card__copy');
+    if (!btn) return;
+    var code = btn.getAttribute('data-code');
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code).then(function() {
         btn.textContent = 'Copied';
         setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
-      }
-    });
+      });
+    } else {
+      btn.textContent = 'Copied';
+      setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+    }
+  });
+
+  /* ---- Coupon drawer ---- */
+  var couponDrawer = document.getElementById('couponDrawer');
+  var couponDrawerOverlay = document.getElementById('couponDrawerOverlay');
+  var couponDrawerClose = document.getElementById('couponDrawerClose');
+  var couponSeeAllBtn = document.getElementById('couponSeeAllBtn');
+
+  // All coupons data — future backend connection point
+  var ALL_COUPONS = [
+    { badge: '10% OFF', title: 'First Purchase Discount', desc: 'Get 10% off your very first order on WUTT.', valid: 'Valid until Aug 15, 2026', code: 'STYLE10', variant: '' },
+    { badge: 'FREE SHIP', title: 'Free Delivery', desc: 'Free shipping on all orders over 50,000 Ks.', valid: 'Valid until Sep 1, 2026', code: 'SHIPFREE', variant: 'green' },
+    { badge: '15% OFF', title: 'Member Reward', desc: 'Exclusive discount for WUTT style members.', valid: 'Valid until Jul 31, 2026', code: 'WUTT15', variant: '' },
+    { badge: '20% OFF', title: 'Welcome Offer', desc: 'Special welcome discount for new users.', valid: 'Valid until Aug 30, 2026', code: 'NEWUSER20', variant: 'green' },
+    { badge: '5,000 OFF', title: 'Big Saver', desc: 'Save 5,000 Ks on purchases above 30,000 Ks.', valid: 'Valid until Oct 15, 2026', code: 'SAVE5K', variant: '' },
+  ];
+
+  function renderCouponDrawer() {
+    var body = document.getElementById('couponDrawerBody');
+    if (!body) return;
+    body.innerHTML = ALL_COUPONS.map(function(c) {
+      var badgeCls = c.variant === 'green' ? ' coupon-card__badge--green' : '';
+      return '<div class="coupon-card">'
+        + '<div class="coupon-card__top">'
+        + '<div>'
+        + '<span class="coupon-card__badge' + badgeCls + '">' + c.badge + '</span>'
+        + '<h4 class="coupon-card__title">' + c.title + '</h4>'
+        + '</div>'
+        + '</div>'
+        + '<p class="coupon-card__desc">' + c.desc + '</p>'
+        + '<span class="coupon-card__valid">' + c.valid + '</span>'
+        + '<div class="coupon-card__bottom">'
+        + '<span class="coupon-card__code">' + c.code + '</span>'
+        + '<button class="coupon-card__copy" type="button" data-code="' + c.code + '" aria-label="Copy coupon code">Copy</button>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  function openCouponDrawer() {
+    renderCouponDrawer();
+    if (couponDrawer) couponDrawer.classList.add('coupon-drawer--open');
+    if (couponDrawerOverlay) couponDrawerOverlay.classList.add('coupon-drawer-overlay--open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCouponDrawer() {
+    if (couponDrawer) couponDrawer.classList.remove('coupon-drawer--open');
+    if (couponDrawerOverlay) couponDrawerOverlay.classList.remove('coupon-drawer-overlay--open');
+    document.body.style.overflow = '';
+  }
+
+  if (couponSeeAllBtn) {
+    couponSeeAllBtn.addEventListener('click', openCouponDrawer);
+  }
+  if (couponDrawerClose) {
+    couponDrawerClose.addEventListener('click', closeCouponDrawer);
+  }
+  if (couponDrawerOverlay) {
+    couponDrawerOverlay.addEventListener('click', closeCouponDrawer);
+  }
+
+  // Escape key to close coupon drawer
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && couponDrawer && couponDrawer.classList.contains('coupon-drawer--open')) {
+      closeCouponDrawer();
+    }
   });
 
   /* ============================================================
@@ -1316,31 +1407,12 @@ function initChatApp() {
   /* ---- Apply saved chat preferences ---- */
   applyChatPreferences();
 
-  /* ---- Settings drawer: mood chips ---- */
-  var moodChips = document.getElementById('moodChips');
-  if (moodChips) {
-    moodChips.addEventListener('click', function(e) {
-      var chip = e.target.closest('.pf-settings-chip');
-      if (!chip) return;
-      moodChips.querySelectorAll('.pf-settings-chip').forEach(function(c) { c.classList.remove('pf-settings-chip--active'); });
-      chip.classList.add('pf-settings-chip--active');
+  /* ---- Settings drawer: mood toggle ---- */
+  var moodToggleBtn = document.getElementById('moodToggleBtn');
+  if (moodToggleBtn) {
+    moodToggleBtn.addEventListener('click', function() {
       var prefs = getChatPreferences();
-      prefs.mood = chip.getAttribute('data-mood');
-      saveChatPreferences(prefs);
-      applyChatPreferences();
-    });
-  }
-
-  /* ---- Settings drawer: background chips ---- */
-  var bgChips = document.getElementById('bgChips');
-  if (bgChips) {
-    bgChips.addEventListener('click', function(e) {
-      var chip = e.target.closest('.pf-settings-bg-chip');
-      if (!chip) return;
-      bgChips.querySelectorAll('.pf-settings-bg-chip').forEach(function(c) { c.classList.remove('pf-settings-bg-chip--active'); });
-      chip.classList.add('pf-settings-bg-chip--active');
-      var prefs = getChatPreferences();
-      prefs.background = chip.getAttribute('data-bg');
+      prefs.mood = prefs.mood === 'night' ? 'day' : 'night';
       saveChatPreferences(prefs);
       applyChatPreferences();
     });
@@ -1395,8 +1467,8 @@ function initChatApp() {
 
       // 3. Show upload/describe chips
       addChipsToChat([
-        { item: 'upload-photo', label: '\u{1F4F7} Upload photo', cls: '' },
-        { item: 'describe', label: '\u{270F}\u{FE0F} Describe manually', cls: '' }
+        { item: 'upload-photo', label: 'Upload photo', cls: '' },
+        { item: 'describe', label: 'Describe manually', cls: '' }
       ], item); // pass category to handler
     });
   }
@@ -1600,9 +1672,192 @@ function initChatApp() {
     });
   }
 
-  // Show home view on first load
-  showHomeView();
+  // Show chat view on first load (chat-first experience)
+  showChatView();
   setActiveSidebar('home');
+
+  // Shop back button — return to AI Stylist chat
+  var shopBackBtn = document.getElementById('shopBackToChat');
+  if (shopBackBtn) {
+    shopBackBtn.addEventListener('click', function() {
+      showChatView();
+      setActiveSidebar('home');
+    });
+  }
+
+  /* ---- Wardrobe Upload Modal ---- */
+  var wardrobeAddBtn = document.getElementById('wardrobeAddBtn');
+  var wardrobeModal = document.getElementById('wardrobeModal');
+  var wardrobeModalClose = document.getElementById('wardrobeModalClose');
+  var wardrobeModalFileInput = document.getElementById('wardrobeModalFileInput');
+  var wardrobeUploadArea = document.getElementById('wardrobeUploadArea');
+  var wardrobeModalRetake = document.getElementById('wardrobeModalRetake');
+  var wardrobeModalSave = document.getElementById('wardrobeModalSave');
+  var wardrobeModalDone = document.getElementById('wardrobeModalDone');
+
+  // Temp state for current upload
+  var _pendingUpload = { dataUrl: '', fileName: '' };
+
+  function openWardrobeModal() {
+    if (!wardrobeModal) return;
+    // Reset to step 1
+    var stepUpload = document.getElementById('wardrobeModalUpload');
+    var stepPreview = document.getElementById('wardrobeModalPreview');
+    var stepSaved = document.getElementById('wardrobeModalSaved');
+    if (stepUpload) stepUpload.classList.remove('u-hidden');
+    if (stepPreview) stepPreview.classList.add('u-hidden');
+    if (stepSaved) stepSaved.classList.add('u-hidden');
+    wardrobeModal.classList.remove('u-hidden');
+    wardrobeModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeWardrobeModal() {
+    if (!wardrobeModal) return;
+    wardrobeModal.classList.add('u-hidden');
+    wardrobeModal.setAttribute('aria-hidden', 'true');
+    _pendingUpload = { dataUrl: '', fileName: '' };
+  }
+
+  if (wardrobeAddBtn) {
+    wardrobeAddBtn.addEventListener('click', function() {
+      openWardrobeModal();
+    });
+  }
+
+  if (wardrobeModalClose) {
+    wardrobeModalClose.addEventListener('click', closeWardrobeModal);
+  }
+
+  // Click overlay to close
+  if (wardrobeModal) {
+    wardrobeModal.addEventListener('click', function(e) {
+      if (e.target === wardrobeModal) closeWardrobeModal();
+    });
+  }
+
+  // Upload area click → trigger file input
+  if (wardrobeUploadArea) {
+    wardrobeUploadArea.addEventListener('click', function() {
+      if (wardrobeModalFileInput) wardrobeModalFileInput.click();
+    });
+
+    // Drag & drop
+    wardrobeUploadArea.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      wardrobeUploadArea.classList.add('dragover');
+    });
+    wardrobeUploadArea.addEventListener('dragleave', function() {
+      wardrobeUploadArea.classList.remove('dragover');
+    });
+    wardrobeUploadArea.addEventListener('drop', function(e) {
+      e.preventDefault();
+      wardrobeUploadArea.classList.remove('dragover');
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        handleModalFileSelected(file);
+      }
+    });
+  }
+
+  // File input change
+  if (wardrobeModalFileInput) {
+    wardrobeModalFileInput.addEventListener('change', function() {
+      var file = wardrobeModalFileInput.files && wardrobeModalFileInput.files[0];
+      if (file) handleModalFileSelected(file);
+      wardrobeModalFileInput.value = '';
+    });
+  }
+
+  function handleModalFileSelected(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      _pendingUpload.dataUrl = e.target.result;
+      _pendingUpload.fileName = file.name || 'Photo';
+      showModalPreview();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function showModalPreview() {
+    var stepUpload = document.getElementById('wardrobeModalUpload');
+    var stepPreview = document.getElementById('wardrobeModalPreview');
+    var previewImg = document.getElementById('wardrobePreviewImg');
+    if (stepUpload) stepUpload.classList.add('u-hidden');
+    if (stepPreview) stepPreview.classList.remove('u-hidden');
+    if (previewImg) previewImg.src = _pendingUpload.dataUrl;
+
+    // Mock AI detection
+    var categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories'];
+    var colors = ['Black', 'White', 'Navy', 'Beige', 'Olive', 'Blush', 'Brown', 'Grey'];
+    var styles = ['Casual', 'Minimal', 'Street', 'Classic', 'Sporty', 'Bohemian'];
+    var materials = ['Cotton', 'Denim', 'Leather', 'Silk', 'Wool blend', 'Linen', 'Polyester'];
+    var occasions = ['Casual', 'Work', 'Evening', 'Weekend', 'Travel'];
+
+    var detected = {
+      category: categories[Math.floor(Math.random() * categories.length)],
+      color: colors[Math.floor(Math.random() * colors.length)],
+      style: styles[Math.floor(Math.random() * styles.length)],
+      material: materials[Math.floor(Math.random() * materials.length)],
+      occasions: [occasions[Math.floor(Math.random() * occasions.length)], occasions[Math.floor(Math.random() * occasions.length)]]
+    };
+    // Dedupe occasions
+    detected.occasions = detected.occasions.filter(function(v, i, a) { return a.indexOf(v) === i; });
+
+    var catEl = document.getElementById('detectedCategory');
+    var colorEl = document.getElementById('detectedColor');
+    var styleEl = document.getElementById('detectedStyle');
+    var materialEl = document.getElementById('detectedMaterial');
+    var occasionsEl = document.getElementById('detectedOccasions');
+    if (catEl) catEl.textContent = detected.category;
+    if (colorEl) colorEl.textContent = detected.color;
+    if (styleEl) styleEl.textContent = detected.style;
+    if (materialEl) materialEl.textContent = detected.material;
+    if (occasionsEl) occasionsEl.textContent = detected.occasions.join(', ');
+
+    _pendingUpload.detected = detected;
+  }
+
+  // Save button
+  if (wardrobeModalSave) {
+    wardrobeModalSave.addEventListener('click', function() {
+      var d = _pendingUpload.detected;
+      if (!d) return;
+      saveWardrobeItem({
+        category: d.category,
+        imageDataUrl: _pendingUpload.dataUrl,
+        name: _pendingUpload.fileName,
+        color: d.color,
+        styleVibe: d.style,
+        material: d.material,
+        occasions: d.occasions.join(', '),
+        notes: ''
+      });
+      // Show saved step
+      var stepPreview = document.getElementById('wardrobeModalPreview');
+      var stepSaved = document.getElementById('wardrobeModalSaved');
+      if (stepPreview) stepPreview.classList.add('u-hidden');
+      if (stepSaved) stepSaved.classList.remove('u-hidden');
+    });
+  }
+
+  // Retake button
+  if (wardrobeModalRetake) {
+    wardrobeModalRetake.addEventListener('click', function() {
+      var stepUpload = document.getElementById('wardrobeModalUpload');
+      var stepPreview = document.getElementById('wardrobeModalPreview');
+      if (stepPreview) stepPreview.classList.add('u-hidden');
+      if (stepUpload) stepUpload.classList.remove('u-hidden');
+      _pendingUpload = { dataUrl: '', fileName: '' };
+    });
+  }
+
+  // Done button
+  if (wardrobeModalDone) {
+    wardrobeModalDone.addEventListener('click', function() {
+      closeWardrobeModal();
+      renderWardrobeView();
+    });
+  }
 
   console.log('WUTT Chat initialized');
 }
@@ -1671,29 +1926,20 @@ function applyChatPreferences() {
   var app = document.getElementById('chatApp');
   if (!app) return;
 
-  // Remove old mood and background classes
+  // Remove old mood classes
   app.classList.remove('chat-app--night');
-  app.classList.remove('chat-app--bg-grid', 'chat-app--bg-fabric', 'chat-app--bg-wardrobe', 'chat-app--bg-midnight');
 
   // Apply mood
   if (prefs.mood === 'night') {
     app.classList.add('chat-app--night');
   }
 
-  // Apply background (skip 'clean' — it's the default)
-  if (prefs.background && prefs.background !== 'clean') {
-    app.classList.add('chat-app--bg-' + prefs.background);
+  // Sync mood toggle state
+  var moodToggleBtn = document.getElementById('moodToggleBtn');
+  if (moodToggleBtn) {
+    var isNight = prefs.mood === 'night';
+    moodToggleBtn.setAttribute('aria-checked', isNight ? 'true' : 'false');
   }
-
-  // Sync settings drawer active states
-  var moodChips = document.querySelectorAll('#moodChips .pf-settings-chip');
-  moodChips.forEach(function(c) {
-    c.classList.toggle('pf-settings-chip--active', c.getAttribute('data-mood') === prefs.mood);
-  });
-  var bgChips = document.querySelectorAll('#bgChips .pf-settings-bg-chip');
-  bgChips.forEach(function(c) {
-    c.classList.toggle('pf-settings-bg-chip--active', c.getAttribute('data-bg') === prefs.background);
-  });
 }
 
 /* ---- User Profile ---- */
@@ -1919,19 +2165,6 @@ function renderProfileView() {
   if (fitPrefVal) fitPrefVal.textContent = profile.fitPreference ? (FIT_LABELS[profile.fitPreference] || profile.fitPreference) : '—';
   var skinVal = document.getElementById('profileCardSkinTone');
   if (skinVal) skinVal.textContent = profile.skinTone ? (SKIN_LABELS[profile.skinTone] || profile.skinTone) : '—';
-
-  // Wardrobe Preferences
-  var categoriesEl = document.getElementById('profileCardCategories');
-  if (categoriesEl) {
-    var cats = profile.preferredCategories || [];
-    if (cats.length > 0) {
-      categoriesEl.innerHTML = cats.map(function(c) {
-        return '<span class="pf-tag pf-tag--active">' + escapeHtml(c.charAt(0).toUpperCase() + c.slice(1)) + '</span>';
-      }).join('');
-    } else {
-      categoriesEl.innerHTML = '<span class="pf-tag pf-tag--empty">—</span>';
-    }
-  }
 
   var prefColors2El = document.getElementById('profileCardPrefColors2');
   if (prefColors2El) {
@@ -2174,6 +2407,9 @@ function saveWardrobeItem(item) {
   items.push(item);
   localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
   renderWardrobeSidebar();
+  // Also refresh wardrobe page if visible
+  var wv = document.getElementById('wardrobeView');
+  if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
 }
 
 /**
@@ -2556,6 +2792,9 @@ function deleteWardrobeItem(itemId) {
   items = items.filter(function(item) { return item.id !== itemId; });
   localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
   renderWardrobeSidebar();
+  // Also refresh wardrobe page if visible
+  var wv = document.getElementById('wardrobeView');
+  if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
 }
 
 function renderWardrobeSidebar() {
@@ -2606,6 +2845,85 @@ function renderWardrobeSidebar() {
       deleteWardrobeItem(itemId);
     });
   });
+}
+
+/** Render wardrobe full page view */
+function renderWardrobeView() {
+  var grid = document.getElementById('wardrobeGrid');
+  var empty = document.getElementById('wardrobeEmpty');
+  if (!grid) return;
+
+  var items = getWardrobeItems();
+
+  // Show/hide empty state
+  if (empty) empty.style.display = items.length ? 'none' : '';
+
+  // Render cards
+  var html = '';
+  items.forEach(function(item) {
+    var imgHtml = '';
+    if (item.imageDataUrl) {
+      imgHtml = '<img class="wardrobe-card__img" src="' + item.imageDataUrl + '" alt="' + escapeHtml(item.name || item.category || '') + '">';
+    } else {
+      imgHtml = '<div class="wardrobe-card__img wardrobe-card__img--placeholder">' +
+        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg></div>';
+    }
+
+    var colorHex = PREF_COLOR_MAP[item.color] || '';
+    var colorDot = colorHex
+      ? '<span class="wardrobe-card__color-dot" style="background:' + colorHex + '"></span>'
+      : '';
+
+    var metaParts = [item.category];
+    if (item.styleVibe) metaParts.push(item.styleVibe);
+
+    html += '<div class="wardrobe-card" data-category="' + escapeHtml(item.category || '') + '">' +
+      imgHtml +
+      '<div class="wardrobe-card__info">' +
+        '<div class="wardrobe-card__name">' + escapeHtml(item.name || item.category || 'Untitled') + '</div>' +
+        '<div class="wardrobe-card__meta">' + colorDot + escapeHtml(metaParts.join(' · ')) + '</div>' +
+      '</div>' +
+    '</div>';
+  });
+
+  // Keep empty state node, replace cards only
+  if (empty) {
+    grid.innerHTML = '';
+    grid.appendChild(empty);
+  }
+  grid.insertAdjacentHTML('beforeend', html);
+
+  // Wire filter chips
+  var filterContainer = document.getElementById('wardrobeFilters');
+  if (filterContainer) {
+    filterContainer.querySelectorAll('.wardrobe-view__filter').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        filterContainer.querySelectorAll('.wardrobe-view__filter').forEach(function(b) { b.classList.remove('wardrobe-view__filter--active'); });
+        btn.classList.add('wardrobe-view__filter--active');
+        var filter = btn.getAttribute('data-filter');
+        grid.querySelectorAll('.wardrobe-card').forEach(function(card) {
+          if (filter === 'all' || card.getAttribute('data-category').toLowerCase() === filter) {
+            card.style.display = '';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+  }
+
+  // Wire search
+  var searchInput = document.getElementById('wardrobeSearchInput');
+  if (searchInput) {
+    searchInput.value = '';
+    searchInput.addEventListener('input', function() {
+      var q = searchInput.value.toLowerCase();
+      grid.querySelectorAll('.wardrobe-card').forEach(function(card) {
+        var text = card.textContent.toLowerCase();
+        card.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+      });
+    });
+  }
 }
 
 /** Add a user message */

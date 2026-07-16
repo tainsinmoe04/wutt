@@ -2,9 +2,9 @@
   "permissions": {
     "allow": [
       "Read(*)",
-      "Write(frontend/**)",
-      "Write(backend/**)",
-      "Write(.claude/**)",
+      "Edit(frontend/**)",
+      "Edit(backend/**)",
+      "Edit(.claude/**)",
       "Bash(pip install*)",
       "Bash(uvicorn*)",
       "Bash(python*)",
@@ -20,7 +20,9 @@
       "Bash(curl http://localhost*)"
     ],
     "deny": [
-      "Write(.env)",
+      "Edit(.env)",
+      "Read(.env)",
+      "Read(.env.*)",
       "Bash(rm -rf*)",
       "Bash(rm -f .env*)",
       "Bash(git push origin main*)",
