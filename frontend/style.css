@@ -782,6 +782,36 @@ p { color: var(--wutt-text-light); max-width: 65ch; text-wrap: pretty; }
 }
 
 /* --------------------------------------------------------
+   Landing Hero — CTA Buttons
+   -------------------------------------------------------- */
+.landing-hero__cta {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn--lg {
+  padding: 0.875rem 2rem;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--wutt-light);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* --------------------------------------------------------
    Landing Modal Overlay
    -------------------------------------------------------- */
 .landing-modal-overlay {
