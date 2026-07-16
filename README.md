@@ -17,6 +17,17 @@ Upload your wardrobe. Pick an occasion. Get an outfit recommendation that fits t
 
 The recommendation engine is rule-based — it classifies items, scores them against occasion and weather, and assembles valid outfits. Works without any API keys.
 
+### Phase 2 — Current Focus
+
+- **AI Chat** — conversational styling assistant powered by Gemini Vision
+- **Gemini Vision** — outfit analysis, wardrobe item recognition, style advice
+- **Wardrobe flow** — upload, categorise, and manage your wardrobe items
+
+### Coming Soon (Locked)
+
+- **Shop/Seller integration** — browse and purchase recommended items
+- **Virtual try-on / MR** — see how outfits look before buying (future phase)
+
 ---
 
 ## Screenshots
@@ -33,6 +44,7 @@ The recommendation engine is rule-based — it classifies items, scores them aga
 |-------|-----------|
 | Frontend | HTML + CSS (BEM, CSS variables) + JavaScript |
 | Backend | Python FastAPI + SQLAlchemy + SQLite |
+| AI Vision | Google Gemini Vision (outfit analysis, wardrobe recognition) |
 | Images | Cloudinary (server-side signed uploads) |
 | Font | Space Grotesk via Google Fonts |
 | Deploy | Render.com |
@@ -63,6 +75,7 @@ JWT_SECRET_KEY=<random string>
 CLOUDINARY_CLOUD_NAME=<required>
 CLOUDINARY_API_KEY=<required>
 CLOUDINARY_API_SECRET=<required>
+GEMINI_API_KEY=<optional>
 OPENAI_API_KEY=<optional>
 WEATHER_API_KEY=<optional>
 ```
