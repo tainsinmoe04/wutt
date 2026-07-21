@@ -329,7 +329,9 @@ def get_chat_response(
     except Exception as exc:
         cls = type(exc).__qualname__
         mod = type(exc).__module__
-        logger.error("Gemini chat failed: %s.%s — %s", mod, cls, exc)
+        status = getattr(exc, 'status', None)
+        msg = str(exc)[:200]
+        logger.error("Gemini chat failed: %s.%s | status=%s — %s", mod, cls, status, msg)
         return None
 
 
@@ -341,24 +343,53 @@ _VISION_SYSTEM_PROMPT = (
     "You are analyzing a single clothing item photo. The photo may have "
     "imperfect lighting, casual angles, or background clutter — do your best "
     "to identify the item accurately.\n\n"
+    "CATEGORY DEFINITIONS (use exactly these values):\n"
+    '- "top": shirts, blouses, t-shirts, sweaters, hoodies, blazers, jackets, '
+    "polos, tank tops, crop tops, cardigans\n"
+    '- "bottom": pants, jeans, trousers, shorts, skirts, leggings, joggers\n'
+    '- "dress": one-piece garments including maxi dress, mini dress, cocktail dress, '
+    "jumpsuit, romper, gown, kaftan\n"
+    '- "shoes": sneakers, heels, boots, sandals, flats, loafers, slides, flip-flops\n'
+    '- "accessory": bags, belts, jewelry, scarves, hats, watches, sunglasses, gloves\n\n'
+    "COLOR NAMING GUIDE (use these common fashion color names):\n"
+    "- Neutrals: black, white, ivory, cream, beige, tan, brown, grey, charcoal\n"
+    "- Blues: navy, royal blue, sky blue, light blue, teal, turquoise\n"
+    "- Greens: olive, sage, emerald, forest green, mint, lime\n"
+    "- Reds: red, burgundy, maroon, coral, rust, salmon, pink, blush, rose\n"
+    "- Yellows: yellow, gold, mustard, lemon, champagne\n"
+    "- Purples: purple, lavender, lilac, plum, mauve\n"
+    "- Oranges: orange, peach, terracotta, bronze\n"
+    "- Multiple colors: use primary color, set secondary_color for accents\n\n"
+    "STYLE TAGS VOCABULARY (pick 2-4 that fit):\n"
+    "minimal, classic, casual, formal, streetwear, bohemian, vintage, sporty, "
+    "preppy, elegant, trendy, edgy, romantic, minimalist, chic, feminine, "
+    "masculine, androgynous, ethnic, traditional, modern, retro\n\n"
+    "CONFIDENCE SCORING:\n"
+    "- 90-100: Clear, well-lit photo, item is unmistakable\n"
+    "- 70-89: Good photo, item is clearly identifiable with minor uncertainty\n"
+    "- 50-69: Decent photo, some ambiguity in type or details\n"
+    "- 30-49: Poor lighting/angle, making identification harder\n"
+    "- Below 30: Very blurry or unclear, mostly guessing\n\n"
     "Return ONLY a JSON object (no markdown fences, no commentary) with:\n"
     '  "category": string — one of: top, bottom, dress, shoes, accessory\n'
     '  "subtype": string — specific type, e.g. "blazer", "jeans", "maxi dress"\n'
-    '  "color": string — primary color, e.g. "navy", "white", "olive"\n'
+    '  "color": string — primary color using the guide above\n'
     '  "secondary_color": string or null — secondary/accent color if visible\n'
     '  "fit": string — one of: slim, regular, oversized, relaxed\n'
     '  "style": string — style vibe, e.g. "formal", "casual", "streetwear"\n'
     '  "material_guess": string — best guess at fabric, e.g. "cotton", "silk blend"\n'
     '  "occasion_tags": array of strings — suitable occasions\n'
-    '  "style_tags": array of strings — style descriptors\n'
+    '  "style_tags": array of 2-4 strings from the vocabulary above\n'
     '  "description": string — 1-2 sentence friendly description\n'
     '  "confidence": number 0-100 — how confident you are in this analysis\n'
     '  "matching_ideas": array of 2-3 strings — what to pair this with\n\n'
-    "Rules:\n"
+    "RULES:\n"
     "- Be honest about confidence — low light or blurry photos should have lower confidence.\n"
     "- For Myanmar context: note if it works with longyi, for temple, for wedding, etc.\n"
     "- Never return placeholder or fake data — only what you can see or reasonably guess.\n"
-    "- Keep description natural and friendly, not robotic."
+    "- Keep description natural and friendly, not robotic.\n"
+    "- If you see a pattern (stripes, plaid, floral), mention it in the description.\n"
+    "- Consider the item's versatility — can it be dressed up or down?"
 )
 
 
@@ -391,10 +422,17 @@ def analyze_clothing_image(
             )
 
     user_prompt = (
-        "Analyze this clothing item. "
-        "Return a JSON object with: category, subtype, color, secondary_color, "
-        "fit, style, material_guess, occasion_tags, style_tags, description, "
-        "confidence, matching_ideas."
+        "Analyze this clothing item photo. Look carefully at:\n"
+        "1. The overall silhouette and cut to determine category and subtype\n"
+        "2. The primary and any secondary colors\n"
+        "3. Fabric texture and drape to guess material\n"
+        "4. Any visible patterns (stripes, plaid, floral, solid)\n"
+        "5. The fit (how it sits on the body or hanger)\n\n"
+        "Return a JSON object with these exact fields:\n"
+        "category, subtype, color, secondary_color, fit, style, material_guess, "
+        "occasion_tags, style_tags, description, confidence, matching_ideas.\n\n"
+        "Be specific about the subtype — 'blazer' not just 'top', 'maxi dress' "
+        "not just 'dress', 'sneakers' not just 'shoes'."
         + knowledge_snippet
     )
 
@@ -410,8 +448,8 @@ def analyze_clothing_image(
                 user_prompt,
             ],
             config=gemini_types.GenerateContentConfig(
-                max_output_tokens=600,
-                temperature=0.3,
+                max_output_tokens=800,
+                temperature=0.2,
             ),
         )
         raw = response.text
@@ -437,24 +475,37 @@ def analyze_clothing_image(
                 return None
 
         # Normalize response
+        valid_categories = {"top", "bottom", "dress", "shoes", "accessory"}
+        category = parsed.get("category", "top").lower().strip()
+        if category not in valid_categories:
+            # Try to map common mistakes
+            category_map = {
+                "shirt": "top", "blouse": "top", "t-shirt": "top", "sweater": "top",
+                "pants": "bottom", "jeans": "bottom", "trousers": "bottom", "skirt": "bottom",
+                "gown": "dress", "jumpsuit": "dress", "romper": "dress",
+                "sneaker": "shoes", "heel": "shoes", "boot": "shoes", "sandal": "shoes",
+                "bag": "accessory", "belt": "accessory", "hat": "accessory", "scarf": "accessory",
+            }
+            category = category_map.get(category, "top")
+
         result = {
-            "category": parsed.get("category", "top"),
-            "subtype": parsed.get("subtype", ""),
-            "color": parsed.get("color", "unknown"),
+            "category": category,
+            "subtype": parsed.get("subtype", "").strip(),
+            "color": parsed.get("color", "unknown").strip(),
             "secondary_color": parsed.get("secondary_color"),
-            "fit": parsed.get("fit", "regular"),
-            "style": parsed.get("style", "casual"),
-            "material_guess": parsed.get("material_guess", ""),
+            "fit": parsed.get("fit", "regular").strip(),
+            "style": parsed.get("style", "casual").strip(),
+            "material_guess": parsed.get("material_guess", "").strip(),
             "occasion_tags": parsed.get("occasion_tags", []),
             "style_tags": parsed.get("style_tags", []),
-            "description": parsed.get("description", ""),
+            "description": parsed.get("description", "").strip(),
             "confidence": min(100, max(0, parsed.get("confidence", 70))),
             "matching_ideas": parsed.get("matching_ideas", []),
         }
 
         logger.info(
-            "[WUTT] Vision analysis: category=%s color=%s confidence=%d",
-            result["category"], result["color"], result["confidence"],
+            "[WUTT] Vision analysis: category=%s subtype=%s color=%s confidence=%d",
+            result["category"], result["subtype"], result["color"], result["confidence"],
         )
         return result
 

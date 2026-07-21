@@ -25,6 +25,8 @@ from services.weather_svc import get_current_weather, WeatherData
 from services.openai_svc import get_outfit_recommendation as openai_recommend
 from services.gemini_svc import get_outfit_recommendation as gemini_recommend
 from services.gemini_svc import get_chat_response
+from services.openai_svc import get_chat_response as openai_chat
+from services.openrouter_svc import get_chat_response as openrouter_chat
 from services.gemini_svc import analyze_clothing_image
 from services.gemini_svc import FASHION_KNOWLEDGE, APP_GUIDE
 from config import settings
@@ -1614,14 +1616,31 @@ def chat_with_stylist(
     response_text: str | None = None
     last_error: str = ""
 
-    # 1. Try Gemini (chat-capable)
-    if settings.gemini_api_key:
-        try:
-            # Inject knowledge context into the message if available
-            enriched_message = message
-            if knowledge_context:
-                enriched_message = message + knowledge_context
+    # Build enriched message once (shared across providers)
+    enriched_message = message
+    if knowledge_context:
+        enriched_message = message + knowledge_context
 
+    # 1. Try OpenRouter (primary)
+    if settings.openrouter_api_key:
+        try:
+            response_text = openrouter_chat(
+                user_message=enriched_message,
+                conversation_history=body.conversation_history,
+                wardrobe_items=wardrobe_context if wardrobe_context else None,
+            )
+            if response_text:
+                source = "openrouter"
+                logger.info("[WUTT] source=openrouter endpoint=/chat chars=%d", len(response_text))
+        except Exception as exc:
+            last_error = str(exc)
+            cls = type(exc).__qualname__
+            mod = type(exc).__module__
+            logger.warning("[WUTT] source=api_error endpoint=/chat openrouter_error=%s.%s", mod, cls)
+
+    # 2. Fallback to Gemini if OpenRouter failed
+    if not response_text and settings.gemini_api_key:
+        try:
             response_text = get_chat_response(
                 user_message=enriched_message,
                 conversation_history=body.conversation_history,
@@ -1636,14 +1655,30 @@ def chat_with_stylist(
             mod = type(exc).__module__
             logger.warning("[WUTT] source=api_error endpoint=/chat gemini_error=%s.%s", mod, cls)
 
-    # 2. No AI available — return clear error, no fallback
+    # 3. Fallback to OpenAI if Gemini also failed
+    if not response_text and settings.openai_api_key:
+        try:
+            response_text = openai_chat(
+                user_message=enriched_message,
+                conversation_history=body.conversation_history,
+                wardrobe_items=wardrobe_context if wardrobe_context else None,
+            )
+            if response_text:
+                source = "openai"
+                logger.info("[WUTT] source=openai endpoint=/chat chars=%d", len(response_text))
+        except Exception as exc:
+            cls = type(exc).__qualname__
+            mod = type(exc).__module__
+            logger.warning("[WUTT] source=api_error endpoint=/chat openai_error=%s.%s", mod, cls)
+
+    # 4. No AI available — return clear error
     if not response_text:
-        if not settings.gemini_api_key:
+        if not settings.openrouter_api_key and not settings.gemini_api_key and not settings.openai_api_key:
             source = "api_error"
             logger.info("[WUTT] source=api_error endpoint=/chat reason=no_api_key")
         else:
             source = "api_error"
-            logger.info("[WUTT] source=api_error endpoint=/chat reason=gemini_failed")
+            logger.info("[WUTT] source=api_error endpoint=/chat reason=all_providers_failed")
         response_text = (
             "Real AI styling is currently unavailable. "
             "Please check API key or quota. Try again later."

@@ -3323,12 +3323,17 @@ Chat App — Main screen (redesign)
 
 /* Wardrobe Card (grid item) */
 .wardrobe-card {
+  position: relative;
   background: var(--wutt-light);
   border: 1px solid var(--wutt-border-light);
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: default;
-  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease;
+}
+.wardrobe-card--selected {
+  border-color: var(--wutt-primary);
+  box-shadow: 0 0 0 2px var(--wutt-primary);
 }
 .wardrobe-card:hover {
   transform: translateY(-2px);
@@ -3372,6 +3377,77 @@ Chat App — Main screen (redesign)
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* Card delete button (single item) */
+.wardrobe-card__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms ease, transform 160ms ease-out, background 160ms ease;
+  z-index: 2;
+  padding: 0;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wardrobe-card__delete { opacity: 0; }
+  .wardrobe-card:hover .wardrobe-card__delete { opacity: 1; }
+}
+.wardrobe-card__delete:hover { background: rgba(0, 0, 0, 0.65); }
+.wardrobe-card__delete:active { transform: scale(0.92); }
+.wardrobe-card__delete svg { width: 14px; height: 14px; }
+
+/* Card select checkbox */
+.wardrobe-card__select {
+  display: none;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+}
+.wardrobe-card__select input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  transition: background 120ms ease, border-color 120ms ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.wardrobe-card__select input[type="checkbox"]:checked {
+  background: var(--wutt-primary);
+  border-color: var(--wutt-primary);
+}
+.wardrobe-card__select input[type="checkbox"]:checked::after {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+  margin: 2px auto 0;
+}
+
+/* Select mode: show checkboxes, hide delete icons */
+.wardrobe-view--select-mode .wardrobe-card__select { display: block; }
+.wardrobe-view--select-mode .wardrobe-card__delete { display: none; }
 
 /* AI Closet Tools Card */
 .wardrobe-tools {
@@ -3444,6 +3520,84 @@ Chat App — Main screen (redesign)
 }
 .wardrobe-view__add-btn:hover { background: #2A2A2A; }
 .wardrobe-view__add-btn:active { transform: scale(0.97); }
+
+/* Select mode toggle button */
+button.wardrobe-view__select-btn,
+.wardrobe-view__select-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 9px 20px !important;
+  font-family: inherit !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  color: var(--wutt-light) !important;
+  background: var(--wutt-dark) !important;
+  border: none !important;
+  border-radius: var(--radius-full) !important;
+  cursor: pointer !important;
+  transition: transform 160ms ease-out, background 160ms ease !important;
+  white-space: nowrap !important;
+  touch-action: manipulation !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.wardrobe-view__select-btn:hover { background: #2A2A2A !important; }
+.wardrobe-view__select-btn:active { transform: scale(0.97) !important; }
+.wardrobe-view--select-mode .wardrobe-view__select-btn {
+  background: var(--wutt-primary);
+  color: #fff;
+}
+
+/* Bulk action bar */
+.wardrobe-view__bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+  padding: 10px 16px;
+  background: var(--wutt-light);
+  border: 1.5px solid var(--wutt-border);
+  border-radius: var(--radius-lg);
+}
+.wardrobe-view__bulk-count {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--wutt-text);
+  margin-right: auto;
+}
+.wardrobe-view__bulk-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: #fff;
+  background: #d94452;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: transform 160ms ease-out, background 160ms ease;
+}
+.wardrobe-view__bulk-delete:hover { background: #c53544; }
+.wardrobe-view__bulk-delete:active { transform: scale(0.97); }
+.wardrobe-view__bulk-cancel {
+  padding: 7px 16px;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--wutt-text-muted);
+  background: none;
+  border: 1.5px solid var(--wutt-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.wardrobe-view__bulk-cancel:hover { border-color: var(--wutt-text-muted); color: var(--wutt-text); }
 
 /* ---- Upload Modal ---- */
 .wardrobe-modal-overlay {
@@ -3879,6 +4033,16 @@ Chat App — Main screen (redesign)
 .chat-app--night .wardrobe-card__img { background: var(--_chat-bg); }
 .chat-app--night .wardrobe-card__name { color: var(--_chat-text); }
 .chat-app--night .wardrobe-card__meta { color: var(--_chat-muted); }
+.chat-app--night .wardrobe-card__delete { background: rgba(255,255,255,0.15); }
+.chat-app--night .wardrobe-card__delete:hover { background: rgba(255,255,255,0.25); }
+.chat-app--night .wardrobe-card__select input[type="checkbox"] { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.4); }
+.chat-app--night .wardrobe-card--selected { border-color: var(--wutt-night-accent); box-shadow: 0 0 0 2px var(--wutt-night-accent); }
+.chat-app--night .wardrobe-view__select-btn { background: var(--wutt-night-accent); color: #1a1520; }
+.chat-app--night .wardrobe-view__select-btn:hover { background: var(--wutt-night-accent-hover); }
+.chat-app--night .wardrobe-view__bulk-bar { background: var(--_chat-surface); border-color: var(--_chat-border); }
+.chat-app--night .wardrobe-view__bulk-count { color: var(--_chat-text); }
+.chat-app--night .wardrobe-view__bulk-cancel { border-color: var(--_chat-border); color: var(--_chat-muted); }
+.chat-app--night .wardrobe-view__bulk-cancel:hover { border-color: var(--_chat-muted); color: var(--_chat-text); }
 .chat-app--night .wardrobe-tools { background: var(--_chat-surface); border-color: var(--_chat-border); }
 .chat-app--night .wardrobe-tools__title { color: var(--_chat-text); }
 .chat-app--night .wardrobe-tools__desc { color: var(--_chat-muted); }
@@ -3908,6 +4072,198 @@ Chat App — Main screen (redesign)
 .chat-app--night .wardrobe-modal__saved-icon { background: rgba(34,197,94,0.15); }
 .chat-app--night .wardrobe-modal__saved-title { color: var(--_chat-text); }
 .chat-app--night .wardrobe-modal__saved-hint { color: var(--_chat-muted); }
+
+/* ---- Avatar Crop Modal ---- */
+.avatar-crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 250ms ease, visibility 250ms ease;
+}
+.avatar-crop-overlay:not(.u-hidden) {
+  opacity: 1;
+  visibility: visible;
+}
+
+.avatar-crop-modal {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 360px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: modalSlideUp 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.chat-app--night .avatar-crop-modal { background: var(--_chat-surface); }
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.avatar-crop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg) var(--space-xl);
+  border-bottom: 1px solid var(--wutt-border-light);
+}
+.chat-app--night .avatar-crop-header { border-color: var(--_chat-border); }
+
+.avatar-crop-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--wutt-dark);
+  margin: 0;
+}
+.chat-app--night .avatar-crop-title { color: var(--_chat-text); }
+
+.avatar-crop-close {
+  background: none;
+  border: none;
+  color: var(--wutt-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background 150ms ease, color 150ms ease;
+}
+.avatar-crop-close:hover { background: var(--wutt-bg); color: var(--wutt-dark); }
+.chat-app--night .avatar-crop-close:hover { background: var(--_chat-bg); color: var(--_chat-text); }
+
+.avatar-crop-body {
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.avatar-crop-preview {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  background: var(--wutt-bg);
+  margin-bottom: var(--space-md);
+  touch-action: none;
+  cursor: grab;
+}
+.avatar-crop-preview:active { cursor: grabbing; }
+.chat-app--night .avatar-crop-preview { background: var(--_chat-bg); }
+
+.avatar-crop-image {
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.avatar-crop-circle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.8);
+  pointer-events: none;
+}
+
+.avatar-crop-hint {
+  font-size: var(--text-xs);
+  color: var(--wutt-text-muted);
+  margin: 0 0 var(--space-md);
+  text-align: center;
+}
+.chat-app--night .avatar-crop-hint { color: var(--_chat-muted); }
+
+.avatar-crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  max-width: 240px;
+}
+.avatar-crop-zoom svg { color: var(--wutt-text-muted); flex-shrink: 0; }
+.chat-app--night .avatar-crop-zoom svg { color: var(--_chat-muted); }
+
+.avatar-crop-zoom-slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--wutt-border-light);
+  border-radius: 2px;
+  outline: none;
+}
+.chat-app--night .avatar-crop-zoom-slider { background: var(--_chat-border); }
+
+.avatar-crop-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--wutt-primary);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(136,162,255,0.4);
+}
+.avatar-crop-zoom-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--wutt-primary);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(136,162,255,0.4);
+}
+
+.avatar-crop-footer {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl) var(--space-xl);
+}
+
+.avatar-crop-cancel {
+  flex: 1;
+  padding: 10px 16px;
+  background: var(--wutt-bg);
+  color: var(--wutt-dark);
+  border: 1px solid var(--wutt-border-light);
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.avatar-crop-cancel:hover { background: var(--wutt-border-light); border-color: var(--wutt-text-muted); }
+.chat-app--night .avatar-crop-cancel { background: var(--_chat-bg); color: var(--_chat-text); border-color: var(--_chat-border); }
+.chat-app--night .avatar-crop-cancel:hover { background: var(--_chat-border); }
+
+.avatar-crop-save {
+  flex: 1;
+  padding: 10px 16px;
+  background: var(--wutt-dark);
+  color: var(--wutt-light);
+  border: none;
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+.avatar-crop-save:hover { background: #2A2A2A; transform: translateY(-1px); }
+.avatar-crop-save:active { transform: translateY(0) scale(0.97); }
+.chat-app--night .avatar-crop-save { background: var(--wutt-night-accent); color: #1a1817; }
+.chat-app--night .avatar-crop-save:hover { background: var(--wutt-night-accent-hover); }
 
 .profile-view__scroll {
   flex: 1;
@@ -4938,7 +5294,34 @@ Chat App — Main screen (redesign)
   flex: 1;
   overflow-y: auto;
   padding: var(--space-xl);
+  padding-bottom: 80px; /* space for sticky footer */
 }
+
+.pf-edit-modal__footer {
+  flex-shrink: 0;
+  padding: var(--space-md) var(--space-xl);
+  border-top: 1px solid var(--wutt-border-light);
+  background: var(--wutt-light);
+}
+.chat-app--night .pf-edit-modal__footer { background: var(--_chat-surface); border-color: var(--_chat-border); }
+
+.pf-edit-modal__save {
+  width: 100%;
+  padding: 14px 24px;
+  background: var(--wutt-dark);
+  color: var(--wutt-light);
+  border: none;
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+.pf-edit-modal__save:hover { background: #2A2A2A; transform: translateY(-1px); }
+.pf-edit-modal__save:active { transform: translateY(0) scale(0.97); }
+.chat-app--night .pf-edit-modal__save { background: var(--wutt-night-accent); color: #1a1817; }
+.chat-app--night .pf-edit-modal__save:hover { background: var(--wutt-night-accent-hover); }
 
 .pf-edit-form {
   display: flex;

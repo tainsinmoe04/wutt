@@ -11,6 +11,9 @@ Two modes:
 Key rule (CLAUDE.md): send images as base64 **or** url — not both.
 """
 
+# NOTE: This module also provides get_chat_response() as a fallback
+# when Gemini quota is exhausted.  The chat prompt mirrors gemini_svc.py.
+
 import json
 import logging
 from typing import Any
@@ -260,4 +263,109 @@ def get_outfit_recommendation(
         )
         if body is not None:
             logger.error("OpenAI error body: %s", body)
+        return None
+
+
+# ── General Chat (fallback for Gemini) ────────────────────
+
+_CHAT_SYSTEM_PROMPT = (
+    "You are WUTT, a friendly AI fashion companion for Myanmar users. "
+    "You are NOT a generic assistant — you are a personal stylist and "
+    "fashion friend who knows fashion, fit, colour theory, and Myanmar culture.\n\n"
+    "Tone: warm, natural, short, useful — like a stylish friend texting. "
+    "Never say 'As an AI…' or 'I'm an AI assistant'. Just be helpful.\n\n"
+    "You can help with:\n"
+    "- General fashion questions (what to wear, colour matching, style tips)\n"
+    "- Explaining how to use WUTT (upload clothes, get recommendations, save looks)\n"
+    "- Casual chat about fashion, style, occasions\n"
+    "- Outfit recommendations when asked specifically\n\n"
+    "Knowledge:\n"
+    "- Use fashion knowledge for style advice (color rules, occasion rules, trends).\n"
+    "- Use the app guide when users ask how WUTT works.\n"
+    "- Always consider Myanmar climate (hot, monsoon, cool seasons) when giving advice.\n"
+    "- Know Myanmar cultural occasions (wedding, temple, longyi style).\n\n"
+    "Rules:\n"
+    "- Keep responses short (2-4 sentences usually).\n"
+    "- Be warm and Myanmar-friendly.\n"
+    "- If the user asks what to wear for a specific occasion, give 2-3 practical outfit ideas.\n"
+    "- If the user asks how to use WUTT, explain the app simply.\n"
+    "- If the user just says hi/hey, greet them back warmly and ask how you can help.\n"
+    "- Never fabricate wardrobe items — only reference items the user has mentioned.\n"
+    "- Mix English and Myanmar naturally when it feels right."
+)
+
+
+def get_chat_response(
+    user_message: str,
+    conversation_history: list[dict[str, str]] | None = None,
+    wardrobe_items: list[dict[str, Any]] | None = None,
+) -> str | None:
+    """General chat via OpenAI — fallback when Gemini quota is exhausted.
+
+    Mirrors the interface of gemini_svc.get_chat_response() so the route
+    can swap providers transparently.
+
+    Args:
+        user_message: The user's latest message.
+        conversation_history: Previous messages as [{"role": "user"|"bot", "content": "..."}].
+        wardrobe_items: Optional wardrobe context for personalised advice.
+
+    Returns:
+        Natural text response, or None on failure.
+    """
+    client = _build_client()
+    if client is None:
+        return None
+
+    # Build messages array for OpenAI chat format
+    messages: list[dict[str, str]] = [
+        {"role": "system", "content": _CHAT_SYSTEM_PROMPT},
+    ]
+
+    # Add wardrobe context as a system note
+    if wardrobe_items:
+        wardrobe_lines = ["User's wardrobe items:"]
+        for i, item in enumerate(wardrobe_items[:10], 1):
+            cat = item.get("category", "")
+            color = item.get("color", "")
+            desc = item.get("description", "")
+            parts = [p for p in [cat, color, desc] if p]
+            wardrobe_lines.append(f"  {i}. {' '.join(parts) if parts else '(unnamed)'}")
+        messages.append({"role": "system", "content": "\n".join(wardrobe_lines)})
+
+    # Add conversation history
+    if conversation_history:
+        for msg in conversation_history[-8:]:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role in ("user", "bot"):
+                messages.append({
+                    "role": "assistant" if role == "bot" else "user",
+                    "content": content,
+                })
+
+    # Add current user message
+    messages.append({"role": "user", "content": user_message})
+
+    try:
+        response = client.chat.completions.create(
+            model=settings.openai_model,
+            messages=messages,
+            max_tokens=500,
+            temperature=0.8,
+        )
+        raw = response.choices[0].message.content
+        if raw:
+            return raw.strip()
+        return None
+    except Exception as exc:
+        cls = type(exc).__qualname__
+        mod = type(exc).__module__
+        status = getattr(exc, "status_code", None)
+        code = getattr(exc, "code", None)
+        msg = getattr(exc, "message", None) or str(exc)
+        logger.error(
+            "OpenAI chat failed: %s.%s | status=%s code=%s message=%s",
+            mod, cls, status, code, msg,
+        )
         return None

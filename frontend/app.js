@@ -1042,13 +1042,10 @@ function initChatApp() {
   wireSingleSelectGroup('profileShoppingStyleChips', 'pf-chip--active');
   wireSingleSelectGroup('profileFitPreferenceChips', 'pf-chip--active');
   wireSingleSelectGroup('profileOutfitVibeChips', 'pf-chip--active');
-  wireSingleSelectGroup('profileBudgetRangeChips', 'pf-chip--active');
-  wireSingleSelectGroup('profileShoppingPrefChips', 'pf-chip--active');
   wireSkinToneSwatches();
 
   // Wire multi-select groups
   wireMultiSelectGroup('profileFavoriteStylesChips', 'pf-chip--active');
-  wireMultiSelectGroup('profileCategoriesChips', 'pf-chip--active');
   wireMultiSelectGroup('profilePreferredColorsChips', 'pf-color-chip--active');
 
   function openProfileEdit() {
@@ -1087,6 +1084,17 @@ function initChatApp() {
     });
   }
 
+  // Direct click handler on Save button (outside form)
+  var profileSaveBtn = document.getElementById('profileSaveBtn');
+  if (profileSaveBtn && profileForm) {
+    profileSaveBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      saveProfileForm();
+      closeProfileEdit();
+      renderProfileView();
+    });
+  }
+
   /* ---- Profile photo upload ---- */
   var photoUpload = document.getElementById('profilePhotoUpload');
   var photoInput = document.getElementById('profilePhotoInput');
@@ -1108,13 +1116,153 @@ function initChatApp() {
       if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB', 'error'); return; }
       var reader = new FileReader();
       reader.onload = function(ev) {
-        var dataUrl = ev.target.result;
-        localStorage.setItem(userKey('wutt_profile_photo'), dataUrl);
-        renderProfilePhoto();
-        showToast('Photo updated', 'success');
+        openAvatarCrop(ev.target.result);
       };
       reader.readAsDataURL(file);
       photoInput.value = '';
+    });
+  }
+
+  /* ---- Avatar Crop Modal ---- */
+  var avatarCropOverlay = document.getElementById('avatarCropOverlay');
+  var avatarCropPreview = document.getElementById('avatarCropPreview');
+  var avatarCropImage = document.getElementById('avatarCropImage');
+  var avatarCropZoom = document.getElementById('avatarCropZoom');
+  var avatarCropSave = document.getElementById('avatarCropSave');
+  var avatarCropCancel = document.getElementById('avatarCropCancel');
+  var avatarCropClose = document.getElementById('avatarCropClose');
+
+  var avatarCropData = { dataUrl: null, offsetX: 0, offsetY: 0, zoom: 100, dragging: false, startX: 0, startY: 0, imgW: 0, imgH: 0 };
+
+  function openAvatarCrop(dataUrl) {
+    avatarCropData.dataUrl = dataUrl;
+    avatarCropData.offsetX = 0;
+    avatarCropData.offsetY = 0;
+    avatarCropData.zoom = 100;
+    avatarCropZoom.value = 100;
+    avatarCropImage.style.backgroundImage = 'url(' + dataUrl + ')';
+    var tempImg = new Image();
+    tempImg.onload = function() {
+      avatarCropData.imgW = tempImg.naturalWidth;
+      avatarCropData.imgH = tempImg.naturalHeight;
+      updateAvatarCropTransform();
+    };
+    tempImg.src = dataUrl;
+    avatarCropOverlay.classList.remove('u-hidden');
+    avatarCropOverlay.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeAvatarCrop() {
+    avatarCropOverlay.classList.add('u-hidden');
+    avatarCropOverlay.setAttribute('aria-hidden', 'true');
+    avatarCropData.dataUrl = null;
+  }
+
+  function getAvatarCropMaxOffset() {
+    var containerSize = 180;
+    var scale = avatarCropData.zoom / 100;
+    var imgW = avatarCropData.imgW || containerSize;
+    var imgH = avatarCropData.imgH || containerSize;
+    var containScale = Math.min(containerSize / imgW, containerSize / imgH);
+    var renderedW = imgW * containScale * scale;
+    var renderedH = imgH * containScale * scale;
+    return { x: Math.max(0, (renderedW - containerSize) / 2), y: Math.max(0, (renderedH - containerSize) / 2) };
+  }
+
+  function clampAvatarCropOffset() {
+    var max = getAvatarCropMaxOffset();
+    avatarCropData.offsetX = Math.max(-max.x, Math.min(max.x, avatarCropData.offsetX));
+    avatarCropData.offsetY = Math.max(-max.y, Math.min(max.y, avatarCropData.offsetY));
+  }
+
+  function updateAvatarCropTransform() {
+    clampAvatarCropOffset();
+    var scale = avatarCropData.zoom / 100;
+    var tx = avatarCropData.offsetX;
+    var ty = avatarCropData.offsetY;
+    avatarCropImage.style.transform = 'translate(' + tx + 'px, ' + ty + 'px) scale(' + scale + ')';
+  }
+
+  if (avatarCropSave) {
+    avatarCropSave.addEventListener('click', function() {
+      if (!avatarCropData.dataUrl) return;
+      var containerSize = 180;
+      var img = new Image();
+      img.onload = function() {
+        var scale = avatarCropData.zoom / 100;
+        var containScale = Math.min(containerSize / img.naturalWidth, containerSize / img.naturalHeight);
+        var renderedW = img.naturalWidth * containScale * scale;
+        var renderedH = img.naturalHeight * containScale * scale;
+        var offsetX = avatarCropData.offsetX;
+        var offsetY = avatarCropData.offsetY;
+        var srcX = ((containerSize / 2 - offsetX - (renderedW - containerSize) / 2) / scale) / containScale;
+        var srcY = ((containerSize / 2 - offsetY - (renderedH - containerSize) / 2) / scale) / containScale;
+        var srcW = containerSize / scale / containScale;
+        var srcH = containerSize / scale / containScale;
+        var canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        var ctx = canvas.getContext('2d');
+        ctx.beginPath();
+        ctx.arc(256, 256, 256, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 512, 512);
+        var croppedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        localStorage.setItem(userKey('wutt_profile_photo'), croppedDataUrl);
+        renderProfilePhoto();
+        closeAvatarCrop();
+        showToast('Photo updated', 'success');
+      };
+      img.src = avatarCropData.dataUrl;
+    });
+  }
+
+  if (avatarCropCancel) {
+    avatarCropCancel.addEventListener('click', closeAvatarCrop);
+  }
+  if (avatarCropClose) {
+    avatarCropClose.addEventListener('click', closeAvatarCrop);
+  }
+  if (avatarCropOverlay) {
+    avatarCropOverlay.addEventListener('click', function(e) {
+      if (e.target === avatarCropOverlay) closeAvatarCrop();
+    });
+  }
+
+  if (avatarCropZoom) {
+    avatarCropZoom.addEventListener('input', function() {
+      avatarCropData.zoom = parseInt(avatarCropZoom.value, 10);
+      updateAvatarCropTransform();
+    });
+  }
+
+  /* ---- Drag to reposition avatar ---- */
+  if (avatarCropPreview) {
+    avatarCropPreview.addEventListener('pointerdown', function(e) {
+      if (!avatarCropData.dataUrl) return;
+      avatarCropData.dragging = true;
+      avatarCropData.startX = e.clientX - avatarCropData.offsetX;
+      avatarCropData.startY = e.clientY - avatarCropData.offsetY;
+      avatarCropPreview.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    avatarCropPreview.addEventListener('pointermove', function(e) {
+      if (!avatarCropData.dragging) return;
+      var newX = e.clientX - avatarCropData.startX;
+      var newY = e.clientY - avatarCropData.startY;
+      var max = getAvatarCropMaxOffset();
+      avatarCropData.offsetX = Math.max(-max.x, Math.min(max.x, newX));
+      avatarCropData.offsetY = Math.max(-max.y, Math.min(max.y, newY));
+      updateAvatarCropTransform();
+    });
+
+    avatarCropPreview.addEventListener('pointerup', function() {
+      avatarCropData.dragging = false;
+    });
+    avatarCropPreview.addEventListener('pointercancel', function() {
+      avatarCropData.dragging = false;
     });
   }
 
@@ -1871,6 +2019,10 @@ function getWardrobeItems() {
   } catch (e) { return []; }
 }
 
+/* ---- Wardrobe select mode state ---- */
+var wardrobeSelectMode = false;
+var wardrobeSelected = {}; // { itemId: true }
+
 /* ---- Chat preferences — theme & background ---- */
 
 /** Get saved chat preferences, with defaults */
@@ -2223,10 +2375,21 @@ function renderProfileView() {
 
 /** Render profile photo from localStorage */
 function renderProfilePhoto() {
-  var photoData = localStorage.getItem(userKey('wutt_profile_photo'));
+  var photoRaw = localStorage.getItem(userKey('wutt_profile_photo'));
   var img = document.getElementById('profilePhotoImg');
   var avatar = document.getElementById('profileCardAvatar');
   var editAvatar = document.getElementById('profileEditAvatar');
+
+  var photoData = null;
+
+  if (photoRaw) {
+    try {
+      var parsed = JSON.parse(photoRaw);
+      photoData = parsed.dataUrl;
+    } catch (e) {
+      photoData = photoRaw;
+    }
+  }
 
   if (photoData) {
     if (img) { img.src = photoData; img.classList.remove('u-hidden'); }
@@ -2306,8 +2469,8 @@ function loadProfileForm() {
   var profile = getUserProfile();
 
   // Text inputs
-  var fields = ['profileName', 'profileHeight', 'profileShoeSize', 'profileCity', 'profileArea', 'profileFavoriteShops'];
-  var keys = ['name', 'height', 'shoeSize', 'city', 'area', 'favoriteShops'];
+  var fields = ['profileName', 'profileHeight', 'profileShoeSize', 'profileCity', 'profileArea'];
+  var keys = ['name', 'height', 'shoeSize', 'city', 'area'];
   fields.forEach(function(id, i) {
     var el = document.getElementById(id);
     if (el) el.value = profile[keys[i]] || '';
@@ -2320,8 +2483,6 @@ function loadProfileForm() {
   setActiveChipInGroup('profileShoppingStyleChips', 'pf-chip--active', profile.shoppingStyle);
   setActiveChipInGroup('profileFitPreferenceChips', 'pf-chip--active', profile.fitPreference);
   setActiveChipInGroup('profileOutfitVibeChips', 'pf-chip--active', profile.outfitVibe);
-  setActiveChipInGroup('profileBudgetRangeChips', 'pf-chip--active', profile.budgetRange);
-  setActiveChipInGroup('profileShoppingPrefChips', 'pf-chip--active', profile.shoppingPreference);
 
   // Multi-select: favorite styles
   var favStylesContainer = document.getElementById('profileFavoriteStylesChips');
@@ -2341,15 +2502,6 @@ function loadProfileForm() {
     });
   }
 
-  // Multi-select: preferred categories
-  var catsContainer = document.getElementById('profileCategoriesChips');
-  if (catsContainer) {
-    var cats = profile.preferredCategories || [];
-    catsContainer.querySelectorAll('[data-value]').forEach(function(c) {
-      c.classList.toggle('pf-chip--active', cats.indexOf(c.getAttribute('data-value')) !== -1);
-    });
-  }
-
   // Skin tone swatches
   var toneContainer = document.getElementById('profileSkinToneSwatches');
   var toneLabel = document.getElementById('profileSkinToneName');
@@ -2363,6 +2515,8 @@ function loadProfileForm() {
 
 /** Save profile from edit form */
 function saveProfileForm() {
+  // Start with existing profile to preserve removed fields
+  var existing = getUserProfile();
   var profile = {
     name: (document.getElementById('profileName') || {}).value.trim() || '',
     gender: getSelectedValue('profileGenderChips', 'pf-chip--active'),
@@ -2377,11 +2531,12 @@ function saveProfileForm() {
     fitPreference: getSelectedValue('profileFitPreferenceChips', 'pf-chip--active'),
     outfitVibe: getSelectedValue('profileOutfitVibeChips', 'pf-chip--active'),
     preferredColors: getMultiSelectValues('profilePreferredColorsChips', 'pf-color-chip--active'),
-    budgetRange: getSelectedValue('profileBudgetRangeChips', 'pf-chip--active'),
-    favoriteShops: (document.getElementById('profileFavoriteShops') || {}).value.trim() || '',
-    preferredCategories: getMultiSelectValues('profileCategoriesChips', 'pf-chip--active'),
-    shoppingPreference: getSelectedValue('profileShoppingPrefChips', 'pf-chip--active'),
-    favoriteStyles: getMultiSelectValues('profileFavoriteStylesChips', 'pf-chip--active')
+    favoriteStyles: getMultiSelectValues('profileFavoriteStylesChips', 'pf-chip--active'),
+    // Preserve fields removed from form but still in data model
+    budgetRange: existing.budgetRange || '',
+    favoriteShops: existing.favoriteShops || '',
+    preferredCategories: existing.preferredCategories || [],
+    shoppingPreference: existing.shoppingPreference || ''
   };
   saveUserProfile(profile);
   showToast('Profile saved', 'success');
@@ -2791,10 +2946,45 @@ function deleteWardrobeItem(itemId) {
   var items = getWardrobeItems();
   items = items.filter(function(item) { return item.id !== itemId; });
   localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
+  delete wardrobeSelected[itemId];
   renderWardrobeSidebar();
   // Also refresh wardrobe page if visible
   var wv = document.getElementById('wardrobeView');
   if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
+}
+
+/** Toggle wardrobe select mode on/off */
+function toggleWardrobeSelectMode() {
+  wardrobeSelectMode = !wardrobeSelectMode;
+  if (!wardrobeSelectMode) {
+    wardrobeSelected = {};
+  }
+  var wv = document.getElementById('wardrobeView');
+  if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
+}
+
+/** Delete multiple wardrobe items at once */
+function deleteWardrobeItems(ids) {
+  var items = getWardrobeItems();
+  items = items.filter(function(item) { return ids.indexOf(item.id) === -1; });
+  localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
+  ids.forEach(function(id) { delete wardrobeSelected[id]; });
+  renderWardrobeSidebar();
+  var wv = document.getElementById('wardrobeView');
+  if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
+}
+
+/** Update bulk action bar count and visibility */
+function updateBulkBar() {
+  var count = Object.keys(wardrobeSelected).length;
+  var bar = document.getElementById('wardrobeBulkBar');
+  var countEl = document.getElementById('wardrobeBulkCount');
+  if (bar) {
+    bar.classList.toggle('u-hidden', !wardrobeSelectMode);
+  }
+  if (countEl) {
+    countEl.textContent = count + ' selected';
+  }
 }
 
 function renderWardrobeSidebar() {
@@ -2851,9 +3041,15 @@ function renderWardrobeSidebar() {
 function renderWardrobeView() {
   var grid = document.getElementById('wardrobeGrid');
   var empty = document.getElementById('wardrobeEmpty');
+  var view = document.getElementById('wardrobeView');
   if (!grid) return;
 
   var items = getWardrobeItems();
+
+  // Sync select mode class
+  if (view) {
+    view.classList.toggle('wardrobe-view--select-mode', wardrobeSelectMode);
+  }
 
   // Show/hide empty state
   if (empty) empty.style.display = items.length ? 'none' : '';
@@ -2877,7 +3073,17 @@ function renderWardrobeView() {
     var metaParts = [item.category];
     if (item.styleVibe) metaParts.push(item.styleVibe);
 
-    html += '<div class="wardrobe-card" data-category="' + escapeHtml(item.category || '') + '">' +
+    var isSelected = wardrobeSelected[item.id];
+    var selectedClass = isSelected ? ' wardrobe-card--selected' : '';
+    var checkedAttr = isSelected ? ' checked' : '';
+
+    html += '<div class="wardrobe-card' + selectedClass + '" data-category="' + escapeHtml(item.category || '') + '" data-item-id="' + item.id + '">' +
+      '<button class="wardrobe-card__delete" data-delete-id="' + item.id + '" type="button" aria-label="Delete item">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button>' +
+      '<div class="wardrobe-card__select">' +
+        '<input type="checkbox" data-select-id="' + item.id + '"' + checkedAttr + '>' +
+      '</div>' +
       imgHtml +
       '<div class="wardrobe-card__info">' +
         '<div class="wardrobe-card__name">' + escapeHtml(item.name || item.category || 'Untitled') + '</div>' +
@@ -2892,6 +3098,59 @@ function renderWardrobeView() {
     grid.appendChild(empty);
   }
   grid.insertAdjacentHTML('beforeend', html);
+
+  // Wire single delete buttons
+  grid.querySelectorAll('.wardrobe-card__delete').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var id = parseInt(btn.getAttribute('data-delete-id'), 10);
+      if (confirm('Delete this item from your wardrobe?')) {
+        deleteWardrobeItem(id);
+      }
+    });
+  });
+
+  // Wire select checkboxes
+  grid.querySelectorAll('.wardrobe-card__select input[type="checkbox"]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var id = parseInt(cb.getAttribute('data-select-id'), 10);
+      var card = cb.closest('.wardrobe-card');
+      if (cb.checked) {
+        wardrobeSelected[id] = true;
+        if (card) card.classList.add('wardrobe-card--selected');
+      } else {
+        delete wardrobeSelected[id];
+        if (card) card.classList.remove('wardrobe-card--selected');
+      }
+      updateBulkBar();
+    });
+  });
+
+  // Wire select mode toggle
+  var selectBtn = document.getElementById('wardrobeSelectBtn');
+  if (selectBtn) {
+    selectBtn.onclick = toggleWardrobeSelectMode;
+  }
+
+  // Wire bulk action bar
+  var bulkDelete = document.getElementById('wardrobeBulkDelete');
+  var bulkCancel = document.getElementById('wardrobeBulkCancel');
+  if (bulkDelete) {
+    bulkDelete.onclick = function() {
+      var ids = Object.keys(wardrobeSelected).map(Number);
+      if (!ids.length) return;
+      if (confirm('Delete ' + ids.length + ' item' + (ids.length > 1 ? 's' : '') + ' from your wardrobe?')) {
+        deleteWardrobeItems(ids);
+        toggleWardrobeSelectMode();
+      }
+    };
+  }
+  if (bulkCancel) {
+    bulkCancel.onclick = toggleWardrobeSelectMode;
+  }
+
+  // Update bulk bar count
+  updateBulkBar();
 
   // Wire filter chips
   var filterContainer = document.getElementById('wardrobeFilters');
