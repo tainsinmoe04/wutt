@@ -1,108 +1,258 @@
 # WUTT — AI Fashion Companion
 
-**"Know Your Wardrobe. Upgrade Your Style."**
+<p align="center">
 
-Upload your wardrobe. Pick an occasion. Get an outfit recommendation that fits the weather and your style.
+**Know Your Wardrobe. Upgrade Your Style.**
 
-![Landing Page](screenshots/landing.png)
+</p>
 
----
+WUTT is an AI-powered personal fashion companion that helps users organize their wardrobe, understand their clothing, and receive personalized outfit recommendations.
 
-## What It Does
-
-1. Upload wardrobe items — photos stored on Cloudinary, categorised by type and colour
-2. Set your profile — height, skin tone, style preference, city
-3. Choose an occasion — wedding, party, interview, casual, temple, date, work, sport
-4. Get a recommendation — complete outfit with explanation and weather-based styling tip
-
-The recommendation engine is rule-based — it classifies items, scores them against occasion and weather, and assembles valid outfits. Works without any API keys.
-
-### Phase 2 — Current Focus
-
-- **AI Chat** — conversational styling assistant powered by Gemini Vision
-- **Gemini Vision** — outfit analysis, wardrobe item recognition, style advice
-- **Wardrobe flow** — upload, categorise, and manage your wardrobe items
-
-### Coming Soon (Locked)
-
-- **Shop/Seller integration** — browse and purchase recommended items
-- **Virtual try-on / MR** — see how outfits look before buying (future phase)
+Instead of wondering *"What should I wear today?"*, users can build their digital wardrobe and get styling guidance based on their own clothes, occasion, and personal preferences.
 
 ---
 
-## Screenshots
+# ✨ Features
 
-| Stylist | Wardrobe |
-|---------|----------|
-| ![Dashboard](screenshots/dashboard-stylist.png) | ![Wardrobe](screenshots/wardrobe-grid.png) |
+## 👕 Digital Wardrobe
 
----
+Build your personal digital closet.
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | HTML + CSS (BEM, CSS variables) + JavaScript |
-| Backend | Python FastAPI + SQLAlchemy + SQLite |
-| AI Vision | Google Gemini Vision (outfit analysis, wardrobe recognition) |
-| Images | Cloudinary (server-side signed uploads) |
-| Font | Space Grotesk via Google Fonts |
-| Deploy | Render.com |
-
-OpenAI GPT-4o Vision and OpenWeatherMap are optional — the app works without them.
+- Upload clothing images
+- Organize wardrobe items
+- View saved clothing collections
+- Manage your wardrobe easily
 
 ---
 
-## Setup
+## 🤖 AI Clothing Analysis
+
+WUTT uses AI vision technology to understand clothing images.
+
+The AI can analyze:
+
+- Clothing category
+- Clothing type
+- Primary color
+- Style
+- Fit
+- Material estimation
+- Fashion tags
+
+Example:
 
 ```
-# Backend
-cd backend && pip install -r requirements.txt
+Upload shirt image
+
+↓
+
+AI analyzes clothing
+
+↓
+
+Save item into wardrobe
+```
+
+---
+
+## 💬 AI Stylist Assistant
+
+Chat with WUTT AI for personalized fashion advice.
+
+Users can ask:
+
+- "What should I wear for a date?"
+- "How can I style this outfit?"
+- "What matches with my wardrobe?"
+
+WUTT provides suggestions based on:
+
+- Occasion
+- Personal style
+- Wardrobe items
+- Fashion context
+
+---
+
+## 👤 Personal Style Profile
+
+Create a personal fashion profile.
+
+Users can customize:
+
+- Personal information
+- Style preferences
+- Fashion identity
+
+---
+
+# 🧠 How WUTT Works
+
+```
+Upload Clothing
+        |
+        ↓
+AI Clothing Analysis
+        |
+        ↓
+Digital Wardrobe
+        |
+        ↓
+AI Stylist Conversation
+        |
+        ↓
+Personalized Outfit Suggestions
+```
+
+---
+
+# 🛠 Tech Stack
+
+## Frontend
+
+- HTML
+- CSS
+- JavaScript
+
+## Backend
+
+- Python
+- FastAPI
+- SQLAlchemy
+- SQLite
+
+## Artificial Intelligence
+
+### AI Chat
+
+- OpenRouter
+- OpenAI-compatible API
+
+### AI Vision
+
+- Google Gemini Vision
+
+---
+
+# 📸 Screenshots
+
+## Landing Page
+
+![Landing](screenshots/landing.png)
+
+## Wardrobe
+
+![Wardrobe](screenshots/wardrobe-grid.png)
+
+## AI Stylist
+
+![Stylist](screenshots/dashboard-stylist.png)
+
+---
+
+# 🚀 Local Development
+
+## Backend
+
+```bash
+cd backend
+
+pip install -r requirements.txt
+
 uvicorn main:app --reload --port 8000
-
-# Frontend
-cd frontend && python -m http.server 3000
-
-# Health check
-curl http://localhost:8000/health
 ```
 
-### Environment Variables
+Backend runs at:
 
 ```
+http://localhost:8000
+```
+
+---
+
+## Frontend
+
+```bash
+cd frontend
+
+python3 -m http.server 5500
+```
+
+Open:
+
+```
+http://localhost:5500
+```
+
+---
+
+# 🔐 Environment Variables
+
+Create a `.env` file inside backend:
+
+```env
 DATABASE_URL=sqlite:///./wutt.db
-JWT_SECRET_KEY=<random string>
-CLOUDINARY_CLOUD_NAME=<required>
-CLOUDINARY_API_KEY=<required>
-CLOUDINARY_API_SECRET=<required>
-GEMINI_API_KEY=<optional>
-OPENAI_API_KEY=<optional>
-WEATHER_API_KEY=<optional>
+
+OPENROUTER_API_KEY=your_api_key
+
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+OPENROUTER_AI_MODEL=openai/gpt-oss-20b:free
+
+GEMINI_API_KEY=your_api_key
 ```
 
 ---
 
-## Project Structure
+# 📂 Project Structure
 
 ```
-frontend/          Landing page, dashboard, design system
-backend/           FastAPI API — auth, profile, wardrobe, stylist routes
-slides/            Presentation deck (Marp)
-report.md          Class submission report
+wutt/
+
+├── frontend/
+│   ├── index.html
+│   ├── style.css
+│   └── app.js
+│
+├── backend/
+│   ├── main.py
+│   ├── routes/
+│   ├── services/
+│   └── models.py
+│
+├── screenshots/
+│
+├── slides/
+│
+├── report.md
+│
+└── LICENSE
 ```
 
 ---
 
-## Design System
+# 🌱 Future Improvements
 
-```
-Primary:   #88A2FF    Deep:    #253A82
-Energy:    #E3FC87    Blush:   #FFB2F7
-Sky:       #C0E0FF    Lavender: #AB9DFF
-```
+Future versions of WUTT may include:
 
-Font: **Space Grotesk** (300–700)
+- Smarter outfit planning
+- Fashion recommendation history
+- Shopping assistant
+- Virtual try-on experience
+- Advanced personal style memory
 
 ---
 
-**Tain Sin Moe** — [github.com/tainsinmoe04/wutt](https://github.com/tainsinmoe04/wutt)
+# 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+# 👨‍💻 Creator
+
+**Tain Sin Moe**
+
+GitHub:
+
+https://github.com/tainsinmoe04/wutt
