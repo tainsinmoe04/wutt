@@ -134,15 +134,20 @@ Personalized Outfit Suggestions
 
 ---
 
-## Screenshots
+# 📸 Screenshots
 
-| Profile | Wardrobe |
-|---------|----------|
-| ![Profile](screenshots/profile.png) | ![Wardrobe](screenshots/wardrobe.png) |
+## Landing Page
+
+![Landing](screenshots/landing.png)
+
+## Wardrobe
+
+| ![Wardrobe](screenshots/wardrobe.png)
 
 ## AI Stylist
 
-![Landing](screenshots/landing.png)
+| ![Profile](screenshots/profile.png)
+
 ---
 
 # 🚀 Local Development
