@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_hours: int = 24
 
+    # ── Browser sessions ──────────────────────────────────
+    session_cookie_name: str = "wutt_session"
+    session_expiry_hours: int = 24 * 7
+
+    # ── Google OAuth ──────────────────────────────────────
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
+    frontend_url: str = "http://localhost:5500"
+
     # ── Cloudinary ───────────────────────────────────────
     cloudinary_cloud_name: str = ""
     cloudinary_api_key: str = ""

@@ -2,6 +2,8 @@
 
 Schema:
     users           — id, email, password_hash, created_at
+    auth_identities — external provider identities linked to users
+    auth_sessions   — hashed, expiring, revocable browser sessions
     profiles        — id, user_id (FK), current profile fields, updated_at
     wardrobes       — id, user_id (FK), cloudinary_url, cloudinary_public_id,
                       category, subtype, style_tags, material_tags,
@@ -12,7 +14,8 @@ Schema:
 
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, Integer, String, Float, Text, DateTime, ForeignKey,
+    Boolean, Column, Integer, String, Float, Text, DateTime, ForeignKey,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from database import Base
@@ -30,16 +33,55 @@ class User(Base):
 
     id            = Column(Integer, primary_key=True, index=True)
     email         = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=True)
     created_at    = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
     # Relationships
     profile        = relationship("Profile",        back_populates="user", uselist=False, cascade="all, delete-orphan")
     wardrobes      = relationship("Wardrobe",       back_populates="user", cascade="all, delete-orphan")
     style_sessions = relationship("StyleSession",   back_populates="user", cascade="all, delete-orphan")
+    auth_identities = relationship("AuthIdentity", back_populates="user", cascade="all, delete-orphan")
+    auth_sessions   = relationship("AuthSession", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r}>"
+
+
+class AuthIdentity(Base):
+    """External authentication identity linked to a WUTT user."""
+
+    __tablename__ = "auth_identities"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_subject", name="uq_auth_identity_provider_subject"),
+        UniqueConstraint("user_id", "provider", name="uq_auth_identity_user_provider"),
+    )
+
+    id               = Column(Integer, primary_key=True)
+    user_id          = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider         = Column(String(50), nullable=False)
+    provider_subject = Column(String(255), nullable=False)
+    provider_email   = Column(String(255), nullable=True)
+    email_verified   = Column(Boolean, nullable=False, default=False)
+    created_at       = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    last_used_at     = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    user = relationship("User", back_populates="auth_identities")
+
+
+class AuthSession(Base):
+    """Revocable browser session; only a hash of its bearer token is stored."""
+
+    __tablename__ = "auth_sessions"
+
+    id         = Column(String(36), primary_key=True)
+    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    last_seen_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+    user = relationship("User", back_populates="auth_sessions")
 
 
 class Profile(Base):
