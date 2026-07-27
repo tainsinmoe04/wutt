@@ -94,10 +94,8 @@ document.addEventListener('DOMContentLoaded', function initHeroLoginModal() {
     });
   }
 
-  // Social buttons (placeholder — show toast, don't navigate)
-  var googleBtn = document.getElementById('googleLoginBtn');
+  // Apple sign-in remains a placeholder until its backend flow exists.
   var appleBtn  = document.getElementById('appleLoginBtn');
-  if (googleBtn) googleBtn.addEventListener('click', function(e) { e.preventDefault(); showToast('Google sign-in coming soon'); });
   if (appleBtn)  appleBtn.addEventListener('click', function(e)  { e.preventDefault(); showToast('Apple sign-in coming soon'); });
 
   // Forgot password
@@ -155,12 +153,30 @@ document.addEventListener('DOMContentLoaded', function initHeroLoginModal() {
    Auth Persistence — Restore the httpOnly-cookie session on page load
    -------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', async function restoreSession() {
+  var oauthCallback = getGoogleOAuthCallback();
+
   try {
     await bootstrapAuthenticatedSession();
+    if (oauthCallback.isGoogleCallback) clearGoogleOAuthCallback();
     console.log('[WUTT] Session restored');
     showMainApp();
   } catch (err) {
     clearAuth();
+
+    if (oauthCallback.hasError) {
+      clearGoogleOAuthCallback();
+      showGoogleOAuthError('Google sign-in wasn’t completed. Please try again.');
+      return;
+    }
+
+    if (oauthCallback.hasSuccess) {
+      clearGoogleOAuthCallback();
+      showGoogleOAuthError(
+        'Google sign-in could not be verified. Please try again or use your email.'
+      );
+      return;
+    }
+
     if (err && err.status === 401) return;
     showToast(
       'Could not verify your session. Please check your connection and log in again.',
@@ -176,6 +192,55 @@ document.addEventListener('DOMContentLoaded', async function restoreSession() {
 /** Persist auth state after successful login/register */
 function saveAuth(email, token) {
   appState.token = token || null;
+}
+
+/** Read the backend's token-free Google OAuth callback markers. */
+function getGoogleOAuthCallback() {
+  var params = new URLSearchParams(window.location.search);
+  var hasSuccess = params.get('auth') === 'google';
+  var hasError = params.get('auth_error') === 'google';
+  return {
+    hasSuccess: hasSuccess,
+    hasError: hasError,
+    isGoogleCallback: hasSuccess || hasError,
+  };
+}
+
+/** Remove handled OAuth markers without reloading or disturbing other query parameters. */
+function clearGoogleOAuthCallback() {
+  var url = new URL(window.location.href);
+  url.searchParams.delete('auth');
+  url.searchParams.delete('auth_error');
+  window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+}
+
+/** Present an OAuth failure in the existing accessible login dialog. */
+function showGoogleOAuthError(message) {
+  var overlay = document.getElementById('heroLoginOverlay');
+  var errorEl = document.getElementById('heroFormError');
+  if (!overlay || !errorEl) {
+    showToast(message, 'error');
+    return;
+  }
+
+  overlay.classList.add('landing-modal-overlay--open');
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('modal-open');
+  errorEl.textContent = message;
+  errorEl.classList.remove('u-hidden');
+  errorEl.focus();
+}
+
+/** Start the server-managed Google OAuth flow with no token in frontend storage. */
+function startGoogleOAuth(e) {
+  e.preventDefault();
+  var button = e.currentTarget;
+  if (!button || button.getAttribute('aria-busy') === 'true') return;
+
+  button.setAttribute('aria-busy', 'true');
+  setButtonLoading(button, true);
+  window.location.assign(CONFIG.API_BASE + '/auth/google/start');
 }
 
 /** Clear authentication state without touching non-sensitive UI preferences. */
@@ -3491,8 +3556,9 @@ loginForm?.addEventListener('submit', handleLoginSubmit);
 registerForm?.addEventListener('submit', handleRegisterSubmit);
 // heroLoginForm submit is handled by initHeroLoginModal above
 
-// Register social buttons (placeholder — show toast, don't navigate)
-$('#googleRegisterBtn')?.addEventListener('click', (e) => { e.preventDefault(); showToast('Google sign-in coming soon'); });
+// Google login and registration share the same server-managed OAuth flow.
+$('#googleLoginBtn')?.addEventListener('click', startGoogleOAuth);
+$('#googleRegisterBtn')?.addEventListener('click', startGoogleOAuth);
 $('#appleRegisterBtn')?.addEventListener('click', (e) => { e.preventDefault(); showToast('Apple sign-in coming soon'); });
 
 console.log('WUTT — Your city. Your weather. Your look. 💫');

@@ -1047,24 +1047,38 @@ p { color: var(--wutt-text-light); max-width: 65ch; text-wrap: pretty; }
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition:
+    background-color 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.btn--social:hover {
-  background: #f3f4f6;
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .btn--social:hover {
+    background: #f3f4f6;
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+  .btn--social-apple:hover {
+    background: #1a1a1a;
+  }
 }
 .btn--social:active {
   transform: translateY(0) scale(0.98);
+}
+.btn--social[aria-busy="true"] {
+  cursor: wait;
+}
+.btn--social .btn__spinner {
+  border-color: rgba(31, 41, 55, 0.18);
+  border-top-color: #1f2937;
 }
 
 .btn--social-apple {
   color: var(--wutt-light);
   background: #000000;
   border-color: rgba(255, 255, 255, 0.1);
-}
-.btn--social-apple:hover {
-  background: #1a1a1a;
 }
 
 .btn__icon {
