@@ -26,7 +26,10 @@ from services.openai_svc import get_outfit_recommendation as openai_recommend
 from services.gemini_svc import get_outfit_recommendation as gemini_recommend
 from services.gemini_svc import get_chat_response
 from services.openai_svc import get_chat_response as openai_chat
-from services.openrouter_svc import get_chat_response as openrouter_chat
+from services.openrouter_svc import (
+    get_chat_response as openrouter_chat,
+    get_outfit_recommendation as openrouter_recommend,
+)
 from services.gemini_svc import analyze_clothing_image
 from services.gemini_svc import FASHION_KNOWLEDGE, APP_GUIDE
 from config import settings
@@ -1345,8 +1348,18 @@ def recommend_outfit(
         source = "api_error"
         ai_result: dict[str, Any] | None = None
 
-        # 1. Try OpenAI first
-        if settings.openai_api_key:
+        # 1. Try OpenRouter first
+        if settings.openrouter_api_key:
+            try:
+                ai_result = openrouter_recommend(**_ai_kwargs)
+                if ai_result is not None:
+                    source = "openrouter"
+                    logger.info("[WUTT] source=openrouter endpoint=/recommend no_wardrobe=True")
+            except Exception as exc:
+                logger.warning("[WUTT] source=api_error endpoint=/recommend openrouter_error=%s", type(exc).__qualname__)
+
+        # 2. Try OpenAI
+        if ai_result is None and settings.openai_api_key:
             try:
                 ai_result = openai_recommend(**_ai_kwargs)
                 if ai_result is not None:
@@ -1355,7 +1368,7 @@ def recommend_outfit(
             except Exception as exc:
                 logger.warning("[WUTT] source=api_error endpoint=/recommend openai_error=%s", type(exc).__qualname__)
 
-        # 2. Try Gemini
+        # 3. Try Gemini
         if ai_result is None and settings.gemini_api_key:
             try:
                 ai_result = gemini_recommend(**_ai_kwargs)
@@ -1413,7 +1426,7 @@ def recommend_outfit(
         }
 
     logger.info(
-        "POST /stylist/recommend — user_id=%d item_count=%d calling OpenAI",
+        "POST /stylist/recommend — user_id=%d item_count=%d calling AI providers",
         user_id, len(items),
     )
 
@@ -1445,13 +1458,13 @@ def recommend_outfit(
             "occasion_tags": item.occasion_tags,
         })
 
-    # ── Call real AI only — OpenAI → Gemini → error ──────
+    # ── Call real AI only — OpenRouter → OpenAI → Gemini → error ──────
     source: str = "api_error"
     ai_result: dict[str, Any] | None = None
 
     logger.info(
-        "[WUTT] source=init endpoint=/recommend user_id=%d openai_key=%s gemini_key=%s",
-        user_id, bool(settings.openai_api_key), bool(settings.gemini_api_key),
+        "[WUTT] source=init endpoint=/recommend user_id=%d openrouter_key=%s openai_key=%s gemini_key=%s",
+        user_id, bool(settings.openrouter_api_key), bool(settings.openai_api_key), bool(settings.gemini_api_key),
     )
 
     # Shared kwargs for all AI calls
@@ -1466,8 +1479,22 @@ def recommend_outfit(
         style_preference=profile.style_preference if profile else None,
     )
 
-    # 1. Try OpenAI first
-    if settings.openai_api_key:
+    # 1. Try OpenRouter first
+    if settings.openrouter_api_key:
+        try:
+            ai_result = openrouter_recommend(**_ai_kwargs)
+            if ai_result is not None:
+                source = "openrouter"
+                logger.info("[WUTT] source=openrouter endpoint=/recommend items=%d", len(ai_result.get("outfit", [])))
+            else:
+                logger.info("[WUTT] source=openrouter endpoint=/recommend result=None → trying OpenAI")
+        except Exception as exc:
+            cls = type(exc).__qualname__
+            mod = type(exc).__module__
+            logger.warning("[WUTT] source=api_error endpoint=/recommend openrouter_error=%s.%s", mod, cls)
+
+    # 2. Try OpenAI if OpenRouter didn't return a result
+    if ai_result is None and settings.openai_api_key:
         try:
             ai_result = openai_recommend(**_ai_kwargs)
             if ai_result is not None:
@@ -1480,7 +1507,7 @@ def recommend_outfit(
             mod = type(exc).__module__
             logger.warning("[WUTT] source=api_error endpoint=/recommend openai_error=%s.%s", mod, cls)
 
-    # 2. Try Gemini if OpenAI didn't return a result
+    # 3. Try Gemini if OpenAI didn't return a result
     if ai_result is None and settings.gemini_api_key:
         try:
             ai_result = gemini_recommend(**_ai_kwargs)

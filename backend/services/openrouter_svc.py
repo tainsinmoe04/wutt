@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import json
+
 from openai import OpenAI
 
 from config import settings
@@ -125,3 +127,78 @@ def get_chat_response(
         msg = str(exc)[:200]
         logger.error("OpenRouter chat failed: %s.%s | status=%s — %s", mod, cls, status, msg)
         return None
+
+
+def get_outfit_recommendation(
+    wardrobe_items: list[dict[str, Any]],
+    occasion: str,
+    weather_desc: str | None = None,
+    temperature_c: float | None = None,
+    humidity: int | None = None,
+    height_cm: float | None = None,
+    skin_tone: str | None = None,
+    style_preference: str | None = None,
+) -> dict[str, Any] | None:
+    """Generate outfit recommendation using OpenRouter."""
+
+    client = _build_client()
+    if client is None:
+        return None
+
+    wardrobe_text = "\n".join(
+        [
+            f"- {item.get('category','')} {item.get('color','')} {item.get('description','')}"
+            for item in wardrobe_items
+        ]
+    )
+
+    prompt = f"""
+You are WUTT, an AI personal stylist.
+
+Wardrobe:
+{wardrobe_text}
+
+Occasion:
+{occasion}
+
+Weather:
+{weather_desc}
+
+Style preference:
+{style_preference}
+
+Return only JSON:
+{{
+  "outfit": [],
+  "explanation": "",
+  "weather_based_tip": ""
+}}
+"""
+
+    try:
+        completion = client.chat.completions.create(
+            model=settings.openrouter_ai_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are WUTT AI fashion stylist."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=800,
+        )
+
+        content = completion.choices[0].message.content
+
+        if not content:
+            return None
+
+        return json.loads(content)
+
+    except Exception as exc:
+        logger.error("OpenRouter recommend failed: %s", exc)
+        return None 
