@@ -25,6 +25,14 @@ services:
         value: HS256
       - key: JWT_EXPIRY_HOURS
         value: "24"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: "https://wutt-api.onrender.com/auth/google/callback"
+      - key: FRONTEND_URL
+        value: "https://wutt-frontend.onrender.com"
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
