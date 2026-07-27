@@ -2,8 +2,7 @@
 
 Schema:
     users           — id, email, password_hash, created_at
-    profiles        — id, user_id (FK), height_cm, skin_tone,
-                      style_preference, location_city, updated_at
+    profiles        — id, user_id (FK), current profile fields, updated_at
     wardrobes       — id, user_id (FK), cloudinary_url, cloudinary_public_id,
                       category, subtype, style_tags, material_tags,
                       occasion_tags, color, description, uploaded_at
@@ -50,10 +49,20 @@ class Profile(Base):
 
     id               = Column(Integer, primary_key=True, index=True)
     user_id          = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    name             = Column(String(100), nullable=True)
+    gender           = Column(String(30), nullable=True)
     height_cm        = Column(Float,    nullable=True)
+    top_size         = Column(String(20), nullable=True)
+    bottom_size      = Column(String(20), nullable=True)
+    shoe_size        = Column(String(30), nullable=True)
     skin_tone        = Column(String(50), nullable=True)
     style_preference = Column(String(100), nullable=True)
     location_city    = Column(String(100), nullable=True)
+    location_area    = Column(String(100), nullable=True)
+    fit_preference   = Column(String(50), nullable=True)
+    outfit_vibe      = Column(String(50), nullable=True)
+    preferred_colors = Column(String(200), nullable=True)
+    shopping_style   = Column(String(50), nullable=True)
     updated_at       = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
 
     # Relationships

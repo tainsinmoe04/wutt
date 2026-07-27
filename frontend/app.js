@@ -152,32 +152,20 @@ document.addEventListener('DOMContentLoaded', function initHeroLoginModal() {
 });
 
 /* --------------------------------------------------------
-   Auth Persistence — Restore session on page load
-   TODO: replace localStorage with httpOnly cookie at deploy
+   Auth Persistence — Restore the httpOnly-cookie session on page load
    -------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', async function restoreSession() {
-  var token = localStorage.getItem('wutt_token');
-  if (!token) return;
-
-  // Try validating the saved token against the backend
   try {
-    var resp = await fetch(CONFIG.API_BASE + '/auth/me', {
-      headers: { 'Authorization': 'Bearer ' + token },
-      credentials: 'include',
-    });
-    if (resp.ok) {
-      // Token is valid — skip landing, go to main app
-      console.log('[WUTT] Session restored');
-      showMainApp();
-    } else {
-      // Token expired or invalid — clear it
-      localStorage.removeItem('wutt_token');
-      localStorage.removeItem('wutt_user');
-    }
-  } catch (err) {
-    // Network error — restore optimistically
-    console.warn('[WUTT] Auth check failed (offline?), restoring session optimistically');
+    await bootstrapAuthenticatedSession();
+    console.log('[WUTT] Session restored');
     showMainApp();
+  } catch (err) {
+    clearAuth();
+    if (err && err.status === 401) return;
+    showToast(
+      'Could not verify your session. Please check your connection and log in again.',
+      'error'
+    );
   }
 });
 
@@ -187,39 +175,36 @@ document.addEventListener('DOMContentLoaded', async function restoreSession() {
 
 /** Persist auth state after successful login/register */
 function saveAuth(email, token) {
-  localStorage.setItem('wutt_token', token);
-  if (email) {
-    localStorage.setItem('wutt_user', email);
-  }
-  loadUserData();
+  appState.token = token || null;
 }
 
-/** Load user-specific data after login */
-function loadUserData() {
-  applyChatPreferences();
-  renderWardrobeSidebar();
+/** Clear authentication state without touching non-sensitive UI preferences. */
+function clearAuth() {
+  appState.token = null;
+  appState.user = null;
+  appState.profile = emptyUserProfile();
+  appState.wardrobe = [];
 }
 
 /** Log out — clear session only, preserve user data */
 function handleLogout() {
-  localStorage.removeItem('wutt_token');
-  localStorage.removeItem('wutt_user');
+  clearAuth();
   window.location.reload();
 }
 
 /* --------------------------------------------------------
-   User-Scoped localStorage Helpers
+   User-Scoped UI Preference Helpers
    -------------------------------------------------------- */
 
 /** Get current user email for scoping */
 function getCurrentUser() {
-  return localStorage.getItem('wutt_user') || null;
+  return appState.user?.email || null;
 }
 
 /** Get user-scoped localStorage key */
 function userKey(key) {
-  var user = getCurrentUser();
-  return user ? key + '_' + user.replace(/[^a-zA-Z0-9]/g, '_') : key;
+  var userId = appState.user?.id;
+  return userId ? key + '_' + userId : key;
 }
 
 /* --------------------------------------------------------
@@ -230,6 +215,154 @@ const CONFIG = {
     ? 'http://localhost:8000'
     : 'https://wutt-api.onrender.com',
 };
+
+/* --------------------------------------------------------
+   Authenticated API client and server-backed app state
+   -------------------------------------------------------- */
+var appState = {
+  token: null,
+  user: null,
+  profile: null,
+  wardrobe: [],
+  profileLoading: false,
+  wardrobeLoading: false,
+  profileError: '',
+  wardrobeError: '',
+  profilePhoto: '',
+};
+
+function emptyUserProfile() {
+  return {
+    name: '', gender: '', height: '',
+    topSize: '', bottomSize: '', shoeSize: '',
+    skinTone: '', city: '', area: '', shoppingStyle: '',
+    fitPreference: '', outfitVibe: '',
+    preferredColors: [], budgetRange: '',
+    favoriteShops: '', preferredCategories: [],
+    shoppingPreference: '', favoriteStyles: []
+  };
+}
+
+function getApiErrorMessage(payload, fallback) {
+  return payload?.message || payload?.detail?.message || fallback || 'Something went wrong. Please try again.';
+}
+
+async function apiRequest(path, options) {
+  var requestOptions = Object.assign({}, options || {});
+  var headers = new Headers(requestOptions.headers || {});
+  var token = appState.token;
+  if (token) headers.set('Authorization', 'Bearer ' + token);
+  if (requestOptions.body && !(requestOptions.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  requestOptions.headers = headers;
+  requestOptions.credentials = 'include';
+
+  var response;
+  try {
+    response = await fetch(CONFIG.API_BASE + path, requestOptions);
+  } catch (error) {
+    var networkError = new Error('Cannot reach server. Check your connection.');
+    networkError.cause = error;
+    throw networkError;
+  }
+
+  var payload = null;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    // A missing/invalid JSON body is handled as a regular API failure below.
+  }
+
+  if (!response.ok || !payload || payload.status === 'error') {
+    var apiError = new Error(getApiErrorMessage(payload, 'The server could not complete this request.'));
+    apiError.status = response.status;
+    apiError.payload = payload;
+    if (response.status === 401) clearAuth();
+    throw apiError;
+  }
+  return payload.data;
+}
+
+function mapProfileFromApi(profile) {
+  var mapped = emptyUserProfile();
+  if (!profile) return mapped;
+  mapped.name = profile.name || '';
+  mapped.gender = profile.gender || '';
+  mapped.height = profile.height_cm ? String(profile.height_cm) + ' cm' : '';
+  mapped.topSize = profile.top_size || '';
+  mapped.bottomSize = profile.bottom_size || '';
+  mapped.shoeSize = profile.shoe_size || '';
+  mapped.skinTone = profile.skin_tone || '';
+  mapped.city = profile.location_city || '';
+  mapped.area = profile.location_area || '';
+  mapped.fitPreference = profile.fit_preference || '';
+  mapped.outfitVibe = profile.outfit_vibe || '';
+  mapped.preferredColors = profile.preferred_colors
+    ? profile.preferred_colors.split(',').map(function(value) { return value.trim(); }).filter(Boolean)
+    : [];
+  mapped.shoppingStyle = profile.shopping_style || '';
+  mapped.favoriteStyles = profile.style_preference
+    ? profile.style_preference.split(',').map(function(value) { return value.trim(); }).filter(Boolean)
+    : [];
+  return mapped;
+}
+
+function mapWardrobeFromApi(item) {
+  return {
+    id: item.id,
+    userId: item.user_id,
+    imageDataUrl: item.cloudinary_url || '',
+    name: item.subtype || item.description || item.category || 'Wardrobe item',
+    category: item.category || 'Item',
+    color: item.color || '',
+    styleVibe: item.style_tags || '',
+    material: item.material_tags || '',
+    occasions: item.occasion_tags || '',
+    notes: item.description || '',
+    createdAt: item.uploaded_at || '',
+  };
+}
+
+async function loadServerProfile() {
+  appState.profileLoading = true;
+  appState.profileError = '';
+  try {
+    var profile = await apiRequest('/profile/' + appState.user.id);
+    appState.profile = mapProfileFromApi(profile);
+  } catch (error) {
+    if (error.status === 404) {
+      appState.profile = emptyUserProfile();
+    } else {
+      appState.profileError = error.message;
+      throw error;
+    }
+  } finally {
+    appState.profileLoading = false;
+  }
+}
+
+async function loadServerWardrobe() {
+  appState.wardrobeLoading = true;
+  appState.wardrobeError = '';
+  renderWardrobeSidebar();
+  try {
+    var items = await apiRequest('/wardrobe/' + appState.user.id);
+    appState.wardrobe = Array.isArray(items) ? items.map(mapWardrobeFromApi) : [];
+  } catch (error) {
+    appState.wardrobeError = error.message;
+    throw error;
+  } finally {
+    appState.wardrobeLoading = false;
+    renderWardrobeSidebar();
+  }
+}
+
+async function bootstrapAuthenticatedSession() {
+  appState.user = await apiRequest('/auth/me');
+  await Promise.all([loadServerProfile(), loadServerWardrobe()]);
+  applyChatPreferences();
+}
 
 /* --------------------------------------------------------
    DOM Cache
@@ -649,6 +782,7 @@ async function handleLoginSubmit(e) {
         return;
       }
       saveAuth($('#loginEmail').value.trim(), token);
+      await bootstrapAuthenticatedSession();
       closeAllModals();
       showMainApp();
     } else {
@@ -656,8 +790,9 @@ async function handleLoginSubmit(e) {
       loginFormError.textContent = normalizeAuthError(data.message || data?.detail?.message);
     }
   } catch (err) {
+    clearAuth();
     toggleHidden(loginFormError, false);
-    loginFormError.textContent = 'Cannot reach server. Check your connection.';
+    loginFormError.textContent = normalizeAuthError(err.message);
   } finally {
     setButtonLoading(loginSubmitBtn, false);
   }
@@ -692,6 +827,7 @@ async function handleHeroLoginSubmit(e) {
         return;
       }
       saveAuth($('#heroEmail').value.trim(), token);
+      await bootstrapAuthenticatedSession();
       closeAllLandingModals();
       showMainApp();
     } else {
@@ -699,8 +835,9 @@ async function handleHeroLoginSubmit(e) {
       heroFormError.textContent = normalizeAuthError(data.message || data?.detail?.message);
     }
   } catch (err) {
+    clearAuth();
     toggleHidden(heroFormError, false);
-    heroFormError.textContent = 'Cannot reach server. Check your connection.';
+    heroFormError.textContent = normalizeAuthError(err.message);
   } finally {
     setButtonLoading(heroLoginSubmitBtn, false);
   }
@@ -736,6 +873,7 @@ async function handleRegisterSubmit(e) {
         return;
       }
       saveAuth($('#registerEmail').value.trim(), token);
+      await bootstrapAuthenticatedSession();
       closeAllLandingModals();
       showStyleQuiz();
     } else {
@@ -743,8 +881,9 @@ async function handleRegisterSubmit(e) {
       registerFormError.textContent = normalizeAuthError(data.message || data?.detail?.message);
     }
   } catch (err) {
+    clearAuth();
     toggleHidden(registerFormError, false);
-    registerFormError.textContent = 'Cannot reach server. Check your connection.';
+    registerFormError.textContent = normalizeAuthError(err.message);
   } finally {
     setButtonLoading(registerSubmitBtn, false);
   }
@@ -904,7 +1043,6 @@ function completeStyleQuiz() {
 /* --------------------------------------------------------
    Chat App & Sidebar — Main screen controller
    TODO: LLM integration — replace mock responses with API calls
-   TODO: Wardrobe backend sync — sync localStorage to API
    -------------------------------------------------------- */
 
 var _chatInitDone = false;
@@ -1076,22 +1214,24 @@ function initChatApp() {
 
   var profileForm = document.getElementById('profileForm');
   if (profileForm) {
-    profileForm.addEventListener('submit', function(e) {
+    profileForm.addEventListener('submit', async function(e) {
       e.preventDefault();
-      saveProfileForm();
-      closeProfileEdit();
-      renderProfileView();
+      if (await saveProfileForm()) {
+        closeProfileEdit();
+        renderProfileView();
+      }
     });
   }
 
   // Direct click handler on Save button (outside form)
   var profileSaveBtn = document.getElementById('profileSaveBtn');
   if (profileSaveBtn && profileForm) {
-    profileSaveBtn.addEventListener('click', function(e) {
+    profileSaveBtn.addEventListener('click', async function(e) {
       e.preventDefault();
-      saveProfileForm();
-      closeProfileEdit();
-      renderProfileView();
+      if (await saveProfileForm()) {
+        closeProfileEdit();
+        renderProfileView();
+      }
     });
   }
 
@@ -1209,7 +1349,7 @@ function initChatApp() {
         ctx.clip();
         ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 512, 512);
         var croppedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        localStorage.setItem(userKey('wutt_profile_photo'), croppedDataUrl);
+        appState.profilePhoto = croppedDataUrl;
         renderProfilePhoto();
         closeAvatarCrop();
         showToast('Photo updated', 'success');
@@ -1671,7 +1811,7 @@ function initChatApp() {
     _chatSending = true;
     if (chatSendBtn) chatSendBtn.disabled = true;
 
-    var token = localStorage.getItem('wutt_token');
+    var token = appState.token;
     var headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = 'Bearer ' + token;
 
@@ -1844,7 +1984,7 @@ function initChatApp() {
   var wardrobeModalDone = document.getElementById('wardrobeModalDone');
 
   // Temp state for current upload
-  var _pendingUpload = { dataUrl: '', fileName: '' };
+  var _pendingUpload = { dataUrl: '', fileName: '', file: null };
 
   function openWardrobeModal() {
     if (!wardrobeModal) return;
@@ -1863,7 +2003,7 @@ function initChatApp() {
     if (!wardrobeModal) return;
     wardrobeModal.classList.add('u-hidden');
     wardrobeModal.setAttribute('aria-hidden', 'true');
-    _pendingUpload = { dataUrl: '', fileName: '' };
+    _pendingUpload = { dataUrl: '', fileName: '', file: null };
   }
 
   if (wardrobeAddBtn) {
@@ -1921,12 +2061,13 @@ function initChatApp() {
     reader.onload = function(e) {
       _pendingUpload.dataUrl = e.target.result;
       _pendingUpload.fileName = file.name || 'Photo';
+      _pendingUpload.file = file;
       showModalPreview();
     };
     reader.readAsDataURL(file);
   }
 
-  function showModalPreview() {
+  async function showModalPreview() {
     var stepUpload = document.getElementById('wardrobeModalUpload');
     var stepPreview = document.getElementById('wardrobeModalPreview');
     var previewImg = document.getElementById('wardrobePreviewImg');
@@ -1934,28 +2075,45 @@ function initChatApp() {
     if (stepPreview) stepPreview.classList.remove('u-hidden');
     if (previewImg) previewImg.src = _pendingUpload.dataUrl;
 
-    // Mock AI detection
-    var categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories'];
-    var colors = ['Black', 'White', 'Navy', 'Beige', 'Olive', 'Blush', 'Brown', 'Grey'];
-    var styles = ['Casual', 'Minimal', 'Street', 'Classic', 'Sporty', 'Bohemian'];
-    var materials = ['Cotton', 'Denim', 'Leather', 'Silk', 'Wool blend', 'Linen', 'Polyester'];
-    var occasions = ['Casual', 'Work', 'Evening', 'Weekend', 'Travel'];
-
-    var detected = {
-      category: categories[Math.floor(Math.random() * categories.length)],
-      color: colors[Math.floor(Math.random() * colors.length)],
-      style: styles[Math.floor(Math.random() * styles.length)],
-      material: materials[Math.floor(Math.random() * materials.length)],
-      occasions: [occasions[Math.floor(Math.random() * occasions.length)], occasions[Math.floor(Math.random() * occasions.length)]]
-    };
-    // Dedupe occasions
-    detected.occasions = detected.occasions.filter(function(v, i, a) { return a.indexOf(v) === i; });
-
     var catEl = document.getElementById('detectedCategory');
     var colorEl = document.getElementById('detectedColor');
     var styleEl = document.getElementById('detectedStyle');
     var materialEl = document.getElementById('detectedMaterial');
     var occasionsEl = document.getElementById('detectedOccasions');
+    [catEl, colorEl, styleEl, materialEl, occasionsEl].forEach(function(el) {
+      if (el) el.textContent = 'Analyzing…';
+    });
+    if (wardrobeModalSave) wardrobeModalSave.disabled = true;
+
+    var detected;
+    try {
+      var analysis = await apiRequest('/stylist/analyze', {
+        method: 'POST',
+        body: JSON.stringify({
+          image_data: _pendingUpload.dataUrl,
+          mime_type: _pendingUpload.file?.type || 'image/jpeg',
+        }),
+      });
+      detected = {
+        category: analysis.category || 'Item',
+        subtype: analysis.subtype || _pendingUpload.fileName,
+        color: analysis.color || '',
+        style: analysis.style || (analysis.style_tags || []).join(', '),
+        material: analysis.material_guess || '',
+        occasions: analysis.occasion_tags || [],
+        description: analysis.description || '',
+      };
+    } catch (error) {
+      _pendingUpload.detected = null;
+      [catEl, colorEl, styleEl, materialEl, occasionsEl].forEach(function(el) {
+        if (el) el.textContent = 'Unavailable';
+      });
+      showToast(error.message, 'error');
+      return;
+    } finally {
+      if (wardrobeModalSave) wardrobeModalSave.disabled = !detected;
+    }
+
     if (catEl) catEl.textContent = detected.category;
     if (colorEl) colorEl.textContent = detected.color;
     if (styleEl) styleEl.textContent = detected.style;
@@ -1967,24 +2125,36 @@ function initChatApp() {
 
   // Save button
   if (wardrobeModalSave) {
-    wardrobeModalSave.addEventListener('click', function() {
+    wardrobeModalSave.addEventListener('click', async function() {
       var d = _pendingUpload.detected;
       if (!d) return;
-      saveWardrobeItem({
-        category: d.category,
-        imageDataUrl: _pendingUpload.dataUrl,
-        name: _pendingUpload.fileName,
-        color: d.color,
-        styleVibe: d.style,
-        material: d.material,
-        occasions: d.occasions.join(', '),
-        notes: ''
-      });
-      // Show saved step
-      var stepPreview = document.getElementById('wardrobeModalPreview');
-      var stepSaved = document.getElementById('wardrobeModalSaved');
-      if (stepPreview) stepPreview.classList.add('u-hidden');
-      if (stepSaved) stepSaved.classList.remove('u-hidden');
+      var originalLabel = wardrobeModalSave.textContent;
+      wardrobeModalSave.disabled = true;
+      wardrobeModalSave.textContent = 'Saving…';
+      try {
+        await saveWardrobeItem({
+          category: d.category,
+          subtype: d.subtype,
+          imageDataUrl: _pendingUpload.dataUrl,
+          file: _pendingUpload.file,
+          name: _pendingUpload.fileName,
+          color: d.color,
+          styleVibe: d.style,
+          material: d.material,
+          occasions: d.occasions.join(', '),
+          notes: d.description || ''
+        });
+        // Show saved step
+        var stepPreview = document.getElementById('wardrobeModalPreview');
+        var stepSaved = document.getElementById('wardrobeModalSaved');
+        if (stepPreview) stepPreview.classList.add('u-hidden');
+        if (stepSaved) stepSaved.classList.remove('u-hidden');
+      } catch (error) {
+        showToast(error.message, 'error');
+      } finally {
+        wardrobeModalSave.disabled = false;
+        wardrobeModalSave.textContent = originalLabel;
+      }
     });
   }
 
@@ -1995,7 +2165,7 @@ function initChatApp() {
       var stepPreview = document.getElementById('wardrobeModalPreview');
       if (stepPreview) stepPreview.classList.add('u-hidden');
       if (stepUpload) stepUpload.classList.remove('u-hidden');
-      _pendingUpload = { dataUrl: '', fileName: '' };
+      _pendingUpload = { dataUrl: '', fileName: '', file: null };
     });
   }
 
@@ -2012,11 +2182,9 @@ function initChatApp() {
 
 /* ---- Wardrobe helpers ---- */
 
-/** Get all wardrobe items from localStorage */
+/** Return wardrobe items loaded from the backend for this session. */
 function getWardrobeItems() {
-  try {
-    return JSON.parse(localStorage.getItem(userKey('wutt_wardrobe_items')) || '[]');
-  } catch (e) { return []; }
+  return appState.wardrobe || [];
 }
 
 /* ---- Wardrobe select mode state ---- */
@@ -2197,26 +2365,9 @@ var PREF_COLOR_MAP = {
   'grey': '#9E9E9E'
 };
 
-/** Get user profile from localStorage */
+/** Return the server-backed profile currently loaded for this session. */
 function getUserProfile() {
-  try {
-    var saved = JSON.parse(localStorage.getItem(userKey('wutt_user_profile')));
-    if (saved && typeof saved === 'object') return saved;
-  } catch (e) { /* ignore */ }
-  return {
-    name: '', gender: '', height: '',
-    topSize: '', bottomSize: '', shoeSize: '',
-    skinTone: '', city: '', area: '', shoppingStyle: '',
-    fitPreference: '', outfitVibe: '',
-    preferredColors: [], budgetRange: '',
-    favoriteShops: '', preferredCategories: [],
-    shoppingPreference: '', favoriteStyles: []
-  };
-}
-
-/** Save user profile to localStorage */
-function saveUserProfile(profile) {
-  localStorage.setItem(userKey('wutt_user_profile'), JSON.stringify(profile));
+  return appState.profile || emptyUserProfile();
 }
 
 /** Render the profile view card and sections */
@@ -2373,9 +2524,9 @@ function renderProfileView() {
   renderProfilePhoto();
 }
 
-/** Render profile photo from localStorage */
+/** Render the session-only profile photo (backend has no photo field yet). */
 function renderProfilePhoto() {
-  var photoRaw = localStorage.getItem(userKey('wutt_profile_photo'));
+  var photoRaw = appState.profilePhoto;
   var img = document.getElementById('profilePhotoImg');
   var avatar = document.getElementById('profileCardAvatar');
   var editAvatar = document.getElementById('profileEditAvatar');
@@ -2513,33 +2664,64 @@ function loadProfileForm() {
   if (toneLabel) toneLabel.textContent = profile.skinTone ? (SKIN_LABELS[profile.skinTone] || profile.skinTone) : '—';
 }
 
-/** Save profile from edit form */
-function saveProfileForm() {
-  // Start with existing profile to preserve removed fields
-  var existing = getUserProfile();
-  var profile = {
-    name: (document.getElementById('profileName') || {}).value.trim() || '',
+/** Save the subset of profile fields supported by the backend contract. */
+async function saveProfileForm() {
+  if (!appState.user) {
+    showToast('Your session could not be verified. Please log in again.', 'error');
+    return false;
+  }
+
+  var heightInput = (document.getElementById('profileHeight') || {}).value || '';
+  var heightMatch = heightInput.match(/\d+(?:\.\d+)?/);
+  var height = heightMatch ? Number(heightMatch[0]) : null;
+  if (height !== null && (height < 50 || height > 250)) {
+    showToast('Height must be between 50 and 250 cm.', 'error');
+    return false;
+  }
+
+  var favoriteStyles = getMultiSelectValues('profileFavoriteStylesChips', 'pf-chip--active');
+  var payload = {
+    height_cm: height,
+    name: ((document.getElementById('profileName') || {}).value || '').trim(),
     gender: getSelectedValue('profileGenderChips', 'pf-chip--active'),
-    height: (document.getElementById('profileHeight') || {}).value.trim() || '',
-    topSize: getSelectedValue('profileTopSizePills', 'pf-size-pill--active'),
-    bottomSize: getSelectedValue('profileBottomSizePills', 'pf-size-pill--active'),
-    shoeSize: (document.getElementById('profileShoeSize') || {}).value.trim() || '',
-    skinTone: getSelectedValue('profileSkinToneSwatches', 'pf-tone-chip--active'),
-    city: (document.getElementById('profileCity') || {}).value.trim() || '',
-    area: (document.getElementById('profileArea') || {}).value.trim() || '',
-    shoppingStyle: getSelectedValue('profileShoppingStyleChips', 'pf-chip--active'),
-    fitPreference: getSelectedValue('profileFitPreferenceChips', 'pf-chip--active'),
-    outfitVibe: getSelectedValue('profileOutfitVibeChips', 'pf-chip--active'),
-    preferredColors: getMultiSelectValues('profilePreferredColorsChips', 'pf-color-chip--active'),
-    favoriteStyles: getMultiSelectValues('profileFavoriteStylesChips', 'pf-chip--active'),
-    // Preserve fields removed from form but still in data model
-    budgetRange: existing.budgetRange || '',
-    favoriteShops: existing.favoriteShops || '',
-    preferredCategories: existing.preferredCategories || [],
-    shoppingPreference: existing.shoppingPreference || ''
+    top_size: getSelectedValue('profileTopSizePills', 'pf-size-pill--active'),
+    bottom_size: getSelectedValue('profileBottomSizePills', 'pf-size-pill--active'),
+    shoe_size: ((document.getElementById('profileShoeSize') || {}).value || '').trim(),
+    skin_tone: getSelectedValue('profileSkinToneSwatches', 'pf-tone-chip--active'),
+    style_preference: favoriteStyles.join(', '),
+    location_city: ((document.getElementById('profileCity') || {}).value || '').trim(),
+    location_area: ((document.getElementById('profileArea') || {}).value || '').trim(),
+    fit_preference: getSelectedValue('profileFitPreferenceChips', 'pf-chip--active'),
+    outfit_vibe: getSelectedValue('profileOutfitVibeChips', 'pf-chip--active'),
+    preferred_colors: getMultiSelectValues('profilePreferredColorsChips', 'pf-color-chip--active').join(', '),
+    shopping_style: getSelectedValue('profileShoppingStyleChips', 'pf-chip--active'),
   };
-  saveUserProfile(profile);
-  showToast('Profile saved', 'success');
+  var saveBtn = document.getElementById('profileSaveBtn');
+  var originalLabel = saveBtn ? saveBtn.textContent : '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+  }
+
+  try {
+    var saved = await apiRequest('/profile/' + appState.user.id, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    appState.profile = mapProfileFromApi(saved);
+    appState.profileError = '';
+    showToast('Profile saved', 'success');
+    return true;
+  } catch (error) {
+    appState.profileError = error.message;
+    showToast(error.message, 'error');
+    return false;
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalLabel || 'Save Changes';
+    }
+  }
 }
 
 /** Get all selected values from a multi-select chip group */
@@ -2554,17 +2736,42 @@ function getMultiSelectValues(containerId, activeClass) {
   return values;
 }
 
-/** Save a wardrobe item to localStorage */
-function saveWardrobeItem(item) {
-  var items = getWardrobeItems();
-  item.id = Date.now();
-  item.createdAt = new Date().toISOString();
-  items.push(item);
-  localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
+function dataUrlToFile(dataUrl, fileName) {
+  var parts = dataUrl.split(',');
+  var mimeMatch = parts[0].match(/data:([^;]+)/);
+  var mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  var binary = atob(parts[1] || '');
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], fileName || 'wardrobe-item.jpg', { type: mimeType });
+}
+
+/** Upload a wardrobe item and its analysis metadata to the backend. */
+async function saveWardrobeItem(item) {
+  if (!appState.user) throw new Error('Your session could not be verified. Please log in again.');
+  var file = item.file || (item.imageDataUrl ? dataUrlToFile(item.imageDataUrl, item.name) : null);
+  if (!file) throw new Error('A clothing image is required to save this wardrobe item.');
+
+  var formData = new FormData();
+  formData.append('file', file, file.name || item.name || 'wardrobe-item.jpg');
+  formData.append('category', item.category || '');
+  formData.append('subtype', item.subtype || item.name || '');
+  formData.append('style_tags', item.styleVibe || '');
+  formData.append('material_tags', item.material || '');
+  formData.append('occasion_tags', Array.isArray(item.occasions) ? item.occasions.join(', ') : (item.occasions || ''));
+  formData.append('color', item.color || '');
+  formData.append('description', item.notes || item.description || '');
+
+  var saved = await apiRequest('/wardrobe/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  appState.wardrobe.unshift(mapWardrobeFromApi(saved));
+  appState.wardrobeError = '';
   renderWardrobeSidebar();
-  // Also refresh wardrobe page if visible
   var wv = document.getElementById('wardrobeView');
   if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
+  return saved;
 }
 
 /**
@@ -2670,7 +2877,7 @@ function showUploadPreview(category, dataUrl, fileName) {
     scrollChatToBottom();
 
     // Real AI analysis via backend
-    var token = localStorage.getItem('wutt_token');
+    var token = appState.token;
     var headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = 'Bearer ' + token;
 
@@ -2680,7 +2887,7 @@ function showUploadPreview(category, dataUrl, fileName) {
       credentials: 'include',
       body: JSON.stringify({
         image_data: img,
-        mime_type: 'image/jpeg',
+        mime_type: (img.match(/^data:([^;]+)/) || [])[1] || 'image/jpeg',
       }),
     })
     .then(function(resp) { return resp.json(); })
@@ -2724,6 +2931,19 @@ function showAnalysisCard(category, imageDataUrl, fileName, analysis) {
   if (!messages) return;
 
   var cardId = 'analysisCard-' + Date.now();
+  var normalizedAnalysis = {
+    category: analysis.category || category,
+    subtype: analysis.subtype || fileName || category,
+    color: analysis.color || '',
+    styleVibe: analysis.styleVibe || analysis.style || (Array.isArray(analysis.style_tags) ? analysis.style_tags.join(', ') : ''),
+    material: analysis.material || analysis.material_guess || '',
+    occasions: Array.isArray(analysis.occasions || analysis.occasion_tags)
+      ? (analysis.occasions || analysis.occasion_tags)
+      : String(analysis.occasions || analysis.occasion_tags || '').split(',').map(function(value) { return value.trim(); }).filter(Boolean),
+    notes: analysis.notes || analysis.description || '',
+  };
+  analysis = normalizedAnalysis;
+  category = normalizedAnalysis.category;
 
   // Inject bot preamble message
   addChatMessage('bot', "Here&rsquo;s my first guess — <strong>you can edit it.</strong>");
@@ -2765,7 +2985,7 @@ function showAnalysisCard(category, imageDataUrl, fileName, analysis) {
   messages.appendChild(card);
 
   /* ---- Wire save ---- */
-  document.getElementById(cardId + '-save').addEventListener('click', function() {
+  document.getElementById(cardId + '-save').addEventListener('click', async function() {
     var extract = function(fieldId) {
       var el = document.getElementById(fieldId);
       return el ? el.textContent.replace(/^[^ ]+ /, '').trim() : '';
@@ -2780,9 +3000,17 @@ function showAnalysisCard(category, imageDataUrl, fileName, analysis) {
       occasions: extract(cardId + '-occasions'),
       notes: extract(cardId + '-notes')
     };
-    saveWardrobeItem(item);
-    this.textContent = '✓ Saved';
-    this.disabled = true;
+    var saveBtn = this;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    try {
+      await saveWardrobeItem(item);
+      saveBtn.textContent = '✓ Saved';
+    } catch (error) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save to Wardrobe';
+      showToast(error.message, 'error');
+    }
   });
 
   /* ---- Edit details: switch tags to real inputs for full editing ---- */
@@ -2842,7 +3070,7 @@ function showAnalysisCard(category, imageDataUrl, fileName, analysis) {
       card.querySelector('.analysis-card__footer').classList.remove('u-hidden');
 
       // Re-wire save with updated tag IDs
-      document.getElementById(cardId + '-save').addEventListener('click', function() {
+      document.getElementById(cardId + '-save').addEventListener('click', async function() {
         var ext = function(fid) {
           var el = document.getElementById(fid);
           return el ? el.textContent.replace(/^[^ ]+ /, '').trim() : '';
@@ -2853,9 +3081,17 @@ function showAnalysisCard(category, imageDataUrl, fileName, analysis) {
           material: ext(cardId + '-material'), occasions: ext(cardId + '-occasions'),
           notes: ext(cardId + '-notes')
         };
-        saveWardrobeItem(item);
-        document.getElementById(cardId + '-save').textContent = '✓ Saved';
-        document.getElementById(cardId + '-save').disabled = true;
+        var saveButton = document.getElementById(cardId + '-save');
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving…';
+        try {
+          await saveWardrobeItem(item);
+          saveButton.textContent = '✓ Saved';
+        } catch (error) {
+          saveButton.disabled = false;
+          saveButton.textContent = 'Save to Wardrobe';
+          showToast(error.message, 'error');
+        }
       });
     });
   });
@@ -2942,15 +3178,19 @@ function handleWardrobeDescribe(category) {
 }
 
 /** Render wardrobe items in sidebar drawer */
-function deleteWardrobeItem(itemId) {
-  var items = getWardrobeItems();
-  items = items.filter(function(item) { return item.id !== itemId; });
-  localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
-  delete wardrobeSelected[itemId];
-  renderWardrobeSidebar();
-  // Also refresh wardrobe page if visible
-  var wv = document.getElementById('wardrobeView');
-  if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
+async function deleteWardrobeItem(itemId) {
+  try {
+    await apiRequest('/wardrobe/' + itemId, { method: 'DELETE' });
+    appState.wardrobe = getWardrobeItems().filter(function(item) { return item.id !== itemId; });
+    delete wardrobeSelected[itemId];
+    renderWardrobeSidebar();
+    var wv = document.getElementById('wardrobeView');
+    if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
+    return true;
+  } catch (error) {
+    showToast(error.message, 'error');
+    return false;
+  }
 }
 
 /** Toggle wardrobe select mode on/off */
@@ -2964,14 +3204,9 @@ function toggleWardrobeSelectMode() {
 }
 
 /** Delete multiple wardrobe items at once */
-function deleteWardrobeItems(ids) {
-  var items = getWardrobeItems();
-  items = items.filter(function(item) { return ids.indexOf(item.id) === -1; });
-  localStorage.setItem(userKey('wutt_wardrobe_items'), JSON.stringify(items));
-  ids.forEach(function(id) { delete wardrobeSelected[id]; });
-  renderWardrobeSidebar();
-  var wv = document.getElementById('wardrobeView');
-  if (wv && !wv.classList.contains('u-hidden')) renderWardrobeView();
+async function deleteWardrobeItems(ids) {
+  var results = await Promise.all(ids.map(deleteWardrobeItem));
+  return results.every(Boolean);
 }
 
 /** Update bulk action bar count and visibility */
@@ -2990,6 +3225,15 @@ function updateBulkBar() {
 function renderWardrobeSidebar() {
   var container = document.getElementById('sidebarWardrobe');
   if (!container) return;
+
+  if (appState.wardrobeLoading) {
+    container.innerHTML = '<p class="sidebar-wardrobe__empty">Loading wardrobe…</p>';
+    return;
+  }
+  if (appState.wardrobeError) {
+    container.innerHTML = '<p class="sidebar-wardrobe__empty">' + escapeHtml(appState.wardrobeError) + '</p>';
+    return;
+  }
 
   var items = getWardrobeItems();
 
@@ -3045,6 +3289,16 @@ function renderWardrobeView() {
   if (!grid) return;
 
   var items = getWardrobeItems();
+
+  if (appState.wardrobeLoading || appState.wardrobeError) {
+    grid.innerHTML = '<div class="wardrobe-view__empty">'
+      + '<h3 class="wardrobe-view__empty-title">'
+      + (appState.wardrobeLoading ? 'Loading your wardrobe…' : 'Could not load your wardrobe')
+      + '</h3>'
+      + (appState.wardrobeError ? '<p class="wardrobe-view__empty-hint">' + escapeHtml(appState.wardrobeError) + '</p>' : '')
+      + '</div>';
+    return;
+  }
 
   // Sync select mode class
   if (view) {
@@ -3105,6 +3359,7 @@ function renderWardrobeView() {
       e.stopPropagation();
       var id = parseInt(btn.getAttribute('data-delete-id'), 10);
       if (confirm('Delete this item from your wardrobe?')) {
+        btn.disabled = true;
         deleteWardrobeItem(id);
       }
     });
@@ -3136,12 +3391,13 @@ function renderWardrobeView() {
   var bulkDelete = document.getElementById('wardrobeBulkDelete');
   var bulkCancel = document.getElementById('wardrobeBulkCancel');
   if (bulkDelete) {
-    bulkDelete.onclick = function() {
+    bulkDelete.onclick = async function() {
       var ids = Object.keys(wardrobeSelected).map(Number);
       if (!ids.length) return;
       if (confirm('Delete ' + ids.length + ' item' + (ids.length > 1 ? 's' : '') + ' from your wardrobe?')) {
-        deleteWardrobeItems(ids);
-        toggleWardrobeSelectMode();
+        bulkDelete.disabled = true;
+        if (await deleteWardrobeItems(ids)) toggleWardrobeSelectMode();
+        bulkDelete.disabled = false;
       }
     };
   }
@@ -3161,7 +3417,14 @@ function renderWardrobeView() {
         btn.classList.add('wardrobe-view__filter--active');
         var filter = btn.getAttribute('data-filter');
         grid.querySelectorAll('.wardrobe-card').forEach(function(card) {
-          if (filter === 'all' || card.getAttribute('data-category').toLowerCase() === filter) {
+          var category = card.getAttribute('data-category').toLowerCase();
+          var normalizedCategory = category === 'top' ? 'tops'
+            : category === 'bottom' ? 'bottoms'
+            : category === 'dress' ? 'dresses'
+            : category === 'shoe' ? 'shoes'
+            : category === 'accessory' ? 'accessories'
+            : category;
+          if (filter === 'all' || normalizedCategory === filter) {
             card.style.display = '';
           } else {
             card.style.display = 'none';
