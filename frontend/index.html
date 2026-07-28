@@ -1565,7 +1565,14 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="wardrobe-utils.js?v=20260728-boot-order"></script>
+  <script>
+    window.WUTT_CONFIG = {
+      DEMO_LOGIN_ENABLED: true,
+      DEMO_LOGIN_EMAIL: "demo@wutt.ai",
+      DEMO_LOGIN_PASSWORD: "wuttdemo2026"
+    };
+  </script>
+  
   <script src="app.js?v=20260728-boot-order"></script>
 </body>
 </html>
