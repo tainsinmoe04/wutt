@@ -15,6 +15,14 @@ window.addEventListener('pageshow', function refreshPersistedPage(event) {
    Runs inside DOMContentLoaded. Uses getElementById only.
    Does NOT depend on any other code in this file.
    -------------------------------------------------------- */
+function resetHeroLoginModalState() {
+  var overlay = document.getElementById('heroLoginOverlay');
+  if (!overlay) return;
+
+  overlay.classList.remove('landing-modal-overlay--open');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
 document.addEventListener('DOMContentLoaded', function initHeroLoginModal() {
   var btn     = document.getElementById('navbarLoginBtn');
   var overlay = document.getElementById('heroLoginOverlay');
@@ -23,13 +31,14 @@ document.addEventListener('DOMContentLoaded', function initHeroLoginModal() {
   var form    = document.getElementById('heroLoginForm');
   var registerOverlay = document.getElementById('registerModalOverlay');
 
-  if (!btn)     { console.warn('[WUTT] #navbarLoginBtn not found'); return; }
+  // Always normalize the login overlay before checking controller dependencies.
+  resetHeroLoginModalState();
+
   if (!overlay) { console.warn('[WUTT] #heroLoginOverlay not found'); return; }
+  if (!btn)     { console.warn('[WUTT] #navbarLoginBtn not found'); return; }
 
   // Authentication always starts in login mode. Neither overlay is allowed
   // to retain stale active classes across initialization.
-  overlay.classList.remove('landing-modal-overlay--open');
-  overlay.setAttribute('aria-hidden', 'true');
   if (registerOverlay) {
     registerOverlay.classList.remove('landing-modal-overlay--open');
     registerOverlay.setAttribute('aria-hidden', 'true');
@@ -608,6 +617,8 @@ function prepareInitialSurface(route) {
   document.body.style.overflow = '';
 
   if (route.name === 'landing') {
+    // The public root must never inherit a stale login-open state during boot.
+    resetHeroLoginModalState();
     setBootSkeleton('landing');
   } else if (route.name === 'app') {
     setBootSkeleton(route.panel || 'home');
