@@ -128,6 +128,9 @@ class Wardrobe(Base):
     style_tags          = Column(String(200), nullable=True)   # comma-separated: "casual,summer,street"
     material_tags       = Column(String(200), nullable=True)   # comma-separated: "cotton,denim"
     occasion_tags       = Column(String(200), nullable=True)   # comma-separated: "party,formal"
+    brand               = Column(String(100), nullable=True)
+    formality_level     = Column(String(50), nullable=True)
+    season_suitability  = Column(String(100), nullable=True)
     color               = Column(String(50),  nullable=True)
     description         = Column(String(255), nullable=True)
     uploaded_at         = Column(DateTime(timezone=True), default=_utcnow, nullable=False)

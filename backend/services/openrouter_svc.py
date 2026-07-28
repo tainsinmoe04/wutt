@@ -8,6 +8,7 @@ are fallbacks.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import json
@@ -15,28 +16,17 @@ import json
 from openai import OpenAI
 
 from config import settings
+from services.stylist_prompt import (
+    WUTT_PERSONALITY_PROMPT,
+    WUTT_RECOMMENDATION_PROMPT,
+    occasion_context_prompt,
+    recommendation_mode_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
 # ── Shared system prompt ──────────────────────────────────────
-_CHAT_SYSTEM_PROMPT = """You are WUTT, an AI fashion companion for fashion-interested users.
-
-Core message: "Know Your Wardrobe. Upgrade Your Style."
-
-Personality:
-- Fashion-first, AI second — give outfit advice like a trusted stylist friend
-- Be warm, encouraging, and visually descriptive
-- Suggest specific items, colors, and combinations
-- Reference the user's wardrobe items when provided
-- Keep responses concise but helpful (2-4 sentences max unless asked for detail)
-- Use casual, friendly tone — not robotic or overly formal
-- Never lecture — inspire
-
-When responding:
-- If wardrobe items are provided, reference them naturally ("That blue blazer in your closet...")
-- Suggest complete outfits, not just single pieces
-- Consider occasion, weather, and personal style
-- If unsure, ask clarifying questions about the occasion or vibe they want"""
+_CHAT_SYSTEM_PROMPT = WUTT_PERSONALITY_PROMPT
 
 
 def _build_client() -> OpenAI | None:
@@ -76,7 +66,10 @@ def _build_messages(
     if conversation_history:
         for msg in conversation_history[-10:]:
             role = "assistant" if msg.get("role") == "bot" else "user"
-            messages.append({"role": role, "content": msg.get("text", "")})
+            messages.append({
+                "role": role,
+                "content": msg.get("content") or msg.get("text", ""),
+            })
 
     # Add current message
     messages.append({"role": "user", "content": user_message})
@@ -138,6 +131,7 @@ def get_outfit_recommendation(
     height_cm: float | None = None,
     skin_tone: str | None = None,
     style_preference: str | None = None,
+    profile_data: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Generate outfit recommendation using OpenRouter."""
 
@@ -145,21 +139,43 @@ def get_outfit_recommendation(
     if client is None:
         return None
 
-    wardrobe_text = "\n".join(
-        [
-            f"- {item.get('category','')} {item.get('color','')} {item.get('description','')}"
-            for item in wardrobe_items
-        ]
-    )
+    wardrobe_lines: list[str] = []
+    for index, item in enumerate(wardrobe_items, 1):
+        parts = [f"id={item.get('id', index)}"]
+        for key in (
+            "category", "subtype", "color", "style_tags", "occasion_tags",
+            "material_tags", "brand", "formality_level",
+            "season_suitability", "description",
+            "recent_recommendation_count",
+        ):
+            value = item.get(key)
+            if value not in (None, ""):
+                parts.append(f"{key}={value}")
+        wardrobe_lines.append("- " + "; ".join(parts))
+    wardrobe_text = "\n".join(wardrobe_lines) or "(no wardrobe items)"
+
+    profile = dict(profile_data or {})
+    if height_cm is not None:
+        profile.setdefault("height_cm", height_cm)
+    if skin_tone:
+        profile.setdefault("skin_tone", skin_tone)
+    if style_preference:
+        profile.setdefault("style_preference", style_preference)
+    profile_text = json.dumps(profile, ensure_ascii=False, sort_keys=True)
 
     prompt = f"""
-You are WUTT, an AI personal stylist.
+User profile:
+{profile_text}
 
-Wardrobe:
+Wardrobe items:
 {wardrobe_text}
 
 Occasion:
 {occasion}
+
+{recommendation_mode_prompt(occasion)}
+
+{occasion_context_prompt(occasion)}
 
 Weather:
 {weather_desc}
@@ -167,12 +183,7 @@ Weather:
 Style preference:
 {style_preference}
 
-Return only JSON:
-{{
-  "outfit": [],
-  "explanation": "",
-  "weather_based_tip": ""
-}}
+{WUTT_RECOMMENDATION_PROMPT}
 """
 
     try:
@@ -181,7 +192,7 @@ Return only JSON:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are WUTT AI fashion stylist."
+                    "content": WUTT_PERSONALITY_PROMPT,
                 },
                 {
                     "role": "user",
@@ -197,8 +208,55 @@ Return only JSON:
         if not content:
             return None
 
-        return json.loads(content)
+        return _parse_recommendation_response(content)
 
     except Exception as exc:
         logger.error("OpenRouter recommend failed: %s", exc)
-        return None 
+        return None
+
+
+def _parse_recommendation_response(raw: str | None) -> dict[str, Any] | None:
+    """Parse and normalize structured recommendation JSON from a model."""
+    if not raw:
+        return None
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"\{[\s\S]*\}", text)
+        if not match:
+            logger.warning("OpenRouter recommendation was not JSON")
+            return None
+        try:
+            parsed = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            logger.warning("OpenRouter recommendation contained invalid JSON")
+            return None
+
+    if not isinstance(parsed, dict):
+        return None
+    outfit_value = parsed.get("outfit", [])
+    if isinstance(outfit_value, str):
+        outfit = [outfit_value] if outfit_value.strip() else []
+    elif isinstance(outfit_value, list):
+        outfit = [
+            str(item).strip()
+            for item in outfit_value
+            if str(item).strip()
+        ]
+    else:
+        outfit = []
+
+    return {
+        "outfit": outfit,
+        "explanation": str(parsed.get("explanation") or "").strip(),
+        "weather_based_tip": str(
+            parsed.get("weather_based_tip")
+            or parsed.get("weather_tip")
+            or ""
+        ).strip(),
+    }

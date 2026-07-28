@@ -18,6 +18,7 @@ from routes.auth import (
     _create_jwt,
     get_current_user,
     login,
+    logout,
     register,
 )
 from services.auth_session_svc import (
@@ -181,3 +182,177 @@ def test_existing_register_and_login_endpoints_still_issue_jwt(
     assert logged_in["data"]["token"]
     assert "wutt_token=" in login_response.headers["set-cookie"]
 
+
+def test_login_rejects_unknown_email_and_incorrect_password(db: Session) -> None:
+    register(
+        RegisterRequest(email="real-user@example.com", password="password1"),
+        Response(),
+        db,
+    )
+
+    for email, password in (
+        ("missing-user@example.com", "password1"),
+        ("real-user@example.com", "incorrect1"),
+    ):
+        with pytest.raises(HTTPException) as error:
+            login(LoginRequest(email=email, password=password), Response(), db)
+        assert error.value.status_code == 401
+        assert error.value.detail["message"] == "Invalid email or password."
+
+
+def test_disabled_demo_login_rejects_configured_credentials(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "demo_login_enabled", False)
+    monkeypatch.setattr(settings, "demo_login_email", "demo@example.com")
+    monkeypatch.setattr(settings, "demo_login_password", "demo-password1")
+
+    with pytest.raises(HTTPException) as error:
+        login(
+            LoginRequest(
+                email="demo@example.com",
+                password="demo-password1",
+            ),
+            Response(),
+            db,
+        )
+
+    assert error.value.status_code == 401
+    assert db.query(User).count() == 0
+
+
+def test_enabled_demo_login_creates_only_the_configured_account(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "demo_login_enabled", True)
+    monkeypatch.setattr(settings, "demo_login_email", "demo@example.com")
+    monkeypatch.setattr(settings, "demo_login_password", "demo-password1")
+
+    response = Response()
+    result = login(
+        LoginRequest(email="DEMO@example.com", password="demo-password1"),
+        response,
+        db,
+    )
+
+    demo_user = db.query(User).one()
+    assert result["data"]["email"] == "demo@example.com"
+    assert result["data"]["token"]
+    assert demo_user.email == "demo@example.com"
+    assert demo_user.password_hash != "demo-password1"
+    assert "wutt_token=" in response.headers["set-cookie"]
+
+    for email, password in (
+        ("other@example.com", "demo-password1"),
+        ("demo@example.com", "wrong-password1"),
+    ):
+        with pytest.raises(HTTPException) as error:
+            login(LoginRequest(email=email, password=password), Response(), db)
+        assert error.value.status_code == 401
+
+
+def test_disabling_demo_mode_blocks_the_persisted_demo_account(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "demo_login_enabled", True)
+    monkeypatch.setattr(settings, "demo_login_email", "demo@example.com")
+    monkeypatch.setattr(settings, "demo_login_password", "demo-password1")
+    login(
+        LoginRequest(email="demo@example.com", password="demo-password1"),
+        Response(),
+        db,
+    )
+
+    monkeypatch.setattr(settings, "demo_login_enabled", False)
+    with pytest.raises(HTTPException) as error:
+        login(
+            LoginRequest(email="demo@example.com", password="demo-password1"),
+            Response(),
+            db,
+        )
+
+    assert error.value.status_code == 401
+
+
+def test_demo_login_never_takes_over_existing_account(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    register(
+        RegisterRequest(email="demo@example.com", password="original1"),
+        Response(),
+        db,
+    )
+    monkeypatch.setattr(settings, "demo_login_enabled", True)
+    monkeypatch.setattr(settings, "demo_login_email", "demo@example.com")
+    monkeypatch.setattr(settings, "demo_login_password", "demo-password1")
+
+    with pytest.raises(HTTPException) as error:
+        login(
+            LoginRequest(email="demo@example.com", password="demo-password1"),
+            Response(),
+            db,
+        )
+
+    assert error.value.status_code == 401
+    assert login(
+        LoginRequest(email="demo@example.com", password="original1"),
+        Response(),
+        db,
+    )["status"] == "success"
+
+
+def test_demo_email_is_reserved_while_demo_mode_is_enabled(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "demo_login_enabled", True)
+    monkeypatch.setattr(settings, "demo_login_email", "demo@example.com")
+
+    with pytest.raises(HTTPException) as error:
+        register(
+            RegisterRequest(email="demo@example.com", password="password1"),
+            Response(),
+            db,
+        )
+
+    assert error.value.status_code == 409
+    assert db.query(User).count() == 0
+
+
+def test_logout_revokes_session_and_expires_auth_cookies(db: Session) -> None:
+    user = make_user(db)
+    raw_token, auth_session = create_session(db, user.id)
+    request = make_request(cookies={
+        settings.session_cookie_name: raw_token,
+        "wutt_token": _create_jwt(user.id, user.email),
+    })
+    response = Response()
+
+    result = logout(request, response, db)
+
+    db.refresh(auth_session)
+    set_cookie_headers = response.headers.getlist("set-cookie")
+    assert result["status"] == "success"
+    assert auth_session.revoked_at is not None
+    assert any(
+        header.startswith(f"{settings.session_cookie_name}=")
+        and "Max-Age=0" in header
+        for header in set_cookie_headers
+    )
+    assert any(
+        header.startswith("wutt_token=") and "Max-Age=0" in header
+        for header in set_cookie_headers
+    )
+
+
+def test_logout_without_active_session_is_idempotent(db: Session) -> None:
+    response = Response()
+
+    result = logout(make_request(), response, db)
+
+    assert result["status"] == "success"
+    assert len(response.headers.getlist("set-cookie")) == 2

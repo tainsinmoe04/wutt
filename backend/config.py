@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     session_cookie_name: str = "wutt_session"
     session_expiry_hours: int = 24 * 7
 
+    # ── Temporary Chapter 6 demo login ───────────────────
+    demo_login_enabled: bool = False
+    demo_login_email: str = ""
+    demo_login_password: str = ""
+
     # ── Google OAuth ──────────────────────────────────────
     google_client_id: str = ""
     google_client_secret: str = ""
@@ -76,3 +81,14 @@ def check_production_safety() -> None:
             "JWT_SECRET_KEY is still at its default value. "
             "Set a strong random secret in .env before running in production."
         )
+    if settings.demo_login_enabled:
+        if not settings.demo_login_email.strip() or not settings.demo_login_password:
+            raise RuntimeError(
+                "DEMO_LOGIN_ENABLED requires DEMO_LOGIN_EMAIL and "
+                "DEMO_LOGIN_PASSWORD."
+            )
+        if "@" not in settings.demo_login_email or len(settings.demo_login_password) < 8:
+            raise RuntimeError(
+                "Demo login requires a valid email and a password of at least "
+                "8 characters."
+            )

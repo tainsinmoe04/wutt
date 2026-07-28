@@ -16,12 +16,137 @@
   <link rel="icon" type="image/svg+xml" href="assets/wutt-favicon.svg">
   <link rel="apple-touch-icon" href="assets/wutt-apple-touch-icon.png">
   <title>WUTT — AI Personal Stylist</title>
+  <script>
+    window.__WUTT_BOOT_STARTED__ = performance.now();
+    document.documentElement.classList.add('wutt-auth-pending');
+    (function () {
+      var surface = 'landing';
+      try { surface = localStorage.getItem('wutt_last_surface') || surface; } catch (error) {}
+      var hashSurface = {
+        '#/stylist': 'stylist',
+        '#/wardrobe': 'wardrobe',
+        '#/profile': 'profile'
+      }[window.location.hash];
+      var pathSurface = {
+        '/app': 'stylist',
+        '/stylist': 'stylist',
+        '/wardrobe': 'wardrobe',
+        '/profile': 'profile'
+      }[window.location.pathname];
+      surface = hashSurface || pathSurface || surface;
+      if (['landing', 'stylist', 'wardrobe', 'profile'].indexOf(surface) === -1) surface = 'stylist';
+      document.documentElement.setAttribute('data-wutt-boot-surface', surface);
+      try {
+        document.documentElement.setAttribute('data-wutt-theme', localStorage.getItem('wutt_last_theme') || 'day');
+      } catch (error) {
+        document.documentElement.setAttribute('data-wutt-theme', 'day');
+      }
+    }());
+  </script>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+
+  <div class="app-boot-screen" id="appBootScreen" role="status" aria-label="Restoring your WUTT session">
+    <div class="boot-app boot-profile" data-boot-skeleton="profile" aria-hidden="true">
+      <aside class="boot-app__sidebar">
+        <span class="boot-app__mark">W</span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+      </aside>
+      <div class="boot-profile__page">
+        <header class="boot-page-header"><span class="wutt-skeleton"></span><span class="wutt-skeleton boot-page-header__action"></span></header>
+        <div class="boot-profile__layout">
+          <aside class="boot-profile__summary">
+            <span class="wutt-skeleton boot-profile__avatar"></span>
+            <span class="wutt-skeleton boot-profile__name"></span>
+            <span class="wutt-skeleton boot-profile__email"></span>
+            <div class="boot-profile__chips"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span></div>
+            <span class="wutt-skeleton boot-profile__button"></span>
+          </aside>
+          <div class="boot-profile__cards">
+            <section class="boot-profile__section boot-profile__section--rows">
+              <span class="wutt-skeleton boot-profile__card-title"></span>
+              <div class="boot-profile__row"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span></div>
+              <div class="boot-profile__row"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span></div>
+              <div class="boot-profile__row"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span></div>
+            </section>
+            <section class="boot-profile__section boot-profile__section--style">
+              <span class="wutt-skeleton boot-profile__card-title"></span>
+              <div class="boot-profile__chips"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span></div>
+              <div class="boot-profile__chips"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span></div>
+              <div class="boot-profile__row boot-profile__row--vibe"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span></div>
+            </section>
+            <section class="boot-profile__section boot-profile__section--sizes">
+              <span class="wutt-skeleton boot-profile__card-title"></span>
+              <div class="boot-profile__sizes">
+                <span class="wutt-skeleton"></span><span class="wutt-skeleton"></span>
+                <span class="wutt-skeleton"></span><span class="wutt-skeleton"></span>
+                <span class="wutt-skeleton"></span><span class="wutt-skeleton"></span>
+              </div>
+            </section>
+            <section class="boot-profile__section boot-profile__desktop-lower">
+              <span class="wutt-skeleton boot-profile__card-title"></span>
+              <span class="wutt-skeleton boot-profile__ticket"></span>
+              <span class="wutt-skeleton boot-profile__ticket"></span>
+            </section>
+            <section class="boot-profile__section boot-profile__desktop-lower">
+              <span class="wutt-skeleton boot-profile__card-title"></span>
+              <div class="boot-profile__stats"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span></div>
+              <span class="wutt-skeleton boot-profile__hint"></span>
+            </section>
+            <section class="boot-profile__section boot-profile__desktop-lower boot-profile__section--appearance">
+              <span class="wutt-skeleton boot-profile__card-title"></span>
+              <div class="boot-profile__row"><span class="wutt-skeleton"></span><span class="wutt-skeleton boot-profile__toggle"></span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="boot-app boot-wardrobe" data-boot-skeleton="wardrobe" aria-hidden="true">
+      <aside class="boot-app__sidebar">
+        <span class="boot-app__mark">W</span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+      </aside>
+      <div class="boot-wardrobe__page">
+        <header class="boot-page-header"><span class="wutt-skeleton"></span><span class="wutt-skeleton boot-page-header__action"></span></header>
+        <div class="boot-wardrobe__grid">
+          <article><span class="wutt-skeleton boot-wardrobe__image"></span><span class="wutt-skeleton boot-wardrobe__title"></span><span class="wutt-skeleton boot-wardrobe__meta"></span><span class="wutt-skeleton boot-wardrobe__tag"></span></article>
+          <article><span class="wutt-skeleton boot-wardrobe__image"></span><span class="wutt-skeleton boot-wardrobe__title"></span><span class="wutt-skeleton boot-wardrobe__meta"></span><span class="wutt-skeleton boot-wardrobe__tag"></span></article>
+          <article><span class="wutt-skeleton boot-wardrobe__image"></span><span class="wutt-skeleton boot-wardrobe__title"></span><span class="wutt-skeleton boot-wardrobe__meta"></span><span class="wutt-skeleton boot-wardrobe__tag"></span></article>
+          <article><span class="wutt-skeleton boot-wardrobe__image"></span><span class="wutt-skeleton boot-wardrobe__title"></span><span class="wutt-skeleton boot-wardrobe__meta"></span><span class="wutt-skeleton boot-wardrobe__tag"></span></article>
+          <article><span class="wutt-skeleton boot-wardrobe__image"></span><span class="wutt-skeleton boot-wardrobe__title"></span><span class="wutt-skeleton boot-wardrobe__meta"></span><span class="wutt-skeleton boot-wardrobe__tag"></span></article>
+          <article><span class="wutt-skeleton boot-wardrobe__image"></span><span class="wutt-skeleton boot-wardrobe__title"></span><span class="wutt-skeleton boot-wardrobe__meta"></span><span class="wutt-skeleton boot-wardrobe__tag"></span></article>
+          <article><span class="wutt-skeleton boot-wardrobe__image"></span><span class="wutt-skeleton boot-wardrobe__title"></span><span class="wutt-skeleton boot-wardrobe__meta"></span><span class="wutt-skeleton boot-wardrobe__tag"></span></article>
+          <article><span class="wutt-skeleton boot-wardrobe__image"></span><span class="wutt-skeleton boot-wardrobe__title"></span><span class="wutt-skeleton boot-wardrobe__meta"></span><span class="wutt-skeleton boot-wardrobe__tag"></span></article>
+        </div>
+      </div>
+    </div>
+
+    <div class="boot-app boot-stylist" data-boot-skeleton="stylist" aria-hidden="true">
+      <aside class="boot-app__sidebar">
+        <span class="boot-app__mark">W</span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+        <span class="wutt-skeleton boot-app__nav-dot"></span>
+      </aside>
+      <div class="boot-stylist__page">
+        <header class="boot-stylist__header"><span class="wutt-skeleton boot-stylist__avatar"></span><div><span class="wutt-skeleton"></span><span class="wutt-skeleton boot-stylist__status"></span></div></header>
+        <div class="boot-stylist__messages">
+          <div class="boot-stylist__message boot-stylist__message--bot"><span class="wutt-skeleton"></span><span class="wutt-skeleton"></span><span class="wutt-skeleton boot-stylist__line-short"></span></div>
+          <div class="boot-stylist__message boot-stylist__message--user"><span class="wutt-skeleton"></span><span class="wutt-skeleton boot-stylist__line-short"></span></div>
+        </div>
+        <div class="boot-stylist__composer"><span class="wutt-skeleton"></span><span class="wutt-skeleton boot-stylist__send"></span></div>
+      </div>
+    </div>
+  </div>
 
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
@@ -53,7 +178,6 @@
           </p>
           <div class="landing-hero__cta landing-hero__stagger-3">
             <button type="button" class="btn btn--primary btn--lg" id="heroGetStartedBtn">Get Started</button>
-            <button type="button" class="btn btn--ghost btn--lg" id="heroLearnMoreBtn">See How It Works</button>
           </div>
         </div>
       </div>
@@ -124,6 +248,10 @@
           </button>
         </form>
 
+        <button class="btn btn--full login-card__demo-entry demo-access-trigger u-hidden" id="tryDemoBtn" type="button">
+          Try Demo
+        </button>
+
         <p class="login-card__switch">
           Don't have an account?
           <button type="button" id="heroSwitchToRegister" formnovalidate>Sign Up</button>
@@ -172,15 +300,48 @@
   <!-- Footer -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer__inner">
-      <span class="site-footer__brand">WUTT</span>
-      <nav class="site-footer__links" aria-label="Legal">
-        <a href="#" class="site-footer__link">Privacy Policy</a>
-        <a href="#" class="site-footer__link">Terms of Service</a>
-        <a href="#" class="site-footer__link">Contact</a>
-      </nav>
-      <span class="site-footer__copy">&copy; 2026 WUTT. All rights reserved.</span>
+      <div class="site-footer__identity">
+        <span class="site-footer__brand">WUTT</span>
+        <span class="site-footer__tagline">Your wardrobe, styled with intention.</span>
+      </div>
+      <p class="site-footer__copy">&copy; 2026 WUTT. Made for everyday style in Myanmar.</p>
     </div>
   </footer>
+
+  <main class="not-found-page u-hidden" id="notFoundPage" aria-labelledby="notFoundTitle" aria-hidden="true">
+    <a class="not-found-page__wordmark" href="/" aria-label="WUTT home">WUTT</a>
+    <div class="not-found-page__content">
+      <p class="not-found-page__code">404</p>
+      <h1 class="not-found-page__title" id="notFoundTitle">This style page doesn't exist.</h1>
+      <a class="not-found-page__back" href="/">Back to WUTT</a>
+    </div>
+    <p class="not-found-page__footer">Your wardrobe. Your style.</p>
+  </main>
+
+  <div class="demo-access-overlay u-hidden" id="demoAccessOverlay" role="dialog" aria-modal="true" aria-labelledby="demoAccessTitle" aria-hidden="true">
+    <div class="demo-access-card">
+      <button class="demo-access-card__close" id="demoAccessClose" type="button" aria-label="Close demo account">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <p class="demo-access-card__eyebrow">Explore WUTT</p>
+      <h2 class="demo-access-card__title" id="demoAccessTitle">Demo Account</h2>
+      <p class="demo-access-card__intro">A ready-made wardrobe and profile for exploring the full styling experience.</p>
+      <div class="demo-access-card__credentials">
+        <div class="demo-access-card__credential">
+          <div><span>Email</span><strong id="demoAccessEmail"></strong></div>
+          <button type="button" data-demo-copy="email">Copy email</button>
+        </div>
+        <div class="demo-access-card__credential">
+          <div><span>Password</span><strong id="demoAccessPassword"></strong></div>
+          <button type="button" data-demo-copy="password">Copy password</button>
+        </div>
+      </div>
+      <p class="demo-access-card__status" id="demoAccessStatus" aria-live="polite"></p>
+      <button class="demo-access-card__continue" id="demoAccessContinue" type="button">Continue Demo</button>
+    </div>
+  </div>
 
   <!-- Login Modal -->
   <div
@@ -225,6 +386,9 @@
           <button type="submit" class="btn btn--primary btn--full" id="loginSubmitBtn">
             <span class="btn__label">Log In</span>
             <span class="btn__spinner" aria-hidden="true"></span>
+          </button>
+          <button class="btn btn--full login-card__demo-entry demo-access-trigger u-hidden" id="tryDemoModalBtn" type="button">
+            Try Demo
           </button>
           <p class="modal__switch">
             Don't have an account?
@@ -470,6 +634,12 @@
       <button class="chat-sidebar__item" aria-label="Wardrobe" data-panel="wardrobe">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>
       </button>
+      <button class="chat-sidebar__item" aria-label="Shopping Assistant, coming soon" data-panel="shopping">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+          <path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+      </button>
       <div class="chat-sidebar__spacer"></div>
       <button class="chat-sidebar__item" aria-label="Profile" data-panel="profile">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -490,7 +660,7 @@
       <div class="sidebar-wardrobe" id="sidebarWardrobe">
         <div class="sidebar-wardrobe__empty">
           <p>No items yet.</p>
-          <p class="sidebar-wardrobe__hint">Add clothes through the chat — WUTT will detect category, color, and style.</p>
+          <p class="sidebar-wardrobe__hint">Add a photo, review the details, and save it to your closet.</p>
           <span class="sidebar-coming-soon">Studio Cut coming soon — clean background removal for your photos.</span>
         </div>
       </div>
@@ -503,8 +673,9 @@
         <div class="wardrobe-view__scroll">
           <div class="wardrobe-view__header">
             <div class="wardrobe-view__header-text">
-              <h1 class="wardrobe-view__title">My Wardrobe</h1>
-              <p class="wardrobe-view__subtitle">Your personal fashion closet</p>
+              <p class="wardrobe-view__eyebrow">Your collection</p>
+              <h1 class="wardrobe-view__title">My personal closet</h1>
+              <p class="wardrobe-view__subtitle">The pieces you love, ready to be styled.</p>
             </div>
             <div class="wardrobe-view__actions">
               <button class="wardrobe-view__add-btn" id="wardrobeAddBtn" type="button">
@@ -548,32 +719,33 @@
                   <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
                 </svg>
               </div>
-              <h3 class="wardrobe-view__empty-title">Your closet is empty</h3>
-              <p class="wardrobe-view__empty-hint">Add clothes through the chat — WUTT will detect category, color, and style.</p>
+              <h3 class="wardrobe-view__empty-title">Your wardrobe is waiting</h3>
+              <p class="wardrobe-view__empty-hint">Add your first piece and let WUTT style it.</p>
+              <button class="wardrobe-view__empty-action" id="wardrobeEmptyAddBtn" type="button">Add your first piece</button>
             </div>
           </div>
 
           <!-- AI Closet Tools -->
           <div class="wardrobe-tools" id="wardrobeTools">
-            <div class="wardrobe-tools__icon" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3z"/>
-              </svg>
-            </div>
             <div class="wardrobe-tools__text">
-              <h3 class="wardrobe-tools__title">AI Closet Tools</h3>
-              <p class="wardrobe-tools__desc">Style recommendations, outfit builder, and wardrobe analysis — coming soon.</p>
+              <div class="wardrobe-tools__heading">
+                <h3 class="wardrobe-tools__title">AI Clothing Analysis</h3>
+                <span class="wardrobe-tools__badge">Coming soon</span>
+              </div>
+              <p class="wardrobe-tools__desc">Automatic clothing recognition, thoughtful style suggestions, and easier outfit matching are coming soon.</p>
             </div>
-            <span class="wardrobe-tools__badge">Coming Soon</span>
           </div>
         </div>
       </div>
 
       <!-- Wardrobe Upload Modal -->
       <div class="wardrobe-modal-overlay u-hidden" id="wardrobeModal" aria-hidden="true">
-        <div class="wardrobe-modal">
+        <div class="wardrobe-modal" role="dialog" aria-modal="true" aria-labelledby="wardrobeModalTitle">
           <div class="wardrobe-modal__header">
-            <h3 class="wardrobe-modal__title">Add to Wardrobe</h3>
+            <div>
+              <p class="wardrobe-modal__eyebrow">New wardrobe piece</p>
+              <h3 class="wardrobe-modal__title" id="wardrobeModalTitle">Add to your closet</h3>
+            </div>
             <button class="wardrobe-modal__close" id="wardrobeModalClose" aria-label="Close" type="button">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -590,46 +762,112 @@
                 </svg>
               </div>
               <p class="wardrobe-modal__upload-text">Drop a photo or tap to upload</p>
-              <p class="wardrobe-modal__upload-hint">JPG, PNG — AI will detect category, color, and style</p>
+              <p class="wardrobe-modal__upload-hint">JPG, PNG, or WebP — you’ll add the details next</p>
             </div>
-            <input type="file" id="wardrobeModalFileInput" accept="image/*" class="u-hidden" aria-hidden="true">
+            <input type="file" id="wardrobeModalFileInput" accept="image/jpeg,image/png,image/webp" class="u-hidden" aria-hidden="true">
           </div>
 
-          <!-- Step 2: Preview + AI Detection -->
+          <!-- Step 2: Preview + Manual Details -->
           <div class="wardrobe-modal__step u-hidden" id="wardrobeModalPreview">
-            <div class="wardrobe-modal__preview">
-              <img class="wardrobe-modal__preview-img" id="wardrobePreviewImg" src="" alt="Preview">
-            </div>
-            <div class="wardrobe-modal__detected" id="wardrobeDetected">
-              <div class="wardrobe-modal__detected-header">
-                <span class="wardrobe-modal__ai-badge">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3z"/></svg>
-                  AI Detected
-                </span>
+            <div class="wardrobe-modal__editor">
+              <div class="wardrobe-modal__preview-column">
+                <p class="wardrobe-modal__section-label">Your piece</p>
+                <div class="wardrobe-modal__preview">
+                  <img class="wardrobe-modal__preview-img" id="wardrobePreviewImg" src="" alt="Clothing piece preview">
+                </div>
+                <p class="wardrobe-modal__preview-note">Make sure the piece is clearly visible. You can choose another photo before saving.</p>
               </div>
-              <div class="wardrobe-modal__field">
-                <label class="wardrobe-modal__label">Category</label>
-                <span class="wardrobe-modal__value" id="detectedCategory">—</span>
-              </div>
-              <div class="wardrobe-modal__field">
-                <label class="wardrobe-modal__label">Color</label>
-                <span class="wardrobe-modal__value" id="detectedColor">—</span>
-              </div>
-              <div class="wardrobe-modal__field">
-                <label class="wardrobe-modal__label">Style</label>
-                <span class="wardrobe-modal__value" id="detectedStyle">—</span>
-              </div>
-              <div class="wardrobe-modal__field">
-                <label class="wardrobe-modal__label">Material</label>
-                <span class="wardrobe-modal__value" id="detectedMaterial">—</span>
-              </div>
-              <div class="wardrobe-modal__field">
-                <label class="wardrobe-modal__label">Occasions</label>
-                <span class="wardrobe-modal__value" id="detectedOccasions">—</span>
+              <div class="wardrobe-modal__detected" id="wardrobeDetected">
+                <div class="wardrobe-modal__detected-header">
+                  <p class="wardrobe-modal__section-label">Fashion details</p>
+                  <h4 class="wardrobe-modal__details-title">Tell WUTT about this piece</h4>
+                  <p class="wardrobe-modal__details-hint">A few useful details help your stylist create better looks.</p>
+                </div>
+                <div class="wardrobe-modal__fields">
+                  <p class="wardrobe-modal__group-title wardrobe-modal__field--wide">
+                    Required details
+                    <span>Needed for accurate outfit matches</span>
+                  </p>
+                  <div class="wardrobe-modal__field">
+                    <label class="wardrobe-modal__label" for="wardrobeManualCategory">Category <span aria-hidden="true">*</span></label>
+                    <select class="wardrobe-modal__input" id="wardrobeManualCategory" required>
+                      <option value="Item">Item</option>
+                      <option value="Top">Top</option>
+                      <option value="Bottom">Bottom</option>
+                      <option value="Dress">Dress</option>
+                      <option value="Outerwear">Outerwear</option>
+                      <option value="Shoes">Shoes</option>
+                      <option value="Accessory">Accessory</option>
+                    </select>
+                  </div>
+                  <div class="wardrobe-modal__field">
+                    <label class="wardrobe-modal__label" for="wardrobeManualSubtype">Subtype <span aria-hidden="true">*</span></label>
+                    <input class="wardrobe-modal__input" id="wardrobeManualSubtype" type="text" placeholder="Example: metal watch or linen shirt" required>
+                  </div>
+                  <div class="wardrobe-modal__field">
+                    <label class="wardrobe-modal__label" for="wardrobeManualColor">Color <span aria-hidden="true">*</span></label>
+                    <input class="wardrobe-modal__input" id="wardrobeManualColor" type="text" placeholder="Example: gold, navy, cream" required>
+                  </div>
+                  <div class="wardrobe-modal__field">
+                    <label class="wardrobe-modal__label" for="wardrobeManualStyles">Style <span aria-hidden="true">*</span></label>
+                    <input class="wardrobe-modal__input" id="wardrobeManualStyles" type="text" placeholder="Choose below or add your own" required>
+                    <div class="wardrobe-modal__suggestions" data-suggestion-target="wardrobeManualStyles" aria-label="Style suggestions">
+                      <button type="button" data-value="Minimal">Minimal</button>
+                      <button type="button" data-value="Casual">Casual</button>
+                      <button type="button" data-value="Elegant">Elegant</button>
+                      <button type="button" data-value="Luxury">Luxury</button>
+                      <button type="button" data-value="Streetwear">Streetwear</button>
+                      <button type="button" data-value="Traditional">Traditional</button>
+                    </div>
+                  </div>
+                  <div class="wardrobe-modal__field wardrobe-modal__field--wide">
+                    <label class="wardrobe-modal__label" for="wardrobeManualOccasions">Occasion <span aria-hidden="true">*</span></label>
+                    <input class="wardrobe-modal__input" id="wardrobeManualOccasions" type="text" placeholder="Choose below or add your own" required>
+                    <div class="wardrobe-modal__suggestions" data-suggestion-target="wardrobeManualOccasions" aria-label="Occasion suggestions">
+                      <button type="button" data-value="Daily">Daily</button>
+                      <button type="button" data-value="Work">Work</button>
+                      <button type="button" data-value="Date">Date</button>
+                      <button type="button" data-value="Wedding">Wedding</button>
+                      <button type="button" data-value="Formal">Formal</button>
+                      <button type="button" data-value="Travel">Travel</button>
+                      <button type="button" data-value="Religious">Religious</button>
+                    </div>
+                  </div>
+                  <p class="wardrobe-modal__group-title wardrobe-modal__field--wide">
+                    Optional details
+                    <span>Add what you know</span>
+                  </p>
+                  <div class="wardrobe-modal__field">
+                    <label class="wardrobe-modal__label" for="wardrobeManualMaterial">Material</label>
+                    <input class="wardrobe-modal__input" id="wardrobeManualMaterial" type="text" placeholder="Example: linen, denim, metal">
+                  </div>
+                  <div class="wardrobe-modal__field">
+                    <label class="wardrobe-modal__label" for="wardrobeManualBrand">Brand</label>
+                    <input class="wardrobe-modal__input" id="wardrobeManualBrand" type="text" placeholder="Brand name, if known">
+                  </div>
+                  <div class="wardrobe-modal__field">
+                    <label class="wardrobe-modal__label" for="wardrobeManualFormality">Formality level</label>
+                    <select class="wardrobe-modal__input" id="wardrobeManualFormality">
+                      <option value="">Not specified</option>
+                      <option value="Casual">Casual</option>
+                      <option value="Smart casual">Smart casual</option>
+                      <option value="Semi-formal">Semi-formal</option>
+                      <option value="Formal">Formal</option>
+                    </select>
+                  </div>
+                  <div class="wardrobe-modal__field">
+                    <label class="wardrobe-modal__label" for="wardrobeManualSeason">Season suitability</label>
+                    <input class="wardrobe-modal__input" id="wardrobeManualSeason" type="text" placeholder="Example: hot season, rainy season">
+                  </div>
+                  <div class="wardrobe-modal__field wardrobe-modal__field--wide">
+                    <label class="wardrobe-modal__label" for="wardrobeManualDescription">Extra notes</label>
+                    <textarea class="wardrobe-modal__input wardrobe-modal__textarea" id="wardrobeManualDescription" rows="2" placeholder="Example: gold metal watch, elegant, good for dinner and formal events"></textarea>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="wardrobe-modal__footer">
-              <button class="wardrobe-modal__btn wardrobe-modal__btn--secondary" id="wardrobeModalRetake" type="button">Retake</button>
+              <button class="wardrobe-modal__btn wardrobe-modal__btn--secondary" id="wardrobeModalRetake" type="button">Choose another photo</button>
               <button class="wardrobe-modal__btn wardrobe-modal__btn--primary" id="wardrobeModalSave" type="button">Save to Wardrobe</button>
             </div>
           </div>
@@ -648,7 +886,7 @@
         </div>
       </div>
 
-      <!-- Shop Home — Phase 3: Coming Soon -->
+      <!-- Shopping Assistant — future roadmap -->
       <div class="shop-view u-hidden" id="shopView">
         <div class="shop-view__scroll">
           <div class="shop-locked">
@@ -658,26 +896,23 @@
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </div>
-            <span class="shop-locked__badge">Phase 3</span>
-            <h2 class="shop-locked__title">Shop & Sellers</h2>
-            <p class="shop-locked__desc">Browse curated styles from local shops. Buy directly from your outfit recommendations.</p>
+            <span class="shop-locked__badge">Coming soon</span>
+            <h2 class="shop-locked__title">Shopping Assistant</h2>
+            <p class="shop-locked__desc">A thoughtful way to spot wardrobe gaps and choose pieces that work with what you already own.</p>
             <div class="shop-locked__features">
               <div class="shop-locked__feature">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-                <span>Curated marketplace</span>
+                <span>Wardrobe-aware shopping ideas</span>
               </div>
               <div class="shop-locked__feature">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <span>AI-powered recommendations</span>
+                <span>Smarter color and style matching</span>
               </div>
               <div class="shop-locked__feature">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                <span>Save to wishlist</span>
+                <span>Local finds worth saving</span>
               </div>
             </div>
-            <button class="btn btn--primary btn--locked" type="button" disabled>
-              <span>Coming Soon</span>
-            </button>
             <button class="btn btn--ghost btn--back-chat" type="button" id="shopBackToChat">
               ← Back to AI Stylist
             </button>
@@ -705,6 +940,25 @@
       <button class="ai-chat-fab" id="aiChatFab" aria-label="Open AI Stylist" type="button">
         <svg width="22" height="22" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="12" fill="currentColor" opacity="0.15"/><path d="M9 25V12l8 5.5-8 5.5zm8 0h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+
+      <div class="shopping-soon-overlay u-hidden" id="shoppingSoonOverlay" aria-hidden="true">
+        <div class="shopping-soon-dialog" role="dialog" aria-modal="true" aria-labelledby="shoppingSoonTitle" aria-describedby="shoppingSoonCopy">
+          <button class="shopping-soon-dialog__close" id="shoppingSoonClose" type="button" aria-label="Close Shopping Assistant message">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18"/>
+            </svg>
+          </button>
+          <div class="shopping-soon-dialog__icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+              <path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+          </div>
+          <h2 class="shopping-soon-dialog__title" id="shoppingSoonTitle">Shopping Assistant</h2>
+          <p class="shopping-soon-dialog__status">Coming soon <span aria-hidden="true">✨</span></p>
+          <p class="shopping-soon-dialog__copy" id="shoppingSoonCopy">Find new pieces that match your wardrobe,<br>personal style, and occasions.</p>
+        </div>
+      </div>
 
       <!-- Profile — premium 2-column dashboard -->
       <div class="profile-view u-hidden" id="profileView">
@@ -925,7 +1179,7 @@
                       <span class="pf-stat__label">Unique Colors</span>
                     </div>
                   </div>
-                  <p class="pf-wardrobe-hint" id="profileCardWardrobeHint">Add items through the chat — WUTT detects category, color, and style automatically.</p>
+                  <p class="pf-wardrobe-hint" id="profileCardWardrobeHint">Add photos and review their fashion details to build your wardrobe.</p>
                 </div>
               </div>
 
@@ -1195,7 +1449,7 @@
           <h2 class="chat-header__title">WUTT Stylist</h2>
           <p class="chat-header__subtitle">Your wardrobe companion</p>
         </div>
-        <button class="chat-header__clear" id="chatClearHistoryBtn" title="Clear chat history" aria-label="Clear chat history">
+        <button class="chat-header__clear" id="chatClearHistoryBtn" title="Delete today's chat" aria-label="Delete today's chat">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -1269,8 +1523,18 @@
 
       <!-- Chat input bar -->
       <div class="chat-input-bar">
+        <div class="chat-image-preview u-hidden" id="chatImagePreview" aria-live="polite">
+          <img class="chat-image-preview__image" id="chatImagePreviewImage" src="" alt="Selected outfit preview">
+          <div class="chat-image-preview__details">
+            <span class="chat-image-preview__name" id="chatImagePreviewName">Selected image</span>
+            <span class="chat-image-preview__status">AI image analysis coming soon</span>
+          </div>
+          <button class="chat-image-preview__remove" id="chatImagePreviewRemove" type="button" aria-label="Remove selected image">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
         <div class="chat-input__wrapper">
-          <button class="chat-input__attach" aria-label="Attach image" disabled>
+          <button class="chat-input__attach" id="chatImageAttachBtn" type="button" aria-label="Attach outfit image">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           </button>
           <input
@@ -1289,11 +1553,13 @@
   </section>
 
   <!-- Hidden file input for wardrobe upload -->
-  <input type="file" id="wardrobeFileInput" accept="image/*" capture="environment" class="u-hidden" aria-hidden="true">
+  <input type="file" id="wardrobeFileInput" accept="image/jpeg,image/png,image/webp" capture="environment" class="u-hidden" aria-hidden="true">
+  <input type="file" id="chatImageInput" accept="image/jpeg,image/png,image/webp" class="u-hidden" aria-hidden="true">
 
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
+  <script src="wardrobe-utils.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from models import AuthIdentity, User
-from services.auth_session_svc import create_session, lookup_session
+from services.auth_session_svc import create_session, lookup_session, revoke_session
 
 # ── Router ─────────────────────────────────────────────
 router = APIRouter()
@@ -86,6 +86,28 @@ def _verify_password(plain: str, hashed: str | None) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
+def _is_configured_demo_email(email: str) -> bool:
+    """Return whether *email* is the dedicated configured demo identity."""
+    configured_email = settings.demo_login_email.strip().lower()
+    return bool(configured_email) and secrets.compare_digest(
+        email,
+        configured_email,
+    )
+
+
+def _matches_configured_demo_login(email: str, password: str) -> bool:
+    """Return whether credentials exactly match the enabled demo account."""
+    if not settings.demo_login_enabled:
+        return False
+    configured_password = settings.demo_login_password
+    if not configured_password:
+        return False
+    return (
+        _is_configured_demo_email(email)
+        and secrets.compare_digest(password, configured_password)
+    )
+
+
 def _create_jwt(user_id: int, email: str) -> str:
     """Create a signed JWT with ``sub`` = user_id and ``email`` claim.
 
@@ -127,6 +149,18 @@ def _set_session_cookie(response: Response, token: str) -> None:
         max_age=int(timedelta(hours=settings.session_expiry_hours).total_seconds()),
         path="/",
     )
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    """Expire browser authentication cookies using their original attributes."""
+    cookie_options = {
+        "httponly": True,
+        "secure": not settings.debug,
+        "samesite": "none" if not settings.debug else "lax",
+        "path": "/",
+    }
+    response.delete_cookie(settings.session_cookie_name, **cookie_options)
+    response.delete_cookie("wutt_token", **cookie_options)
 
 
 def _google_is_configured() -> bool:
@@ -457,6 +491,11 @@ def register(
         raise _err("Password must be at least 8 characters and include both letters and numbers.")
 
     # ── Check uniqueness ──────────────────────────────
+    if (
+        settings.demo_login_enabled
+        and _is_configured_demo_email(email)
+    ):
+        raise _err("This email is reserved for the configured demo account.", code=409)
     if db.query(User).filter(User.email == email).first():
         raise _err("This email is already registered. Please log in instead.", code=409)
 
@@ -501,8 +540,35 @@ def login(
     """
     email = body.email.strip().lower()
 
+    if _is_configured_demo_email(email) and not settings.demo_login_enabled:
+        raise _err("Invalid email or password.", code=401)
+
     user = db.query(User).filter(User.email == email).first()
-    if not user or not _verify_password(body.password, user.password_hash):
+    password_is_valid = bool(
+        user and _verify_password(body.password, user.password_hash)
+    )
+
+    if not password_is_valid and _matches_configured_demo_login(
+        email,
+        body.password,
+    ):
+        if user is not None:
+            # Never use demo mode to take over an existing account.
+            raise _err("Invalid email or password.", code=401)
+        user = User(
+            email=email,
+            password_hash=_hash_password(body.password),
+        )
+        db.add(user)
+        try:
+            db.commit()
+            db.refresh(user)
+        except IntegrityError:
+            db.rollback()
+            raise _err("Invalid email or password.", code=401)
+        password_is_valid = True
+
+    if not user or not password_is_valid:
         raise _err("Invalid email or password.", code=401)
 
     token = _create_jwt(user.id, user.email)
@@ -517,10 +583,35 @@ def login(
     )
 
 
+@router.post("/logout")
+def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> AuthResponse:
+    """Revoke the current browser session and expire all auth cookies."""
+    session_token = request.cookies.get(settings.session_cookie_name)
+    if session_token:
+        revoke_session(db, raw_token=session_token)
+
+    _clear_auth_cookies(response)
+    return _ok(data={}, message="Logged out successfully.")
+
+
 @router.get("/google/start")
 def google_start() -> RedirectResponse:
     """Begin Google Authorization Code authentication with PKCE."""
     if not _google_is_configured():
+        if settings.frontend_url:
+            response = RedirectResponse(
+                _frontend_redirect(
+                    auth_error="google",
+                    auth_reason="configuration",
+                ),
+                status_code=status.HTTP_302_FOUND,
+            )
+            response.headers["Cache-Control"] = "no-store"
+            return response
         raise _err("Google sign-in is not configured.", code=503)
 
     state = secrets.token_urlsafe(32)

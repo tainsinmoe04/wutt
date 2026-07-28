@@ -2,6 +2,7 @@
 
 Endpoints
     POST   /wardrobe/upload       —  Upload image to Cloudinary, save DB record.
+    PATCH  /wardrobe/{item_id}    —  Edit user-confirmed wardrobe metadata.
     GET    /wardrobe/{user_id}    —  List all wardrobe items for a user.
     DELETE /wardrobe/{item_id}    —  Delete from Cloudinary then DB.
 
@@ -45,11 +46,29 @@ class WardrobeItemData(BaseModel):
     style_tags: str | None
     material_tags: str | None
     occasion_tags: str | None
+    brand: str | None
+    formality_level: str | None
+    season_suitability: str | None
     color: str | None
     description: str | None
     uploaded_at: datetime | None  # Serialized to ISO-8601 via model_dump(mode='json')
 
     model_config = {"from_attributes": True}
+
+
+class WardrobeItemUpdate(BaseModel):
+    """Editable wardrobe metadata; image ownership fields are immutable."""
+
+    category: str | None = None
+    subtype: str | None = None
+    style_tags: str | None = None
+    material_tags: str | None = None
+    occasion_tags: str | None = None
+    brand: str | None = None
+    formality_level: str | None = None
+    season_suitability: str | None = None
+    color: str | None = None
+    description: str | None = None
 
 
 AuthResponse = dict[str, Any]
@@ -115,7 +134,7 @@ def _require_item_ownership(item: Wardrobe, current_user: User) -> None:
             detail={
                 "status": "error",
                 "data": {},
-                "message": "You can only delete your own items.",
+                "message": "You can only modify your own wardrobe items.",
             },
         )
 
@@ -138,6 +157,9 @@ async def upload_wardrobe_item(
     style_tags: str | None = Form(None),
     material_tags: str | None = Form(None),
     occasion_tags: str | None = Form(None),
+    brand: str | None = Form(None),
+    formality_level: str | None = Form(None),
+    season_suitability: str | None = Form(None),
     color: str | None = Form(None),
     description: str | None = Form(None),
     db: Session = Depends(get_db),
@@ -179,6 +201,9 @@ async def upload_wardrobe_item(
         style_tags=style_tags,
         material_tags=material_tags,
         occasion_tags=occasion_tags,
+        brand=brand,
+        formality_level=formality_level,
+        season_suitability=season_suitability,
         color=color,
         description=description,
     )
@@ -215,6 +240,31 @@ def list_wardrobe(
         data.append(WardrobeItemData.model_validate(item).model_dump(mode="json"))
 
     return {"status": "success", "data": data, "message": ""}
+
+
+@router.patch("/{item_id}")
+def update_wardrobe_item(
+    item_id: int,
+    body: WardrobeItemUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AuthResponse:
+    """Update manually reviewed metadata without replacing the image."""
+    item = _get_item_or_404(item_id, db)
+    _require_item_ownership(item, current_user)
+
+    updates = body.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(item, field, value.strip() if isinstance(value, str) else value)
+
+    db.commit()
+    db.refresh(item)
+    data = WardrobeItemData.model_validate(item).model_dump(mode="json")
+    return {
+        "status": "success",
+        "data": data,
+        "message": "Wardrobe details updated successfully.",
+    }
 
 
 @router.delete("/{item_id}")

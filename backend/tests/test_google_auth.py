@@ -137,6 +137,24 @@ def test_google_start_has_state_nonce_and_pkce() -> None:
     assert _cookie_from_response(response, auth.OAUTH_STATE_COOKIE)
 
 
+def test_google_start_returns_to_frontend_when_configuration_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "google_client_secret", "")
+
+    response = auth.google_start()
+    query = parse_qs(urlsplit(response.headers["location"]).query)
+
+    assert response.status_code == 302
+    assert response.headers["location"].startswith("http://localhost:5500")
+    assert query == {
+        "auth_error": ["google"],
+        "auth_reason": ["configuration"],
+    }
+    assert "no-store" in response.headers["cache-control"]
+    assert _cookie_from_response(response, auth.OAUTH_STATE_COOKIE) is None
+
+
 def test_first_google_login_creates_identity_user_and_session_without_jwt(
     db: Session,
     monkeypatch: pytest.MonkeyPatch,
@@ -322,10 +340,11 @@ def test_callback_rejects_state_mismatch_before_token_exchange(
     assert error.value.status_code == 400
 
 
-def test_google_configuration_is_required(
+def test_google_start_returns_503_when_no_frontend_is_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "google_client_secret", "")
+    monkeypatch.setattr(settings, "frontend_url", "")
     with pytest.raises(HTTPException) as error:
         auth.google_start()
     assert error.value.status_code == 503

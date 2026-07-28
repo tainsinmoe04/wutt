@@ -20,6 +20,12 @@ from typing import Any
 
 from openai import OpenAI
 from config import settings
+from services.stylist_prompt import (
+    WUTT_PERSONALITY_PROMPT,
+    WUTT_RECOMMENDATION_PROMPT,
+    occasion_context_prompt,
+    recommendation_mode_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,16 +69,16 @@ def _build_text_only_user_prompt(
         lines.append("  (no items listed)")
     else:
         for i, item in enumerate(wardrobe_items, 1):
-            parts: list[str] = []
-            cat = item.get("category")
-            if cat:
-                parts.append(str(cat))
-            col = item.get("color")
-            if col:
-                parts.append(str(col))
-            desc = item.get("description")
-            if desc:
-                parts.append(f"— {desc}")
+            parts = [
+                f"{key.replace('_', ' ')}: {item[key]}"
+                for key in (
+                    "category", "subtype", "color", "style_tags",
+                    "occasion_tags", "material_tags", "brand",
+                    "formality_level", "season_suitability", "description",
+                    "recent_recommendation_count",
+                )
+                if item.get(key) not in (None, "")
+            ]
             lines.append(f"  {i}. {' '.join(parts) if parts else '(unnamed item)'}")
 
     # ── Context ─────────────────────────────────────────
@@ -93,6 +99,8 @@ def _build_text_only_user_prompt(
 
     # ── Instruction ─────────────────────────────────────
     lines.append("")
+    lines.append(recommendation_mode_prompt(occasion))
+    lines.append(occasion_context_prompt(occasion))
     lines.append(
         "Please recommend the best outfit from the items listed above "
         "for this occasion and weather.  "
@@ -104,30 +112,7 @@ def _build_text_only_user_prompt(
 
 # ── Shared system prompt (used by both vision and text-only modes) ──
 
-_SYSTEM_PROMPT = (
-    "You are WUTT, Myanmar's AI personal stylist. "
-    "Analyse the user's wardrobe and recommend the best outfit "
-    "for the given occasion, weather, body type, and style preference.\n\n"
-    "Return ONLY a JSON object (no markdown fences, no commentary) with these fields:\n"
-    '  "outfit": array of strings — each one item to wear, e.g. "Navy blazer (top layer)", '
-    '"White linen shirt (base)", "Beige chinos (bottom)". '
-    "List 2–5 items in the order they should be worn.\n"
-    '  "explanation": string — 2–4 sentences in a warm, friendly tone. '
-    "Explain why these items work together, how the colours complement each other, "
-    "and how the outfit suits the occasion. Write for a Myanmar audience.\n"
-    '  "weather_based_tip": string — one practical tip based on today\'s weather. '
-    "If it is hot (>30°C), suggest breathable fabrics or staying cool. "
-    "If humid (>70%), mention light, moisture-wicking fabrics. "
-    "If cool, suggest layering. If rainy, suggest water-resistant items. "
-    "Keep it under 60 characters.\n\n"
-    "Rules:\n"
-    "- Recommend only from the wardrobe items listed in the prompt.\n"
-    "- If there are no usable items, return an empty outfit array.\n"
-    "- Use warm, friendly Myanmar-style language for explanation and tip.\n"
-    "- Be specific about colours and categories.\n"
-    "- If the occasion is formal, prefer formal combinations.\n"
-    "- If casual, prefer relaxed combinations."
-)
+_SYSTEM_PROMPT = WUTT_PERSONALITY_PROMPT + "\n\n" + WUTT_RECOMMENDATION_PROMPT
 
 
 def _parse_ai_response(raw: str | None) -> dict[str, Any] | None:
@@ -226,6 +211,8 @@ def get_outfit_recommendation(
         user_prompt = (
             "Here is my wardrobe. Please recommend an outfit.\n\n"
             f"{context}\n\n"
+            f"{recommendation_mode_prompt(occasion)}\n\n"
+            f"{occasion_context_prompt(occasion)}\n\n"
             "Return a JSON object with outfit[], explanation, and weather_based_tip."
         )
         content = [{"type": "text", "text": user_prompt}]
@@ -268,31 +255,7 @@ def get_outfit_recommendation(
 
 # ── General Chat (fallback for Gemini) ────────────────────
 
-_CHAT_SYSTEM_PROMPT = (
-    "You are WUTT, a friendly AI fashion companion for Myanmar users. "
-    "You are NOT a generic assistant — you are a personal stylist and "
-    "fashion friend who knows fashion, fit, colour theory, and Myanmar culture.\n\n"
-    "Tone: warm, natural, short, useful — like a stylish friend texting. "
-    "Never say 'As an AI…' or 'I'm an AI assistant'. Just be helpful.\n\n"
-    "You can help with:\n"
-    "- General fashion questions (what to wear, colour matching, style tips)\n"
-    "- Explaining how to use WUTT (upload clothes, get recommendations, save looks)\n"
-    "- Casual chat about fashion, style, occasions\n"
-    "- Outfit recommendations when asked specifically\n\n"
-    "Knowledge:\n"
-    "- Use fashion knowledge for style advice (color rules, occasion rules, trends).\n"
-    "- Use the app guide when users ask how WUTT works.\n"
-    "- Always consider Myanmar climate (hot, monsoon, cool seasons) when giving advice.\n"
-    "- Know Myanmar cultural occasions (wedding, temple, longyi style).\n\n"
-    "Rules:\n"
-    "- Keep responses short (2-4 sentences usually).\n"
-    "- Be warm and Myanmar-friendly.\n"
-    "- If the user asks what to wear for a specific occasion, give 2-3 practical outfit ideas.\n"
-    "- If the user asks how to use WUTT, explain the app simply.\n"
-    "- If the user just says hi/hey, greet them back warmly and ask how you can help.\n"
-    "- Never fabricate wardrobe items — only reference items the user has mentioned.\n"
-    "- Mix English and Myanmar naturally when it feels right."
-)
+_CHAT_SYSTEM_PROMPT = WUTT_PERSONALITY_PROMPT
 
 
 def get_chat_response(
@@ -326,10 +289,16 @@ def get_chat_response(
     if wardrobe_items:
         wardrobe_lines = ["User's wardrobe items:"]
         for i, item in enumerate(wardrobe_items[:10], 1):
-            cat = item.get("category", "")
-            color = item.get("color", "")
-            desc = item.get("description", "")
-            parts = [p for p in [cat, color, desc] if p]
+            parts = [
+                f"{key.replace('_', ' ')}: {item[key]}"
+                for key in (
+                    "category", "subtype", "color", "style_tags",
+                    "occasion_tags", "material_tags", "brand",
+                    "formality_level", "season_suitability", "description",
+                    "recent_recommendation_count",
+                )
+                if item.get(key) not in (None, "")
+            ]
             wardrobe_lines.append(f"  {i}. {' '.join(parts) if parts else '(unnamed)'}")
         messages.append({"role": "system", "content": "\n".join(wardrobe_lines)})
 

@@ -15,6 +15,12 @@ from typing import Any
 from google import genai
 from google.genai import types as gemini_types
 from config import settings
+from services.stylist_prompt import (
+    WUTT_PERSONALITY_PROMPT,
+    WUTT_RECOMMENDATION_PROMPT,
+    occasion_context_prompt,
+    recommendation_mode_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,36 +54,7 @@ def _build_client() -> genai.Client | None:
 
 # ── System prompt ────────────────────────────────────────
 
-_SYSTEM_PROMPT = (
-    "You are WUTT, a friendly AI fashion companion for Myanmar users. "
-    "You are NOT a generic assistant — you are a personal stylist who "
-    "knows fashion, fit, colour theory, and Myanmar culture.\n\n"
-    "Tone: warm, natural, like a stylish friend. Never say 'As an AI…' "
-    "or 'I'm an AI assistant'. Just give helpful fashion advice.\n\n"
-    "When the user asks about how to use WUTT, explain that WUTT is "
-    "an AI fashion companion that helps them know their wardrobe and "
-    "upgrade their style — upload clothes, get outfit recommendations, "
-    "and discover new looks.\n\n"
-    "When recommending outfits, analyse the wardrobe items and suggest "
-    "the best combination for the occasion, weather, and the user's "
-    "style. Be specific about colours and how pieces work together.\n\n"
-    "Return ONLY a JSON object (no markdown fences, no commentary) with these fields:\n"
-    '  "outfit": array of strings — each one item to wear, '
-    'e.g. "Navy blazer (top layer)", "White linen shirt (base)". '
-    "List 2–5 items in order.\n"
-    '  "explanation": string — 2–4 sentences in a warm, friendly tone. '
-    "Explain why these items work together and how they suit the occasion.\n"
-    '  "weather_based_tip": string — one practical weather tip, under 60 characters.\n\n'
-    "Rules:\n"
-    "- Recommend only from the wardrobe items listed in the prompt.\n"
-    "- If there are no usable items, return an empty outfit array and "
-    "explain what the user should add.\n"
-    "- Use warm, Myanmar-friendly language.\n"
-    "- Be specific about colours and categories.\n"
-    "- If the user asks a general fashion question (not an outfit request), "
-    "answer naturally and return a JSON with an empty outfit array and "
-    "your helpful answer in the explanation field."
-)
+_SYSTEM_PROMPT = WUTT_PERSONALITY_PROMPT + "\n\n" + WUTT_RECOMMENDATION_PROMPT
 
 
 def _build_user_prompt(
@@ -99,16 +76,16 @@ def _build_user_prompt(
         lines.append("  (empty — no items uploaded yet)")
     else:
         for i, item in enumerate(wardrobe_items, 1):
-            parts: list[str] = []
-            cat = item.get("category")
-            if cat:
-                parts.append(str(cat))
-            col = item.get("color")
-            if col:
-                parts.append(str(col))
-            desc = item.get("description")
-            if desc:
-                parts.append(f"— {desc}")
+            parts = [
+                f"{key.replace('_', ' ')}: {item[key]}"
+                for key in (
+                    "category", "subtype", "color", "style_tags",
+                    "occasion_tags", "material_tags", "brand",
+                    "formality_level", "season_suitability", "description",
+                    "recent_recommendation_count",
+                )
+                if item.get(key) not in (None, "")
+            ]
             lines.append(f"  {i}. {' '.join(parts) if parts else '(unnamed item)'}")
 
     # Context
@@ -129,6 +106,8 @@ def _build_user_prompt(
 
     # Instruction
     lines.append("")
+    lines.append(recommendation_mode_prompt(occasion))
+    lines.append(occasion_context_prompt(occasion))
     lines.append(
         "Please recommend the best outfit from the items listed above "
         "for this occasion and weather. "
@@ -233,31 +212,7 @@ def get_outfit_recommendation(
 
 # ── General Chat ────────────────────────────────────────
 
-_CHAT_SYSTEM_PROMPT = (
-    "You are WUTT, a friendly AI fashion companion for Myanmar users. "
-    "You are NOT a generic assistant — you are a personal stylist and "
-    "fashion friend who knows fashion, fit, colour theory, and Myanmar culture.\n\n"
-    "Tone: warm, natural, short, useful — like a stylish friend texting. "
-    "Never say 'As an AI…' or 'I'm an AI assistant'. Just be helpful.\n\n"
-    "You can help with:\n"
-    "- General fashion questions (what to wear, colour matching, style tips)\n"
-    "- Explaining how to use WUTT (upload clothes, get recommendations, save looks)\n"
-    "- Casual chat about fashion, style, occasions\n"
-    "- Outfit recommendations when asked specifically\n\n"
-    "Knowledge:\n"
-    "- Use fashion knowledge for style advice (color rules, occasion rules, trends).\n"
-    "- Use the app guide when users ask how WUTT works.\n"
-    "- Always consider Myanmar climate (hot, monsoon, cool seasons) when giving advice.\n"
-    "- Know Myanmar cultural occasions (wedding, temple, longyi style).\n\n"
-    "Rules:\n"
-    "- Keep responses short (2-4 sentences usually).\n"
-    "- Be warm and Myanmar-friendly.\n"
-    "- If the user asks what to wear for a specific occasion, give 2-3 practical outfit ideas.\n"
-    "- If the user asks how to use WUTT, explain the app simply.\n"
-    "- If the user just says hi/hey, greet them back warmly and ask how you can help.\n"
-    "- Never fabricate wardrobe items — only reference items the user has mentioned.\n"
-    "- Mix English and Myanmar naturally when it feels right."
-)
+_CHAT_SYSTEM_PROMPT = WUTT_PERSONALITY_PROMPT
 
 
 def get_chat_response(
@@ -289,10 +244,16 @@ def get_chat_response(
     if wardrobe_items:
         contents.append("User's wardrobe items:")
         for i, item in enumerate(wardrobe_items[:10], 1):  # Limit to 10 items
-            cat = item.get("category", "")
-            color = item.get("color", "")
-            desc = item.get("description", "")
-            parts = [p for p in [cat, color, desc] if p]
+            parts = [
+                f"{key.replace('_', ' ')}: {item[key]}"
+                for key in (
+                    "category", "subtype", "color", "style_tags",
+                    "occasion_tags", "material_tags", "brand",
+                    "formality_level", "season_suitability", "description",
+                    "recent_recommendation_count",
+                )
+                if item.get(key) not in (None, "")
+            ]
             contents.append(f"  {i}. {' '.join(parts) if parts else '(unnamed)'}")
         contents.append("")
 
