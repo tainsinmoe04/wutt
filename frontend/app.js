@@ -1504,9 +1504,16 @@ function initChatApp() {
     var chatHeader = document.querySelector('.chat-header');
     var chatBody = document.getElementById('chatBody');
     var chatInput = document.querySelector('.chat-input-bar');
+    var chatMenuButton = document.getElementById('chatMenuBtn');
+    var chatMenu = document.getElementById('chatHeaderMenu');
     if (chatHeader) chatHeader.classList.add('u-hidden');
     if (chatBody) chatBody.classList.add('u-hidden');
     if (chatInput) chatInput.classList.add('u-hidden');
+    if (chatMenuButton) chatMenuButton.setAttribute('aria-expanded', 'false');
+    if (chatMenu) {
+      chatMenu.classList.add('u-hidden');
+      chatMenu.setAttribute('aria-hidden', 'true');
+    }
     // Hide wardrobe drawer
     var wd = document.getElementById('wardrobeDrawer');
     if (wd) { wd.classList.add('u-hidden'); wd.setAttribute('aria-hidden', 'true'); }
@@ -2211,7 +2218,8 @@ function initChatApp() {
   var chatImagePreviewImage = document.getElementById('chatImagePreviewImage');
   var chatImagePreviewName = document.getElementById('chatImagePreviewName');
   var chatImagePreviewRemove = document.getElementById('chatImagePreviewRemove');
-  var _chatSending = false;
+  // Keep initial/history loading separate from live AI response generation.
+  var _chatGenerating = false;
   var _chatHistoryLoading = false;
   var _chatHistoryLoaded = false;
   var _chatImage = null;
@@ -2230,10 +2238,67 @@ function initChatApp() {
     return outfitKeywords.some(function(kw) { return lower.includes(kw); });
   }
 
-  function buildStylistRecommendation(data, requestText) {
-    var outfit = Array.isArray(data.outfit)
-      ? data.outfit.map(stylistItemLabel).filter(Boolean)
+  function parseStylistResponseSections(rawResponse) {
+    var response = String(rawResponse || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/\*\*(Recommended|Why|Small tip)\s*:?\*\*/gi, '$1:')
+      .trim();
+    var sections = {};
+    var headings = [];
+    var headingPattern = /(Recommended|Why|Small tip)\s*:/gi;
+    var match;
+
+    while ((match = headingPattern.exec(response)) !== null) {
+      headings.push({
+        key: match[1].toLowerCase() === 'recommended'
+          ? 'recommended'
+          : (match[1].toLowerCase() === 'why' ? 'why' : 'tip'),
+        start: match.index,
+        contentStart: headingPattern.lastIndex,
+      });
+    }
+
+    headings.forEach(function(heading, index) {
+      var next = headings[index + 1];
+      sections[heading.key] = response
+        .slice(heading.contentStart, next ? next.start : response.length)
+        .trim();
+    });
+
+    if (!headings.length && response) sections.why = response;
+    return sections;
+  }
+
+  function parseStylistItems(rawItems) {
+    return String(rawItems || '')
+      .split(/\n+|(?:^|\s)[•*-]\s+|(?:^|\s)\d+[.)]\s+/)
+      .map(function(item) {
+        return item.replace(/^[\s•*-]+|[\s•*-]+$/g, '').trim();
+      })
+      .filter(Boolean);
+  }
+
+  function normalizeStylistRecommendation(data) {
+    var source = data || {};
+    var parsed = parseStylistResponseSections(source.response);
+    var outfit = Array.isArray(source.outfit)
+      ? source.outfit.slice()
       : [];
+
+    if (!outfit.length && parsed.recommended) {
+      outfit = parseStylistItems(parsed.recommended);
+    }
+
+    return {
+      outfit: outfit.map(stylistItemLabel).filter(Boolean),
+      explanation: stylistFriendlyCopy(source.explanation || parsed.why || ''),
+      weather_based_tip: stylistFriendlyCopy(source.weather_based_tip || parsed.tip || ''),
+    };
+  }
+
+  function buildStylistRecommendation(data, requestText) {
+    var recommendation = normalizeStylistRecommendation(data);
+    var outfit = recommendation.outfit;
     var occasionLabel = stylistOccasionLabel(requestText);
     var title = occasionLabel
       ? occasionLabel + ' Look'
@@ -2255,16 +2320,16 @@ function initChatApp() {
       html += '</ul></section>';
     }
 
-    if (data.explanation) {
+    if (recommendation.explanation) {
       html += '<section class="stylist-look__section stylist-look__section--why">'
         + '<h4 class="stylist-look__label">Why:</h4>'
-        + '<p class="stylist-look__copy">' + escapeHtml(stylistFriendlyCopy(data.explanation)) + '</p></section>';
+        + '<p class="stylist-look__copy">' + escapeHtml(recommendation.explanation) + '</p></section>';
     }
 
-    if (data.weather_based_tip) {
+    if (recommendation.weather_based_tip) {
       html += '<section class="stylist-look__section stylist-look__section--tip">'
         + '<h4 class="stylist-look__label">Small tip:</h4>'
-        + '<p class="stylist-look__copy">' + escapeHtml(stylistFriendlyCopy(data.weather_based_tip)) + '</p></section>';
+        + '<p class="stylist-look__copy">' + escapeHtml(recommendation.weather_based_tip) + '</p></section>';
     }
 
     return html + '</article>';
@@ -2341,20 +2406,20 @@ function initChatApp() {
       .join(' ');
   }
 
-  function setChatSendingState(isSending) {
-    _chatSending = isSending;
+  function setChatGeneratingState(isGenerating) {
+    _chatGenerating = isGenerating;
     if (chatSendBtn) {
-      chatSendBtn.disabled = isSending;
-      chatSendBtn.setAttribute('aria-busy', String(isSending));
-      chatSendBtn.setAttribute('aria-label', isSending ? 'WUTT is styling your look' : 'Send message');
+      chatSendBtn.disabled = isGenerating;
+      chatSendBtn.setAttribute('aria-busy', String(isGenerating));
+      chatSendBtn.setAttribute('aria-label', isGenerating ? 'WUTT is typing' : 'Send message');
     }
-    if (chatInputField) chatInputField.disabled = isSending;
-    if (chatImageAttachBtn) chatImageAttachBtn.disabled = isSending;
+    if (chatInputField) chatInputField.disabled = isGenerating;
+    if (chatImageAttachBtn) chatImageAttachBtn.disabled = isGenerating;
     if (welcomeCards) {
       welcomeCards.querySelectorAll('[data-action="occasion"]').forEach(function(button) {
-        button.disabled = isSending;
+        button.disabled = isGenerating;
       });
-      welcomeCards.classList.toggle('chat-welcome__cards--loading', isSending);
+      welcomeCards.classList.toggle('chat-welcome__cards--generating', isGenerating);
     }
   }
 
@@ -2388,7 +2453,7 @@ function initChatApp() {
   }
 
   function sendChatMessage(overrideText) {
-    if (_chatSending) return;
+    if (_chatGenerating) return;
     if (!overrideText && sendStagedImage()) return;
     var text = overrideText || (chatInputField ? chatInputField.value.trim() : '');
     if (!text) return;
@@ -2404,7 +2469,8 @@ function initChatApp() {
     addToChatHistory('user', text);
     if (chatInputField) chatInputField.value = '';
 
-    // Show typing indicator
+    // Live generation uses a conversational typing bubble. Skeletons are
+    // reserved for initial data loading and refreshing existing content.
     var typingEl = document.createElement('div');
     typingEl.className = 'chat-msg chat-msg--bot';
     typingEl.id = 'chatTypingIndicator';
@@ -2412,15 +2478,17 @@ function initChatApp() {
       '<div class="chat-msg__avatar" aria-hidden="true">' +
         '<svg width="28" height="28" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="12" fill="#1F1F1F"/><path d="M9 25V12l8 5.5-8 5.5zm8 0h8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
       '</div>' +
-      '<div class="chat-msg__bubble chat-msg__bubble--loading" role="status" aria-label="WUTT is preparing your look">' +
-        '<span class="wutt-skeleton chat-response-skeleton__line chat-response-skeleton__line--title" aria-hidden="true"></span>' +
-        '<span class="wutt-skeleton chat-response-skeleton__line" aria-hidden="true"></span>' +
-        '<span class="wutt-skeleton chat-response-skeleton__line chat-response-skeleton__line--short" aria-hidden="true"></span>' +
+      '<div class="chat-msg__bubble chat-msg__bubble--typing" role="status" aria-live="polite" aria-label="WUTT is typing">' +
+        '<span class="chat-typing" aria-hidden="true">' +
+          '<span class="chat-typing__dot"></span>' +
+          '<span class="chat-typing__dot"></span>' +
+          '<span class="chat-typing__dot"></span>' +
+        '</span>' +
       '</div>';
     messagesEl.appendChild(typingEl);
     scrollChatToBottom();
 
-    setChatSendingState(true);
+    setChatGeneratingState(true);
 
     var token = appState.token;
     var headers = { 'Content-Type': 'application/json' };
@@ -2459,48 +2527,52 @@ function initChatApp() {
         var d = data.data;
         var reply = '';
 
-        // Provider failures stay conversational and never expose technical state.
+        // Every successful stylist payload uses the same card renderer. Text
+        // fallbacks are normalized into outfit, explanation, and tip sections.
         var src = d.source || '';
         if (src === 'api_error') {
-          reply = escapeHtml(
-            stylistFriendlyCopy(d.response
-            || d.explanation)
-            || 'I could not finish that suggestion. Try describing the occasion again.'
-          );
+          var failureCopy = d.response || d.explanation
+            || 'I could not finish that suggestion. Try describing the occasion again.';
+          reply = buildStylistRecommendation({ response: failureCopy }, text);
         }
-        // Handle chat response (from /stylist/chat)
-        else if (d.response) {
-          reply = escapeHtml(stylistFriendlyCopy(d.response)).replace(/\n/g, '<br>');
-          // Save bot response to history
-          addToChatHistory('bot', d.response);
-        }
-        // Handle outfit recommendation (from /stylist/recommend)
-        else if (d.explanation || (d.outfit && d.outfit.length > 0)) {
+        else if (d.response || d.explanation || (d.outfit && d.outfit.length > 0)) {
           reply = buildStylistRecommendation(d, text);
 
-          // Save to history
-          var historyText = d.explanation || '';
-          if (d.outfit && d.outfit.length > 0) {
-            historyText += ' Outfit: ' + d.outfit.join(', ');
+          // Save the original response so history can normalize it identically.
+          var historyText = d.response || '';
+          if (!historyText) {
+            var historySections = [];
+            if (d.outfit && d.outfit.length > 0) {
+              historySections.push('Recommended:\n- ' + d.outfit.join('\n- '));
+            }
+            if (d.explanation) historySections.push('Why:\n' + d.explanation);
+            if (d.weather_based_tip) historySections.push('Small tip:\n' + d.weather_based_tip);
+            historyText = historySections.join('\n');
           }
           addToChatHistory('bot', historyText);
         }
 
         if (!reply) {
-          reply = 'I\'m not sure how to help with that. Try asking about an outfit for a specific occasion like "What should I wear to a wedding?"';
+          reply = buildStylistRecommendation({
+            response: 'I\'m not sure how to help with that. Try asking about an outfit for a specific occasion like "What should I wear to a wedding?"',
+          }, text);
         }
 
         addChatMessage('bot', reply);
       } else {
-        addChatMessage('bot', 'I could not finish that suggestion. Try describing the occasion again.');
+        addChatMessage('bot', buildStylistRecommendation({
+          response: 'I could not finish that suggestion. Try describing the occasion again.',
+        }, text));
       }
     }).catch(function(err) {
       console.error('[WUTT] Chat error:', err);
       var typing = document.getElementById('chatTypingIndicator');
       if (typing) typing.remove();
-      addChatMessage('bot', 'I lost the thread for a second. Try sending the occasion again.');
+      addChatMessage('bot', buildStylistRecommendation({
+        response: 'I lost the thread for a second. Try sending the occasion again.',
+      }, text));
     }).finally(function() {
-      setChatSendingState(false);
+      setChatGeneratingState(false);
       if (chatInputField) chatInputField.focus();
     });
   }
@@ -2577,11 +2649,15 @@ function initChatApp() {
       return;
     }
     showTodayConversation();
+    var lastUserRequest = '';
     history.forEach(function(entry) {
-      var content = entry.role === 'user'
-        ? String(entry.content || '')
-        : stylistFriendlyCopy(entry.content);
-      addChatMessage(entry.role === 'user' ? 'user' : 'bot', escapeHtml(content).replace(/\n/g, '<br>'));
+      var content = String(entry.content || '');
+      if (entry.role === 'user') {
+        lastUserRequest = content;
+        addChatMessage('user', escapeHtml(content).replace(/\n/g, '<br>'));
+      } else {
+        addChatMessage('bot', buildStylistRecommendation({ response: content }, lastUserRequest));
+      }
     });
   }
 
@@ -2604,7 +2680,7 @@ function initChatApp() {
       if (session.occasion === 'chat') {
         if (payload.message) addUserMessage(escapeHtml(payload.message));
         if (payload.response) {
-          addChatMessage('bot', escapeHtml(stylistFriendlyCopy(payload.response)).replace(/\n/g, '<br>'));
+          addChatMessage('bot', buildStylistRecommendation(payload, payload.message || ''));
         }
         return;
       }
@@ -2631,9 +2707,45 @@ function initChatApp() {
   }
 
   /* ---- Delete only today's chat history ---- */
+  var chatMenuBtn = document.getElementById('chatMenuBtn');
+  var chatHeaderMenu = document.getElementById('chatHeaderMenu');
   var clearHistoryBtn = document.getElementById('chatClearHistoryBtn');
+
+  function setChatMenuOpen(isOpen, returnFocus) {
+    if (!chatMenuBtn || !chatHeaderMenu) return;
+    chatMenuBtn.setAttribute('aria-expanded', String(isOpen));
+    chatHeaderMenu.setAttribute('aria-hidden', String(!isOpen));
+    chatHeaderMenu.classList.toggle('u-hidden', !isOpen);
+    if (isOpen && clearHistoryBtn) {
+      clearHistoryBtn.focus();
+    } else if (returnFocus) {
+      chatMenuBtn.focus();
+    }
+  }
+
+  if (chatMenuBtn && chatHeaderMenu) {
+    chatMenuBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      setChatMenuOpen(chatMenuBtn.getAttribute('aria-expanded') !== 'true', false);
+    });
+    chatHeaderMenu.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+    document.addEventListener('click', function() {
+      if (chatMenuBtn.getAttribute('aria-expanded') === 'true') {
+        setChatMenuOpen(false, false);
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && chatMenuBtn.getAttribute('aria-expanded') === 'true') {
+        setChatMenuOpen(false, true);
+      }
+    });
+  }
+
   if (clearHistoryBtn) {
     clearHistoryBtn.addEventListener('click', async function() {
+      setChatMenuOpen(false, false);
       if (!confirm('Delete today’s stylist conversation? Older style history will be kept.')) return;
       clearHistoryBtn.disabled = true;
       clearHistoryBtn.setAttribute('aria-busy', 'true');

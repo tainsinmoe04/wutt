@@ -82,23 +82,63 @@ Return only valid JSON with:
 }
 
 Response rules:
+- Always decide in this order: (1) the current request, (2) occasion and social context,
+  (3) requested style/personality, (4) body type and fit goal, (5) saved preferences,
+  (6) existing wardrobe suitability, and (7) weather practicality. Color is only a finishing
+  consideration. Never choose an outfit primarily because colors match.
+- The current request always wins. Use previous conversation context only when the user clearly
+  asks to continue or revise the last look, such as "make it more elegant", "another version",
+  or "make this more luxury". A new event, occasion, garment, shopping request, body question,
+  or styling goal starts fresh and must not inherit the previous occasion.
 - Accessory selection mode is the exception to complete-outfit rules: return only the selected
   watch, bag, shoes, or accessory plus one alternative. Do not add clothing or other categories.
 - If the request names a clothing item or color, the first outfit entry must be that exact
   base piece. Build every other recommendation around it and never substitute another item.
-- Wardrobe items are listed in retrieval priority order. Explicit user matches come first,
-  followed by occasion tags, style tags, color compatibility, and profile preference.
+- Wardrobe items are listed in retrieval priority order, but you must compare all suitable
+  options before choosing. Never assume the first or best color match is the best outfit.
 - Every owned recommendation must retain its wardrobe identity: specific item name, category,
   color, and wardrobe id. Never reduce an item to only "Brown", "Navy", or "Black".
 - When several saved items are similar, choose one exact record and include its id. Never merge
   multiple brown skirts, black shoes, watches, or bags into a generic label.
 - Build a complete look with main clothing, shoes, a bag, accessories, and an optional layer
   when the weather or occasion benefits from one.
-- Compare every suitable wardrobe option before choosing. Prefer occasion fit, color harmony,
-  cultural fit, and the user's stated preference over whichever item looks most luxurious.
-- Decision priority is: occasion dress code and cultural respect first, explicit user-selected
-  item second, wardrobe suitability third, and profile style preference last. Item tags never
-  override an occasion restriction.
+- Compare every suitable wardrobe option before choosing. Put the current goal, social meaning,
+  requested personality, and fit needs ahead of wardrobe tags or color harmony.
+- For a dinner party, party, celebration, or invitation, prefer in this order: a dress; elegant
+  Myanmar traditional wear; a refined top with a skirt; then polished finishing pieces such as
+  heels, a structured bag, and jewelry or a watch. Do not lead with jeans, hoodies, casual
+  streetwear, sneakers, or everyday basics when a more occasion-appropriate option exists.
+- Luxury, bossy, CEO, executive, elegant, premium, classy, expensive-look, and old-money requests
+  are style modifiers,
+  not casual outfit categories and not replacements for the occasion. Continue the established
+  occasion first. For women, prioritize dresses, silk skirts, elegant Myanmar traditional wear,
+  blazers, heels, structured bags, and fine jewelry or watches. For men, prioritize tailored
+  shirts, blazers, trousers, leather shoes, and minimal accessories. Avoid leading with jeans,
+  hoodies, or basic casual tops. Luxury comes from tailoring, fabric, structure, and restrained
+  finishing details—not merely expensive-looking colors.
+- For a bossy, CEO, executive, business-dinner, or foreign-guest context, the intended feeling is
+  confident, polished, powerful, and sophisticated. Cute, sexy, playful, casual, or streetwear
+  tags must not override that direction unless the user explicitly asks for one of those styles.
+- Treat wardrobe style tags as retrieval metadata, not user-facing copy. Never repeat marketing
+  labels such as "cute and sexy" in an item name or explanation; describe the styling effect in
+  natural stylist language instead.
+- For a business meeting, prioritize a blazer or coat, a clean shirt or top, tailored trousers
+  or skirt, polished shoes, a structured bag, and minimal accessories.
+- For a date, prioritize a feminine or elegant look that remains comfortable and reflects the
+  user's style preference. For coffee or casual outings, prioritize relaxed everyday pieces.
+- For a first date, aim for attractive, comfortable, and personal: feminine details, natural
+  elegance, soft colors, comfortable shoes, and one small accessory. Do not make it overly formal
+  unless requested.
+- For a wedding guest, look elegant, respectful, and memorable without competing for attention.
+  Prefer dresses, refined Myanmar traditional wear, silk, elegant skirts, heels, and restrained
+  accessories. Reject everyday casual combinations.
+- For a pagoda or religious visit, require modest coverage for shoulders and knees, cultural
+  respect, and comfortable footwear that is easy to remove.
+- Body and fit questions are not occasions. Solve the fit goal before selecting wardrobe pieces.
+  To look taller, prioritize a high waist, long vertical lines, similar color tones, a clean
+  fitted silhouette, and pointed shoes; avoid visually cutting the body into many sections.
+  For petite users, avoid oversized heavy layers and prefer balanced proportions, tucked tops,
+  and shorter jackets.
 - When several pieces work equally well, avoid items marked recently_recommended and vary the
   color or garment from recent looks.
 - Do not default to purple, linen, or black. Purple is appropriate only when the user requests
@@ -110,8 +150,10 @@ Response rules:
 - For outfit requests, ground the main clothing in listed wardrobe items. If shoes, a bag,
   accessories, or a useful layer are missing, add a concise, clean fashion label. Keep the
   explanation honest about which additions are not owned; do not put status prefixes in labels.
-- For shopping requests, recommend useful new pieces and explain which listed wardrobe items
-  they would match. New purchase suggestions do not need to already be in the wardrobe.
+- For shopping requests, leave wardrobe-only mode. Recommend the category to buy, why it matches
+  the user's goal, and how many useful outfits it can create. If a luxury gala wardrobe lacks a
+  dress, suggest an elegant midi dress, silk dress, premium Myanmar outfit, or structured blazer
+  instead of forcing existing casual clothes.
 - Put the recommendation in outfit first; do not bury it in explanation.
 - Explanation should sound personal: why these pieces work for this user and occasion.
 - Use "your" only for an item that exists in the supplied wardrobe context. Never invent
@@ -119,6 +161,8 @@ Response rules:
 - Use available height, style preference, favorite colors, and fit preference naturally.
 - Avoid editorial phrases such as "offers a flattering silhouette", "elevates the ensemble",
   "effortlessly chic", or "based on your wardrobe analysis".
+- Never use repetitive filler such as "keeps the outfit grounded", "fits the vibe", or
+  "adds warmth". Explain specifically why the choice works for the user and occasion.
 - Keep the weather tip practical and secondary.
 - If live weather is missing, still give a specific situational tip about walking, air-conditioned
   rooms, heat, rain, or removable layers. Never say only "dress for the weather."
@@ -152,6 +196,21 @@ _ACCESSORY_SELECTION_TERMS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+_LUXURY_STYLE_TERMS = (
+    "luxury", "luxurious", "elegant", "premium", "classy",
+    "expensive look", "old money", "bossy", "boss vibe", "ceo look",
+    "executive", "business dinner", "business owner", "foreign guest",
+    "foreign business", "powerful", "sophisticated",
+    "ကြော့ရှင်း", "အဆင့်မြင့်", "ဇိမ်ခံ", "သူဌေးဆန်", "ဘော့စ်",
+)
+
+_BODY_FIT_TERMS = (
+    "body type", "body shape", "petite", "i am short", "i'm short",
+    "look taller", "look slimmer", "suit my body", "fit my body",
+    "pear shape", "apple shape", "hourglass", "rectangle",
+    "အရပ်ပု", "အရပ်ရှည်", "ခန္ဓာကိုယ်", "ကိုယ်ခန္ဓာ",
+)
+
 
 def normalize_stylist_query(value: Any) -> Any:
     """Trim and collapse whitespace while leaving non-string validation to Pydantic."""
@@ -164,6 +223,18 @@ def is_shopping_intent(query: str) -> bool:
     """Return whether a natural-language stylist request asks what to purchase."""
     normalized = query.casefold()
     return any(term in normalized for term in _SHOPPING_TERMS)
+
+
+def is_luxury_style_request(query: str) -> bool:
+    """Return whether the user requests an elevated luxury style direction."""
+    normalized = normalize_stylist_query(query).casefold()
+    return any(term in normalized for term in _LUXURY_STYLE_TERMS)
+
+
+def is_body_fit_request(query: str) -> bool:
+    """Return whether the current request is primarily about proportions or fit."""
+    normalized = normalize_stylist_query(query).casefold()
+    return any(term in normalized for term in _BODY_FIT_TERMS)
 
 
 def accessory_selection_type(query: str) -> str | None:
@@ -212,6 +283,14 @@ def is_visual_comparison_request(query: str) -> bool:
 def recommendation_mode_prompt(query: str) -> str:
     """Describe whether the provider should style the wardrobe or suggest a purchase."""
     accessory_type = accessory_selection_type(query)
+    if is_body_fit_request(query):
+        return (
+            "Request mode: body and fit advice, not an occasion. Solve the stated proportion "
+            "or fit goal first, then choose wardrobe pieces that follow those principles. For "
+            "height, use high waists, vertical continuity, similar tones, clean fitted lines, "
+            "and pointed shoes. For petite proportions, avoid oversized heavy layers and use "
+            "balanced proportions, tucked tops, and shorter jackets."
+        )
     if is_visual_comparison_request(query):
         subject = accessory_type or "item"
         return (
@@ -250,11 +329,17 @@ def classify_occasion_context(query: str) -> str:
         return "religious_place"
     if any(term in normalized for term in (
         "client meeting", "business meeting", "meeting with a client",
-        "customer meeting", "stakeholder meeting",
+        "customer meeting", "stakeholder meeting", "လုပ်ငန်းအစည်းအဝေး",
+        "စီးပွားရေးအစည်းအဝေး",
     )):
         return "business_meeting"
     if any(term in normalized for term in ("wedding", "မင်္ဂလာဆောင်", "မင်္ဂလာပွဲ")):
         return "wedding"
+    if any(term in normalized for term in (
+        "dinner party", "party", "celebration", "invitation", "invited",
+        "ပါတီ", "ပါတီပွဲ", "ပွဲဖိတ်", "ဖိတ်ကြား", "အခမ်းအနား",
+    )):
+        return "party"
     if (
         re.search(r"\bdate\b", normalized)
         or any(term in normalized for term in (
@@ -297,17 +382,27 @@ def occasion_context_prompt(query: str) -> str:
             "Occasion context: wedding. Favor an elegant, celebratory look; for a Myanmar "
             "wedding, prioritize refined traditional clothing or a polished longyi pairing."
         ),
+        "party": (
+            "Occasion context: dinner party, party, celebration, or social invitation. Treat "
+            "the host, venue, and invited social setting as dress-code signals. Prioritize a "
+            "dress, elegant Myanmar traditional wear, or a refined top with a skirt, followed "
+            "by heels or polished shoes, a structured bag, and jewelry or a watch. Do not make "
+            "jeans, hoodies, casual streetwear, sneakers, or everyday basics the first look "
+            "when a more elegant option exists. Social appropriateness outranks color matching."
+        ),
         "date": (
-            "Occasion context: date. Keep the look personal, comfortable, and softly polished "
-            "rather than overly formal."
+            "Occasion context: date. Prioritize a feminine or elegant direction that remains "
+            "comfortable, attractive, and softly polished, then personalize it to the user's "
+            "style preference."
         ),
         "casual_outing": (
             "Occasion context: coffee or casual outing. Keep the outfit relaxed, clean, "
             "comfortable for sitting and walking, and polished with one simple detail."
         ),
         "dinner": (
-            "Occasion context: dinner. Aim for a neat evening look with one polished detail "
-            "and comfortable finishing pieces."
+            "Occasion context: dinner. Treat this as an evening occasion before matching "
+            "colors. Prefer a dress, refined traditional wear, or a polished skirt-and-top "
+            "pairing with elegant finishing pieces. Avoid leading with jeans or everyday basics."
         ),
         "work": (
             "Occasion context: work. Keep the silhouette neat, practical, and professional "
@@ -328,4 +423,15 @@ def occasion_context_prompt(query: str) -> str:
             "the most natural styling direction."
         ),
     }
-    return guidance[context]
+    context_guidance = guidance[context]
+    if is_luxury_style_request(query):
+        context_guidance += (
+            " Requested style: luxury/elegant. Keep the occasion unchanged and elevate it "
+            "through tailoring, refined fabric, structure, and restrained accessories. For "
+            "women prioritize dresses, silk skirts, elegant Myanmar traditional outfits, "
+            "blazers, heels, structured bags, jewelry, and watches. For men prioritize "
+            "tailored shirts, blazers, trousers, leather shoes, and minimal accessories. "
+            "The feeling should be confident, polished, powerful, and sophisticated. Do not "
+            "lead with cute, sexy, playful, casual, streetwear, jeans, hoodies, or basic tops."
+        )
+    return context_guidance

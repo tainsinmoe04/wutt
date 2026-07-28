@@ -36,6 +36,9 @@ from services.openrouter_svc import (
 from services.stylist_prompt import (
     accessory_selection_type,
     classify_occasion_context,
+    is_body_fit_request,
+    is_luxury_style_request,
+    is_shopping_intent,
     is_visual_comparison_request,
     normalize_stylist_query,
 )
@@ -149,6 +152,57 @@ def _session_occasion(query: str) -> str:
     return (shortened or query[:97]).rstrip() + "..."
 
 
+def _recommendation_query_with_recent_context(
+    query: str,
+    recent_sessions: list[StyleSession],
+) -> str:
+    """Carry an occasion only when the current request is a vague style follow-up."""
+    normalized = normalize_stylist_query(query).casefold()
+
+    # The current request always wins. Shopping, an explicit occasion, a named
+    # garment, and body/fit advice are complete requests rather than continuations.
+    if is_shopping_intent(query):
+        return query
+
+    named_garment_terms = (
+        "dress", "gown", "shirt", "blouse", "top", "skirt", "trousers",
+        "pants", "jeans", "shorts", "jacket", "blazer", "coat", "suit",
+        "longyi", "htamein", "shoe", "shoes", "heels", "sneakers", "bag",
+        "watch", "jewelry", "jewellery", "အင်္ကျီ", "ဂါဝန်", "စကတ်",
+        "ဘောင်းဘီ", "ဖိနပ်", "အိတ်", "နာရီ", "လုံချည်", "ထမီ",
+    )
+    new_event_terms = (
+        "event", "gala", "ceremony", "conference", "presentation",
+        "graduation", "funeral", "concert", "festival", "prom",
+        "tomorrow", "tonight", "this evening", "this weekend",
+        "ပွဲ", "မနက်ဖြန်", "ဒီည",
+    )
+    vague_followup_terms = (
+        "version", "more ", "make it", "better", "upgrade", "elevate",
+        "instead", "another", "same", "ပိုပြီး", "နောက်တစ်",
+        "ပုံစံပြောင်း",
+    )
+
+    if (
+        classify_occasion_context(query) != "general"
+        or any(term in normalized for term in named_garment_terms)
+        or is_body_fit_request(query)
+        or any(term in normalized for term in new_event_terms)
+        or not any(term in normalized for term in vague_followup_terms)
+    ):
+        return query
+    for session in recent_sessions:
+        created_at = session.created_at
+        if created_at and created_at.date() != datetime.now(timezone.utc).date():
+            continue
+        previous = str(session.occasion or "").strip()
+        if previous.casefold() == "chat":
+            continue
+        if classify_occasion_context(previous) != "general":
+            return f"{previous}. Requested style: {query}"
+    return query
+
+
 def _extract_outfit_fields(ai_result: dict[str, Any]) -> tuple[list[str], str, str]:
     """Safely extract outfit, explanation, and weather_based_tip from AI result."""
     if not ai_result:
@@ -168,7 +222,15 @@ def _wardrobe_display_name(item: dict[str, Any]) -> str:
         or item.get("category")
         or "Wardrobe Item"
     )
-    words = str(raw).strip().split()
+    cleaned = re.sub(
+        r"(?i)(?:\s*[-–—|,/]\s*)?\b(?:cute\s*(?:and|&)\s*sexy|cute|sexy|"
+        r"playful|casual|everyday)\b",
+        "",
+        str(raw),
+    )
+    cleaned = re.sub(r"\s*[-–—|,/]\s*$", "", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    words = (cleaned or str(item.get("category") or "Wardrobe Item")).split()
     return " ".join(
         word if not re.search(r"[A-Za-z]", word) else word[:1].upper() + word[1:].lower()
         for word in words
@@ -244,6 +306,7 @@ def _wardrobe_relevance_score(
         occasion,
         "religious" if occasion == "religious_place" else "",
         "work" if occasion == "business_meeting" else "",
+        "formal" if occasion in {"party", "dinner", "business_meeting"} else "",
     }
     occasion_tags = str(item.get("occasion_tags") or "").casefold()
     style_tags = str(item.get("style_tags") or "").casefold()
@@ -251,6 +314,37 @@ def _wardrobe_relevance_score(
     score = explicit_score * 10
     if any(term and term in occasion_tags for term in occasion_terms):
         score += 80
+    item_metadata = " ".join(
+        str(item.get(field) or "").casefold()
+        for field in (
+            "category", "subtype", "description", "style_tags",
+            "occasion_tags", "formality_level",
+        )
+    )
+    if occasion in {"party", "dinner"}:
+        if any(term in item_metadata for term in (
+            "dress", "gown", "traditional", "myanmar", "longyi", "htamein",
+            "elegant", "formal", "refined", "skirt", "heel", "structured",
+            "jewelry", "jewellery", "watch", "မြန်မာ", "ရိုးရာ", "လုံချည်",
+        )):
+            score += 70
+        if any(term in item_metadata for term in (
+            "jeans", "denim", "hoodie", "streetwear", "sportswear",
+            "sneaker", "everyday", "basic", "casual",
+        )):
+            score -= 90
+    if is_luxury_style_request(query):
+        if any(term in item_metadata for term in (
+            "dress", "silk", "traditional", "myanmar", "longyi", "htamein",
+            "blazer", "tailored", "trouser", "skirt", "heel", "leather shoe",
+            "structured", "fine", "jewelry", "jewellery", "watch",
+            "luxury", "elegant", "premium", "classy", "old money",
+        )):
+            score += 75
+        if any(term in item_metadata for term in (
+            "jeans", "denim", "hoodie", "basic", "casual", "streetwear",
+        )):
+            score -= 100
     query_tokens = {
         token for token in re.findall(r"[\w\u1000-\u109f]+", normalized_query)
         if len(token) >= 3
@@ -360,37 +454,58 @@ def _normalize_outfit_labels(
     return normalized
 
 
+def _refine_marketing_tag_language(text: str, query: str) -> str:
+    """Turn unwanted wardrobe marketing tags into natural stylist language."""
+    if not text:
+        return ""
+    requested = query.casefold()
+    copy = text
+    if not any(term in requested for term in ("cute", "ချစ်စရာ")):
+        copy = re.sub(r"(?i)\bcute\b", "polished", copy)
+    if not any(term in requested for term in ("sexy", "ဆက်ဆီ")):
+        copy = re.sub(r"(?i)\bsexy\b", "confident", copy)
+    if not any(term in requested for term in ("playful",)):
+        copy = re.sub(r"(?i)\bplayful\b", "expressive", copy)
+    if not any(term in requested for term in ("casual", "coffee", "everyday")):
+        copy = re.sub(r"(?i)\b(?:casual|everyday)\b", "refined", copy)
+    return re.sub(r"\s{2,}", " ", copy).strip()
+
+
+def _executive_outfit_conflicts(
+    outfit: list[Any],
+    wardrobe_items: list[dict[str, Any]],
+    query: str,
+) -> bool:
+    """Reject provider choices whose saved metadata contradicts executive intent."""
+    if not is_luxury_style_request(query):
+        return False
+    conflicting_terms = (
+        "cute", "sexy", "playful", "casual", "everyday", "streetwear",
+        "jeans", "denim", "hoodie", "basic",
+    )
+    for raw_item in outfit:
+        matched = _match_outfit_item(str(raw_item), wardrobe_items)
+        if not matched:
+            continue
+        metadata = " ".join(
+            str(matched.get(field) or "").casefold()
+            for field in (
+                "category", "subtype", "description", "style_tags",
+                "occasion_tags",
+            )
+        )
+        if any(term in metadata for term in conflicting_terms):
+            return True
+    return False
+
+
 def _personalize_explanation(
     explanation: str,
     outfit: list[str],
     wardrobe_items: list[dict[str, Any]],
 ) -> str:
-    """Name a selected main garment without inventing an accessory-led opening."""
-    copy = explanation.strip()
-    outfit_text = " ".join(outfit).casefold()
-    for item in wardrobe_items:
-        category = str(item.get("category") or "").casefold()
-        subtype = str(item.get("subtype") or "").casefold()
-        if any(term in f"{category} {subtype}" for term in (
-            "accessory", "watch", "bag", "shoe", "sandal", "jewelry",
-            "jewellery", "နာရီ", "အိတ်", "ဖိနပ်",
-        )):
-            continue
-        label = _wardrobe_display_name(item)
-        candidates = (
-            label,
-            str(item.get("subtype") or ""),
-            str(item.get("description") or ""),
-        )
-        if any(
-            candidate
-            and candidate.casefold() in outfit_text
-            for candidate in candidates
-        ):
-            if not any(candidate.casefold() in copy.casefold() for candidate in candidates if candidate):
-                return f"{copy} Your {label} keeps the outfit grounded.".strip()
-            break
-    return copy
+    """Keep the provider's specific reasoning without adding repetitive filler."""
+    return explanation.strip()
 
 
 def _preserve_requested_base(
@@ -516,6 +631,30 @@ def _complete_outfit_presentation(outfit: list[str], query: str) -> list[str]:
             "accessory": "Suggested: One refined jewelry detail",
             "layer": "Suggested: Light shawl or tailored layer",
         },
+        "party": {
+            "shoes": "Suggested: Elegant heels or polished shoes",
+            "bag": "Suggested: Small structured bag or clutch",
+            "accessory": "Suggested: Refined jewelry or a watch",
+            "layer": "Suggested: Tailored evening layer",
+        },
+        "dinner": {
+            "shoes": "Suggested: Elegant heels or polished shoes",
+            "bag": "Suggested: Small structured bag",
+            "accessory": "Suggested: Refined jewelry or a watch",
+            "layer": "Suggested: Light polished layer",
+        },
+        "luxury": {
+            "shoes": "Suggested: Elegant heels or polished leather shoes",
+            "bag": "Suggested: Structured bag",
+            "accessory": "Suggested: Fine jewelry or a minimal watch",
+            "layer": "Suggested: Tailored blazer",
+        },
+        "fit": {
+            "shoes": "Suggested: Pointed comfortable shoes",
+            "bag": "Suggested: Small structured bag",
+            "accessory": "Suggested: One minimal vertical-detail accessory",
+            "layer": "Suggested: Short tailored jacket",
+        },
         "date": {
             "shoes": "Suggested: Clean, comfortable shoes",
             "bag": "Suggested: Small shoulder bag",
@@ -541,7 +680,12 @@ def _complete_outfit_presentation(outfit: list[str], query: str) -> list[str]:
         "accessory": "Suggested: One understated accessory",
         "layer": "Suggested: Light optional layer",
     }
-    context_suggestions = suggestions.get(context, default)
+    suggestion_context = (
+        "luxury"
+        if context == "general" and is_luxury_style_request(query)
+        else ("fit" if context == "general" and is_body_fit_request(query) else context)
+    )
+    context_suggestions = suggestions.get(suggestion_context, default)
     completed = list(outfit)
     for slot, keywords in keyword_groups.items():
         if not any(keyword in combined for keyword in keywords):
@@ -555,6 +699,11 @@ def _context_only_outfit(
 ) -> dict[str, Any]:
     """Return an immediate suggested look when no saved wardrobe is available."""
     context = classify_occasion_context(query)
+    look_context = (
+        "luxury"
+        if context == "general" and is_luxury_style_request(query)
+        else ("fit" if context == "general" and is_body_fit_request(query) else context)
+    )
     looks = {
         "religious_place": [
             "Suggested: Modest Myanmar blouse",
@@ -571,6 +720,13 @@ def _context_only_outfit(
             "Suggested: One refined jewelry detail",
             "Suggested: Light shawl or tailored layer",
         ],
+        "party": [
+            "Suggested: Elegant dress or refined Myanmar traditional outfit",
+            "Suggested: Elegant heels or polished shoes",
+            "Suggested: Small structured bag or clutch",
+            "Suggested: Refined jewelry or a watch",
+            "Suggested: Tailored evening layer",
+        ],
         "date": [
             "Suggested: Clean top with a softly polished skirt or trousers",
             "Suggested: Clean, comfortable shoes",
@@ -579,11 +735,25 @@ def _context_only_outfit(
             "Suggested: Light layer for later",
         ],
         "dinner": [
-            "Suggested: Neat evening top with tailored trousers or a simple dress",
-            "Suggested: Polished comfortable shoes",
+            "Suggested: Elegant dress, refined traditional outfit, or polished skirt and top",
+            "Suggested: Elegant heels or polished shoes",
             "Suggested: Small structured bag",
-            "Suggested: One understated accessory",
-            "Suggested: Light optional layer",
+            "Suggested: Refined jewelry or a watch",
+            "Suggested: Light polished layer",
+        ],
+        "luxury": [
+            "Suggested: Elegant dress or tailored shirt with refined trousers",
+            "Suggested: Elegant heels or polished leather shoes",
+            "Suggested: Structured bag",
+            "Suggested: Fine jewelry or a minimal watch",
+            "Suggested: Tailored blazer",
+        ],
+        "fit": [
+            "Suggested: High-waisted tailored trousers or skirt",
+            "Suggested: Clean fitted or tucked top",
+            "Suggested: Pointed comfortable shoes",
+            "Suggested: Small structured bag",
+            "Suggested: Short tailored jacket",
         ],
         "work": [
             "Suggested: Clean shirt or blouse with tailored trousers",
@@ -600,13 +770,31 @@ def _context_only_outfit(
             "Suggested: Packable light layer",
         ],
     }
-    outfit = _normalize_outfit_labels(looks.get(context, [
+    outfit = _normalize_outfit_labels(looks.get(look_context, [
         "Suggested: Easy top with comfortable trousers",
         "Suggested: Clean, comfortable shoes",
         "Suggested: Simple everyday bag",
         "Suggested: One understated accessory",
         "Suggested: Light optional layer",
     ]), [])
+    if look_context == "luxury" and profile:
+        gender = str(profile.gender or "").casefold()
+        if gender in {"man", "male", "men", "ကျား"}:
+            outfit = _normalize_outfit_labels([
+                "Suggested: Tailored shirt",
+                "Suggested: Tailored trousers",
+                "Suggested: Blazer",
+                "Suggested: Polished leather shoes",
+                "Suggested: Minimal watch",
+            ], [])
+        elif gender in {"woman", "female", "women", "မ"}:
+            outfit = _normalize_outfit_labels([
+                "Suggested: Elegant dress, silk skirt look, or refined Myanmar traditional outfit",
+                "Suggested: Elegant heels",
+                "Suggested: Structured bag",
+                "Suggested: Fine jewelry or a watch",
+                "Suggested: Tailored blazer",
+            ], [])
     style = (profile.style_preference or "").strip() if profile else ""
     personal_note = (
         f" Since you like {style}, keep the details in that style."
@@ -625,9 +813,13 @@ def _context_only_outfit(
             "I’d keep the date look clean and softly polished. The simple "
             "shape feels relaxed, and one personal accessory gives it character."
         ),
+        "fit": (
+            "I’d create one clean vertical line with a high waist and a neat tucked or fitted "
+            "top. Balanced proportions matter more here than occasion or color matching."
+        ),
     }
     explanation = explanations.get(
-        context,
+        look_context,
         "I’d keep this look clean, comfortable, and suited to the occasion.",
     ) + personal_note
     return {
@@ -636,6 +828,65 @@ def _context_only_outfit(
         "weather_based_tip": (
             "Myanmar weather can feel hot and change quickly, so choose "
             "breathable fabric and keep the layer light."
+        ),
+    }
+
+
+def _shopping_fallback(
+    query: str,
+    profile: Profile | None,
+) -> dict[str, Any]:
+    """Recommend useful purchases instead of forcing existing wardrobe pieces."""
+    context = classify_occasion_context(query)
+    luxury = is_luxury_style_request(query) or context in {
+        "party", "dinner", "wedding", "business_meeting",
+    }
+    if luxury:
+        purchases = [
+            "Elegant midi or silk dress",
+            "Premium Myanmar traditional outfit",
+            "Structured blazer",
+            "Heels or polished leather shoes",
+            "Structured bag and one refined accessory",
+        ]
+        explanation = (
+            "Start with the dress or premium traditional outfit, then add the blazer when you "
+            "want a stronger executive finish. Those core pieces can create at least four looks "
+            "across dinners, weddings, client events, and formal celebrations."
+        )
+    elif is_body_fit_request(query):
+        purchases = [
+            "High-waisted tailored trousers or skirt",
+            "Clean fitted top for tucking in",
+            "Short structured jacket",
+            "Pointed comfortable shoes",
+            "Simple vertical-detail accessory",
+        ]
+        explanation = (
+            "These pieces keep the proportions balanced and create a longer vertical line. "
+            "The top, bottom, and jacket can make at least six practical combinations."
+        )
+    else:
+        purchases = [
+            "Versatile clean top",
+            "Well-fitting trousers or skirt",
+            "Comfortable polished shoes",
+            "Practical structured bag",
+            "Light optional layer",
+        ]
+        explanation = (
+            "Buy the top and bottom first because they can make at least four everyday outfits. "
+            "The shoes, bag, and layer make the same pieces work across more settings."
+        )
+    style = str(profile.style_preference or "").strip() if profile else ""
+    if style:
+        explanation += f" Choose the details in your {style} preference."
+    return {
+        "outfit": purchases,
+        "explanation": explanation,
+        "weather_based_tip": (
+            "Choose breathable fabric and test the full outfit for comfortable movement "
+            "before buying."
         ),
     }
 
@@ -782,16 +1033,22 @@ def _wardrobe_fallback_outfit(
 ) -> dict[str, Any]:
     """Build a complete immediate look with the existing rule-based wardrobe logic."""
     context = classify_occasion_context(query)
+    luxury_style = is_luxury_style_request(query)
+    body_fit_goal = is_body_fit_request(query)
     occasion_key = {
         "religious_place": "temple",
         "business_meeting": "interview",
         "wedding": "wedding",
         "date": "date",
         "casual_outing": "casual",
-        "dinner": "dinner",
+        "party": "party",
+        "dinner": "party",
         "work": "work",
         "travel": "travel",
-    }.get(context, "casual")
+    }.get(
+        context,
+        "fit" if body_fit_goal else ("luxury" if luxury_style else "casual"),
+    )
     classified: dict[str, list[dict[str, Any]]] = {
         key: [] for key in (
             "dress", "top", "bottom", "traditional", "outerwear",
@@ -803,6 +1060,9 @@ def _wardrobe_fallback_outfit(
     }
     style_preference = profile.style_preference if profile else None
     normalized_query = query.casefold()
+    allows_executive_conflict = any(term in normalized_query for term in (
+        "cute", "sexy", "playful", "casual", "streetwear", "jeans", "hoodie",
+    ))
     for item in wardrobe_items:
         item_metadata = " ".join(
             str(item.get(field) or "").casefold()
@@ -816,6 +1076,15 @@ def _wardrobe_fallback_outfit(
             "stiletto", "high heel", "ပေါ်လွင်", "တိုတို",
         )):
             continue
+        if (
+            luxury_style
+            and not allows_executive_conflict
+            and any(term in item_metadata for term in (
+                "cute", "sexy", "playful", "casual", "everyday",
+                "streetwear", "jeans", "denim", "hoodie", "basic",
+            ))
+        ):
+            continue
         broad_type = _classify_item(item)
         classified[broad_type].append(item)
         item_score = _score_item(
@@ -825,6 +1094,28 @@ def _wardrobe_fallback_outfit(
             temperature_c,
             style_preference,
         )
+        if luxury_style:
+            if any(term in item_metadata for term in (
+                "tailored", "structured", "silk", "blazer", "executive",
+                "luxury", "premium", "elegant", "formal", "sophisticated",
+                "traditional", "myanmar", "heel", "leather", "watch", "jewelry",
+            )):
+                item_score += 35
+            if any(term in item_metadata for term in (
+                "cute", "sexy", "playful", "casual", "everyday",
+                "streetwear", "jeans", "denim", "hoodie", "basic",
+            )):
+                item_score -= 80
+        if body_fit_goal:
+            if any(term in item_metadata for term in (
+                "high waist", "high-waist", "tailored", "fitted", "tucked",
+                "vertical", "monochrome", "pointed", "short jacket", "cropped jacket",
+            )):
+                item_score += 45
+            if any(term in item_metadata for term in (
+                "oversized", "heavy", "long bulky", "low waist", "low-rise",
+            )):
+                item_score -= 55
         recent_count = int(item.get("recent_recommendation_count") or 0)
         if recent_count:
             item_score -= min(recent_count * 5, 15)
@@ -900,7 +1191,17 @@ def _wardrobe_fallback_outfit(
         outfit, explanation, _ = _build_wedding_outfit(
             classified, scored, occasion_key, temperature_c,
         )
-    elif occasion_key == "casual":
+    elif luxury_style and profile and str(profile.gender or "").casefold() in {
+        "man", "male", "men", "ကျား",
+    }:
+        outfit, explanation, _ = _build_interview_outfit(
+            classified, scored, occasion_key, temperature_c,
+        )
+    elif occasion_key in {"party", "luxury"}:
+        outfit, explanation, _ = _build_party_outfit(
+            classified, scored, occasion_key, temperature_c,
+        )
+    elif occasion_key in {"casual", "fit"}:
         outfit, explanation, _ = _build_casual_outfit(
             classified, scored, occasion_key, temperature_c,
         )
@@ -911,6 +1212,11 @@ def _wardrobe_fallback_outfit(
 
     if not outfit:
         return _context_only_outfit(query, profile)
+    if body_fit_goal:
+        explanation = (
+            "This combination supports the fit goal first: keep the waist defined, maintain "
+            "a clean vertical line, and avoid oversized layers that break the proportions."
+        )
     outfit_text = " ".join(outfit).casefold()
     finishing_specs = (
         (
@@ -1490,14 +1796,27 @@ def _score_item(
         # Subtype bonuses for wedding
         if sub in ("formal dress", "longyi", "htamein", "taikpon"):
             score += 15
-    elif occ_lower == "party":
-        # Party: prefer dress, then top+bottom
+    elif occ_lower in {"party", "dinner", "luxury"}:
+        # Formal social occasion: occasion fit dominates color harmony.
         if broad_type == "dress":
             score += 40
+        elif broad_type == "traditional":
+            score += 38
         elif broad_type in ("top", "bottom"):
             score += 20
         else:
             score += 10
+        if any(term in metadata for term in (
+            "formal", "elegant", "refined", "party", "evening",
+            "structured", "heel", "jewelry", "jewellery", "watch",
+            "traditional", "myanmar", "longyi", "htamein",
+        )):
+            score += 20
+        if any(term in metadata for term in (
+            "jeans", "denim", "hoodie", "streetwear", "sportswear",
+            "sneaker", "everyday", "basic", "casual",
+        )):
+            score -= 35
         # Color bonus
         if _color_matches(color, _PARTY_COLORS):
             score += 12
@@ -1648,6 +1967,8 @@ def _build_interview_outfit(
         label_top = _item_label(top)
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
+        if outerwear:
+            labels.append(_item_label(_pick_best(outerwear)))
         feasibility = (s_top + s_bot) // 2
 
         # Optional outerwear
@@ -1847,13 +2168,15 @@ def _build_party_outfit(
     • One dress, OR one top + one bottom + optional outerwear.
     """
     _best = lambda k: _best_from_scored(k, scored)
+    traditionals = scored.get("traditional", [])
     tops = scored.get("top", [])
     bottoms = scored.get("bottom", [])
     dresses = scored.get("dress", [])
+    outerwear = scored.get("outerwear", [])
     occasion_my_str = _occasion_my(occasion)
 
     # ── Separate party-specific dresses from general dresses ──
-    party_dress_subtypes = {"party dress", "mini dress"}
+    party_dress_subtypes = {"party dress", "formal dress", "evening dress"}
     party_dresses = [(s, it) for s, it in dresses
                      if _has_subtype(it, *party_dress_subtypes)]
     bold_dresses = [(s, it) for s, it in dresses
@@ -1873,7 +2196,18 @@ def _build_party_outfit(
         )
         return ([label], explanation, s)
 
-    # Good: bold party dress (red, black, etc.)
+    # Good: refined Myanmar traditional wear before casual dresses.
+    if traditionals:
+        traditional = _pick_best(traditionals)
+        s = traditionals[0][0]
+        label = _item_label(traditional)
+        explanation = (
+            f"ပါတီအတွက် {label} က ဖိတ်ကြားထားတဲ့ပွဲနဲ့လိုက်ဖက်ပြီး "
+            f"မြန်မာဆန်ဆန် ကြော့ရှင်းတဲ့ look ဖြစ်ပါတယ်။"
+        )
+        return ([label], explanation, s)
+
+    # Good: bold party dress (red, black, etc.), after garment formality.
     if bold_dresses:
         dress = _pick_best(bold_dresses)
         s = bold_dresses[0][0]
@@ -1922,6 +2256,8 @@ def _build_party_outfit(
         label_top = _item_label(top)
         label_bot = _item_label(bottom)
         labels = [label_top, label_bot]
+        if outerwear:
+            labels.append(_item_label(_pick_best(outerwear)))
         feasibility = (s_top + s_bot) // 2
         explanation = (
             f"ပါတီအတွက် {label_top} နဲ့ {label_bot} တွဲဝတ်လို့ရပါတယ်။ "
@@ -2322,6 +2658,19 @@ def recommend_outfit(
         .filter(Wardrobe.user_id == user_id)
         .all()
     )
+    recent_sessions = (
+        db.query(StyleSession)
+        .filter(StyleSession.user_id == user_id)
+        .order_by(StyleSession.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    recommendation_query = _recommendation_query_with_recent_context(
+        body.occasion,
+        recent_sessions,
+    )
+    requested_occasion = body.occasion
+    body = RecommendRequest(occasion=recommendation_query)
 
     # ── No wardrobe — try real AI only ────────────────────
     if not items:
@@ -2394,7 +2743,11 @@ def recommend_outfit(
             ai_result = (
                 _accessory_selection_fallback([], body.occasion)
                 if accessory_selection_type(body.occasion)
-                else _context_only_outfit(body.occasion, profile)
+                else (
+                    _shopping_fallback(body.occasion, profile)
+                    if is_shopping_intent(body.occasion)
+                    else _context_only_outfit(body.occasion, profile)
+                )
             )
 
         outfit, explanation, weather_based_tip = _extract_outfit_fields(ai_result)
@@ -2403,6 +2756,7 @@ def recommend_outfit(
             outfit = _complete_outfit_presentation(outfit, body.occasion)
         explanation = _remove_technical_ids(explanation, [])
         explanation = _remove_unowned_possessives(explanation, [])
+        explanation = _refine_marketing_tag_language(explanation, body.occasion)
         weather_based_tip = _myanmar_weather_tip(
             None,
             None,
@@ -2417,7 +2771,7 @@ def recommend_outfit(
         # Save session for history
         session = StyleSession(
             user_id=user_id,
-            occasion=_session_occasion(body.occasion),
+            occasion=_session_occasion(requested_occasion),
             weather_desc=None,
             temperature_c=None,
             location=None,
@@ -2468,13 +2822,6 @@ def recommend_outfit(
     wardrobe_images: list[dict[str, Any]] = []
     for item in items:
         wardrobe_images.append(_wardrobe_context_item(item))
-    recent_sessions = (
-        db.query(StyleSession)
-        .filter(StyleSession.user_id == user_id)
-        .order_by(StyleSession.created_at.desc())
-        .limit(5)
-        .all()
-    )
     _annotate_recent_recommendations(
         wardrobe_images,
         [session.ai_response or "" for session in recent_sessions],
@@ -2556,6 +2903,20 @@ def recommend_outfit(
             mod = type(exc).__module__
             logger.warning("[WUTT] source=api_error endpoint=/recommend gemini_error=%s.%s", mod, cls)
 
+    if (
+        ai_result
+        and _executive_outfit_conflicts(
+            ai_result.get("outfit") or [],
+            wardrobe_images,
+            body.occasion,
+        )
+    ):
+        logger.info(
+            "[WUTT] source=fallback endpoint=/recommend "
+            "reason=provider_style_conflicts_with_executive_request"
+        )
+        ai_result = None
+
     # A clear outfit request always receives a wardrobe-aware complete look.
     if (
         (ai_result is None or not ai_result.get("outfit"))
@@ -2566,11 +2927,15 @@ def recommend_outfit(
         ai_result = (
             _accessory_selection_fallback(wardrobe_images, body.occasion)
             if accessory_selection_type(body.occasion)
-            else _wardrobe_fallback_outfit(
-                wardrobe_images,
-                body.occasion,
-                temperature_c,
-                profile,
+            else (
+                _shopping_fallback(body.occasion, profile)
+                if is_shopping_intent(body.occasion)
+                else _wardrobe_fallback_outfit(
+                    wardrobe_images,
+                    body.occasion,
+                    temperature_c,
+                    profile,
+                )
             )
         )
 
@@ -2586,6 +2951,7 @@ def recommend_outfit(
         outfit,
         wardrobe_images,
     )
+    explanation = _refine_marketing_tag_language(explanation, body.occasion)
     weather_based_tip = _myanmar_weather_tip(
         weather_desc,
         temperature_c,
@@ -2601,7 +2967,7 @@ def recommend_outfit(
     # ── Save session ───────────────────────────────────
     session = StyleSession(
         user_id=user_id,
-        occasion=_session_occasion(body.occasion),
+        occasion=_session_occasion(requested_occasion),
         weather_desc=weather_desc,
         temperature_c=temperature_c,
         location=location,

@@ -20,6 +20,8 @@ from services.stylist_prompt import (
     WUTT_RECOMMENDATION_PROMPT,
     accessory_selection_type,
     classify_occasion_context,
+    is_body_fit_request,
+    is_luxury_style_request,
     is_shopping_intent,
     is_visual_comparison_request,
     occasion_context_prompt,
@@ -243,6 +245,34 @@ def test_shopping_advice_request_uses_purchase_mode() -> None:
     assert is_shopping_intent(request.occasion)
     assert "shopping advice" in mode
     assert "existing wardrobe" in mode
+
+
+def test_luxury_shopping_fallback_recommends_new_categories_and_value() -> None:
+    result = stylist._shopping_fallback(
+        "I need a luxury gala outfit but I don't have a dress. What should I buy?",
+        None,
+    )
+    combined = " ".join(result["outfit"]).casefold()
+
+    assert "midi or silk dress" in combined
+    assert "premium myanmar" in combined
+    assert "structured blazer" in combined
+    assert "at least four looks" in result["explanation"]
+
+
+def test_petite_fit_goal_is_solved_before_occasion_matching() -> None:
+    query = "I am petite and want to look taller. What suits my body type?"
+
+    assert is_body_fit_request(query)
+    mode = recommendation_mode_prompt(query)
+    assert "not an occasion" in mode
+    assert "high waists" in mode
+
+    result = stylist._context_only_outfit(query, None)
+    combined = " ".join(result["outfit"]).casefold()
+    assert "high-waisted" in combined
+    assert "pointed" in combined
+    assert "vertical line" in result["explanation"]
 
 
 def test_all_provider_parsers_keep_structured_recommendation_contract() -> None:
@@ -471,6 +501,280 @@ def test_natural_language_occasion_context_is_detected(
     assert classify_occasion_context(query) == expected_context
 
 
+def test_dinner_party_social_context_outranks_casual_color_matching() -> None:
+    query = "လုပ်ငန်းရှင်တစ်ယောက်ဖိတ်တဲ့ပါတီပွဲရှိတယ် dinner party"
+    wardrobe = [
+        {
+            "id": 1,
+            "category": "Top",
+            "subtype": "White Linen Boyfriend Shirt",
+            "color": "White",
+            "style_tags": "casual, everyday",
+            "occasion_tags": "coffee, casual",
+        },
+        {
+            "id": 2,
+            "category": "Bottom",
+            "subtype": "Navy Jeans",
+            "color": "Navy",
+            "style_tags": "casual, everyday",
+            "occasion_tags": "coffee, casual",
+        },
+        {
+            "id": 3,
+            "category": "Dress",
+            "subtype": "Elegant Evening Dress",
+            "color": "Emerald",
+            "style_tags": "elegant, refined",
+            "occasion_tags": "party, formal",
+        },
+        {
+            "id": 4,
+            "category": "Shoes",
+            "subtype": "Heels",
+            "color": "Black",
+            "style_tags": "elegant",
+            "occasion_tags": "party",
+        },
+        {
+            "id": 5,
+            "category": "Accessory",
+            "subtype": "Structured Bag",
+            "color": "Black",
+            "style_tags": "refined",
+            "occasion_tags": "party",
+        },
+    ]
+
+    assert classify_occasion_context(query) == "party"
+    guidance = occasion_context_prompt(query)
+    assert "Social appropriateness outranks color matching" in guidance
+
+    result = stylist._wardrobe_fallback_outfit(wardrobe, query, 29, None)
+    combined = " ".join(result["outfit"]).casefold()
+    assert "emerald" in combined
+    assert "heels" in combined
+    assert "structured bag" in combined
+    assert "jeans" not in combined
+    assert "boyfriend shirt" not in combined
+
+
+def test_luxury_followup_keeps_recent_dinner_party_context() -> None:
+    followup = "Can you make this more luxury?"
+    recent_sessions = [
+        StyleSession(occasion="business owner's dinner party"),
+    ]
+
+    assert is_luxury_style_request(followup)
+    assert classify_occasion_context(followup) == "general"
+
+    resolved = stylist._recommendation_query_with_recent_context(
+        followup,
+        recent_sessions,
+    )
+
+    assert classify_occasion_context(resolved) == "party"
+    assert followup in resolved
+    guidance = occasion_context_prompt(resolved)
+    assert "Keep the occasion unchanged" in guidance
+    assert "Do not lead with cute, sexy, playful" in guidance
+    assert "jeans" in guidance
+
+
+def test_pagoda_context_does_not_leak_into_luxury_gala_shopping() -> None:
+    query = (
+        "I have a luxury gala event tomorrow, but I don't have an elegant dress. "
+        "What should I buy?"
+    )
+    resolved = stylist._recommendation_query_with_recent_context(
+        query,
+        [StyleSession(occasion="What should I wear to a pagoda?")],
+    )
+
+    assert resolved == query
+    assert "pagoda" not in resolved.casefold()
+
+
+def test_pagoda_context_does_not_leak_into_petite_body_styling() -> None:
+    query = "I am petite. What outfit proportions would suit my body type?"
+    resolved = stylist._recommendation_query_with_recent_context(
+        query,
+        [StyleSession(occasion="What should I wear to a pagoda?")],
+    )
+
+    assert resolved == query
+    assert "pagoda" not in resolved.casefold()
+
+
+def test_date_context_does_not_leak_into_business_meeting_request() -> None:
+    query = "What should I wear to a business meeting?"
+    resolved = stylist._recommendation_query_with_recent_context(
+        query,
+        [StyleSession(occasion="What should I wear on a date?")],
+    )
+
+    assert resolved == query
+    assert classify_occasion_context(resolved) == "business_meeting"
+
+
+def test_new_luxury_styling_goal_does_not_inherit_pagoda_context() -> None:
+    query = "I want a luxury outfit"
+    resolved = stylist._recommendation_query_with_recent_context(
+        query,
+        [StyleSession(occasion="What should I wear to a pagoda?")],
+    )
+
+    assert resolved == query
+    assert "pagoda" not in resolved.casefold()
+
+
+def test_vague_better_version_followup_can_use_previous_context() -> None:
+    query = "Give me a better version"
+    resolved = stylist._recommendation_query_with_recent_context(
+        query,
+        [StyleSession(occasion="What should I wear on a date?")],
+    )
+
+    assert resolved != query
+    assert "date" in resolved.casefold()
+    assert query in resolved
+
+
+def test_luxury_style_without_explicit_occasion_avoids_casual_basics() -> None:
+    wardrobe = [
+        {
+            "id": 1,
+            "category": "Top",
+            "subtype": "Basic Linen Shirt",
+            "color": "White",
+            "style_tags": "casual, everyday",
+        },
+        {
+            "id": 2,
+            "category": "Bottom",
+            "subtype": "Jeans",
+            "color": "Navy",
+            "style_tags": "casual, everyday",
+        },
+        {
+            "id": 3,
+            "category": "Dress",
+            "subtype": "Silk Dress",
+            "color": "Black",
+            "style_tags": "luxury, elegant",
+        },
+        {
+            "id": 4,
+            "category": "Shoes",
+            "subtype": "Heels",
+            "color": "Black",
+            "style_tags": "elegant",
+        },
+    ]
+
+    result = stylist._wardrobe_fallback_outfit(
+        wardrobe,
+        "luxury outfit လိုချင်တာ",
+        28,
+        None,
+    )
+    combined = " ".join(result["outfit"]).casefold()
+
+    assert "တစ်ဆက်တည်းဝတ်စုံ" in combined
+    assert "black" in combined
+    assert "heels" in combined
+    assert "jeans" not in combined
+    assert "basic linen shirt" not in combined
+
+
+def test_bossy_luxury_business_dinner_rejects_cute_sexy_marketing_tags() -> None:
+    query = (
+        "dinner party with foreign business owners. "
+        "I want a bossy vibe luxury."
+    )
+    wardrobe = [
+        {
+            "id": 1,
+            "category": "Dress",
+            "subtype": "Red Linen Dress — Cute And Sexy",
+            "color": "Red",
+            "style_tags": "cute, sexy, playful",
+            "occasion_tags": "party",
+        },
+        {
+            "id": 2,
+            "category": "Top",
+            "subtype": "Silk Blouse",
+            "color": "Ivory",
+            "style_tags": "elegant, luxury",
+            "occasion_tags": "formal, party",
+        },
+        {
+            "id": 3,
+            "category": "Bottom",
+            "subtype": "Structured Skirt",
+            "color": "Black",
+            "style_tags": "tailored, executive",
+            "occasion_tags": "formal, party",
+        },
+        {
+            "id": 4,
+            "category": "Outerwear",
+            "subtype": "Tailored Blazer",
+            "color": "Black",
+            "style_tags": "executive, sophisticated",
+            "occasion_tags": "business, formal",
+        },
+        {
+            "id": 5,
+            "category": "Shoes",
+            "subtype": "Heels",
+            "color": "Black",
+            "style_tags": "elegant",
+        },
+        {
+            "id": 6,
+            "category": "Accessory",
+            "subtype": "Structured Bag",
+            "color": "Black",
+            "style_tags": "luxury",
+        },
+        {
+            "id": 7,
+            "category": "Accessory",
+            "subtype": "Minimal Watch",
+            "color": "Gold",
+            "style_tags": "executive",
+        },
+    ]
+
+    assert is_luxury_style_request(query)
+    result = stylist._wardrobe_fallback_outfit(wardrobe, query, 27, None)
+    combined = " ".join(result["outfit"]).casefold()
+
+    assert "ivory" in combined
+    assert combined.count("black") >= 2
+    assert "heels" in combined
+    assert "structured bag" in combined
+    assert "minimal watch" in combined
+    assert "cute" not in combined
+    assert "sexy" not in combined
+    assert "red linen dress" not in combined
+
+
+def test_product_marketing_tags_are_cleaned_from_stylist_language() -> None:
+    item = {
+        "category": "Dress",
+        "subtype": "Red With Spot — Cute And Sexy",
+    }
+
+    assert stylist._wardrobe_display_name(item) == "Red With Spot"
+    assert stylist._refine_marketing_tag_language(
+        "The cute and sexy dress feels casual.",
+        "bossy luxury outfit",
+    ) == "The polished and confident dress feels refined."
+
+
 def test_pagoda_dress_code_overrides_inappropriate_item_tags() -> None:
     wardrobe = [
         {
@@ -567,8 +871,11 @@ def test_client_meeting_raises_formality_and_uses_saved_finishing_pieces() -> No
 
 
 def test_profile_style_is_secondary_and_korean_style_is_opt_in() -> None:
-    assert "occasion dress code and cultural respect first" in WUTT_RECOMMENDATION_PROMPT
-    assert "profile style preference last" in WUTT_RECOMMENDATION_PROMPT
+    assert "(1) the current request" in WUTT_RECOMMENDATION_PROMPT
+    assert "(2) occasion and social context" in WUTT_RECOMMENDATION_PROMPT
+    assert "(3) requested style/personality" in WUTT_RECOMMENDATION_PROMPT
+    assert "(5) saved preferences" in WUTT_RECOMMENDATION_PROMPT
+    assert "(6) existing wardrobe suitability" in WUTT_RECOMMENDATION_PROMPT
     assert "Do not mention or favor Korean-casual unless" in WUTT_RECOMMENDATION_PROMPT
 
 
@@ -600,7 +907,7 @@ def test_explanation_names_selected_saved_wardrobe_piece() -> None:
     )
 
     assert not explanation.startswith("I’d start with")
-    assert explanation.endswith("Your Myanmar Dress keeps the outfit grounded.")
+    assert explanation == "It feels polished without being too formal."
 
 
 def test_explanation_does_not_make_accessory_the_outfit_start() -> None:
