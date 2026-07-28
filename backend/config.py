@@ -40,8 +40,8 @@ class Settings(BaseSettings):
     # ── Google OAuth ──────────────────────────────────────
     google_client_id: str = ""
     google_client_secret: str = ""
-    google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
-    frontend_url: str = "http://localhost:5500"
+    google_redirect_uri: str = "https://wutt-api.onrender.com/auth/google/callback"
+    frontend_url: str = "https://wutt-frontend.onrender.com"
 
     # ── Cloudinary ───────────────────────────────────────
     cloudinary_cloud_name: str = ""
