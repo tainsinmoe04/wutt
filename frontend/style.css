@@ -2070,6 +2070,12 @@ html[data-wutt-boot-surface="landing"].wutt-auth-pending body {
 html[data-wutt-boot-surface="landing"].wutt-auth-pending body > :not(.app-boot-screen) {
   visibility: visible;
 }
+/* The public route must never expose a stale authenticated DOM snapshot. */
+html[data-wutt-boot-surface="landing"] #welcomeScreen,
+html[data-wutt-boot-surface="landing"] #chatApp,
+html[data-wutt-boot-surface="landing"] #styleQuiz {
+  display: none !important;
+}
 .app-boot-screen {
   position: fixed;
   inset: 0;

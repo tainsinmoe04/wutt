@@ -167,6 +167,13 @@ document.addEventListener('DOMContentLoaded', async function restoreSession() {
     return;
   }
 
+  // The public root owns first paint. Normalize it before waiting on /auth/me
+  // so auth restoration can only promote a verified session into the app.
+  if (route.name === 'landing') {
+    showLandingPage();
+    finishInitialLoading();
+  }
+
   try {
     await bootstrapAuthenticatedSession();
     if (oauthCallback.isGoogleCallback) clearGoogleOAuthCallback();
@@ -177,7 +184,15 @@ document.addEventListener('DOMContentLoaded', async function restoreSession() {
     showMainApp({ showWelcome: !hasCompletedOnboarding() && onboardingPending });
   } catch (err) {
     clearAuth();
-    showLandingPage();
+    // A normal unauthenticated root is already rendering the landing page.
+    // Restore it only if authenticated boot progressed far enough to switch
+    // the surface marker, or if a protected route failed authentication.
+    if (
+      route.name !== 'landing'
+      || document.documentElement.getAttribute('data-wutt-boot-surface') !== 'landing'
+    ) {
+      showLandingPage();
+    }
     if (err && err.status === 401) {
       try {
         localStorage.removeItem('wutt_last_surface');
