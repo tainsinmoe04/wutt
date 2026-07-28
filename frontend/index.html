@@ -28,11 +28,15 @@
         '#/profile': 'profile'
       }[window.location.hash];
       var pathSurface = {
+        '/': 'landing',
+        '/index.html': 'landing',
         '/app': 'stylist',
         '/stylist': 'stylist',
         '/wardrobe': 'wardrobe',
         '/profile': 'profile'
       }[window.location.pathname];
+      // The requested route owns first paint. A stale surface preference from
+      // an earlier authenticated session must never override the public root.
       surface = hashSurface || pathSurface || surface;
       if (['landing', 'stylist', 'wardrobe', 'profile'].indexOf(surface) === -1) surface = 'stylist';
       document.documentElement.setAttribute('data-wutt-boot-surface', surface);

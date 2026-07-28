@@ -3,6 +3,13 @@
    Vanilla JS, no frameworks. Async/await, try/catch always.
    ============================================================ */
 
+// A page restored from the browser back/forward cache contains an old DOM
+// snapshot and does not fire DOMContentLoaded again. Revalidate it so the
+// current HTML/CSS/JS and auth bootstrap always run together.
+window.addEventListener('pageshow', function refreshPersistedPage(event) {
+  if (event.persisted) window.location.reload();
+});
+
 /* --------------------------------------------------------
    Hero Login Modal — Self-contained controller
    Runs inside DOMContentLoaded. Uses getElementById only.
@@ -153,6 +160,7 @@ document.addEventListener('DOMContentLoaded', async function restoreSession() {
   var oauthCallback = getGoogleOAuthCallback();
   var route = getFrontendRoute();
   appState.initialPanel = route.panel || null;
+  prepareInitialSurface(route);
 
   if (route.name === 'not-found') {
     showNotFoundPage();
@@ -169,6 +177,7 @@ document.addEventListener('DOMContentLoaded', async function restoreSession() {
     showMainApp({ showWelcome: !hasCompletedOnboarding() && onboardingPending });
   } catch (err) {
     clearAuth();
+    showLandingPage();
     if (err && err.status === 401) {
       try {
         localStorage.removeItem('wutt_last_surface');
@@ -558,6 +567,58 @@ function setBootSkeleton(panel) {
   var validSurfaces = ['landing', 'profile', 'wardrobe', 'stylist'];
   if (validSurfaces.indexOf(surface) === -1) surface = 'stylist';
   document.documentElement.setAttribute('data-wutt-boot-surface', surface);
+}
+
+/**
+ * Put the DOM into one deterministic pre-auth state before session restoration.
+ * This prevents stale inline styles, classes, or bfcache DOM from winning first
+ * render while /auth/me is still pending.
+ */
+function prepareInitialSurface(route) {
+  var chat = document.getElementById('chatApp');
+  var welcome = document.getElementById('welcomeScreen');
+  var quiz = document.getElementById('styleQuiz');
+  var notFound = document.getElementById('notFoundPage');
+
+  [chat, welcome, quiz, notFound].forEach(function(surface) {
+    if (!surface) return;
+    surface.classList.add('u-hidden');
+    surface.setAttribute('aria-hidden', 'true');
+  });
+
+  document.body.classList.remove('modal-open', 'not-found-active');
+  document.body.style.overflow = '';
+
+  if (route.name === 'landing') {
+    setBootSkeleton('landing');
+  } else if (route.name === 'app') {
+    setBootSkeleton(route.panel || 'home');
+  }
+}
+
+/** Render a clean public landing surface after auth restoration fails. */
+function showLandingPage() {
+  var hero = document.querySelector('.landing-hero');
+  var navbar = document.querySelector('.navbar--landing');
+  var chat = document.getElementById('chatApp');
+  var welcome = document.getElementById('welcomeScreen');
+  var quiz = document.getElementById('styleQuiz');
+
+  if (hero) hero.style.display = '';
+  if (navbar) navbar.style.display = '';
+  [chat, welcome, quiz].forEach(function(surface) {
+    if (!surface) return;
+    surface.classList.add('u-hidden');
+    surface.setAttribute('aria-hidden', 'true');
+  });
+
+  document.querySelectorAll('.landing-modal-overlay--open').forEach(function(overlay) {
+    overlay.classList.remove('landing-modal-overlay--open');
+    overlay.setAttribute('aria-hidden', 'true');
+  });
+  document.body.classList.remove('modal-open', 'not-found-active');
+  document.body.style.overflow = '';
+  setBootSkeleton('landing');
 }
 
 var initialLoadingFinishTimer = null;
