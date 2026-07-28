@@ -175,7 +175,10 @@ document.addEventListener('DOMContentLoaded', async function restoreSession() {
   }
 
   try {
-    await bootstrapAuthenticatedSession();
+    var restoredUser = await bootstrapAuthenticatedSession();
+    if (!restoredUser) {
+      throw new Error('The server did not return a valid authenticated session.');
+    }
     if (oauthCallback.isGoogleCallback) clearGoogleOAuthCallback();
     console.log('[WUTT] Session restored');
     if (oauthCallback.hasSuccess && !hasCompletedOnboarding()) markOnboardingPending();
@@ -798,10 +801,16 @@ async function loadServerWardrobe() {
 }
 
 async function bootstrapAuthenticatedSession() {
-  appState.user = await apiRequest('/auth/me');
+  var restoredUser = await apiRequest('/auth/me');
+  if (!restoredUser || typeof restoredUser !== 'object' || restoredUser.id == null) {
+    clearAuth();
+    return null;
+  }
+  appState.user = restoredUser;
   setBootSkeleton(appState.initialPanel || getLastAppPanel());
   await Promise.all([loadServerProfile(), loadServerWardrobe()]);
   applyChatPreferences();
+  return restoredUser;
 }
 
 /* --------------------------------------------------------
