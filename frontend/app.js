@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function initHeroLoginModal() {
   }
 
   function open() {
-    console.log('WUTT hero login opened');
+    console.trace('WUTT hero login opened');
     if (registerOverlay) {
       registerOverlay.classList.remove('landing-modal-overlay--open');
       registerOverlay.setAttribute('aria-hidden', 'true');
