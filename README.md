@@ -2,13 +2,17 @@
 
 <p align="center">
 
-**Know Your Wardrobe. Upgrade Your Style.**
+## Know Your Wardrobe. Upgrade Your Style.
 
 </p>
 
 WUTT is an AI-powered personal fashion companion that helps users organize their wardrobe, understand their clothing, and receive personalized outfit recommendations.
 
-Instead of wondering *"What should I wear today?"*, users can build their digital wardrobe and get styling guidance based on their own clothes, occasion, and personal preferences.
+Instead of wondering:
+
+> "What should I wear today?"
+
+WUTT helps users discover better outfit choices based on their wardrobe, occasions, and personal style.
 
 ---
 
@@ -16,47 +20,29 @@ Instead of wondering *"What should I wear today?"*, users can build their digita
 
 ## 👕 Digital Wardrobe
 
-Build your personal digital closet.
+Create your personal digital closet.
+
+Users can:
 
 - Upload clothing images
 - Organize wardrobe items
-- View saved clothing collections
-- Manage your wardrobe easily
+- Save clothing collections
+- Manage personal wardrobe items
 
----
+Each wardrobe item can contain:
 
-## ✏️ Manual Wardrobe Details
-
-For the current MVP, users review wardrobe information themselves after
-choosing a clothing image:
-
-- Clothing category and subtype
-- Color and description
+- Category
+- Subcategory
+- Color
+- Description
 - Style tags
 - Occasion tags
-
-Example:
-
-```
-Upload shirt image
-
-↓
-
-Review and edit clothing details
-
-↓
-
-Save item into wardrobe
-```
-
-Gemini Vision remains in the backend as a future enhancement, but wardrobe
-creation does not depend on AI analysis.
 
 ---
 
 ## 💬 AI Stylist Assistant
 
-Chat with WUTT AI for personalized fashion advice.
+Chat with WUTT AI for personalized fashion guidance.
 
 Users can ask:
 
@@ -68,90 +54,139 @@ WUTT provides suggestions based on:
 
 - Occasion
 - Personal style
-- Wardrobe items
+- Existing wardrobe items
 - Fashion context
 
 ---
 
 ## 👤 Personal Style Profile
 
-Create a personal fashion profile.
+Create your own fashion identity.
 
 Users can customize:
 
 - Personal information
 - Style preferences
-- Fashion identity
+- Fashion interests
+
+This creates a more personalized styling experience.
 
 ---
 
 # 🧠 How WUTT Works
 
-```
-Upload Clothing
-        |
-        ↓
-AI Clothing Analysis
-        |
-        ↓
-Digital Wardrobe
-        |
-        ↓
+
+Add Clothing Items
+|
+↓
+Review & Organize Wardrobe
+|
+↓
+Digital Closet
+|
+↓
 AI Stylist Conversation
-        |
-        ↓
+|
+↓
 Personalized Outfit Suggestions
-```
+
 
 ---
 
-# 🛠 Tech Stack
+# 🛠 Technology Stack
 
 ## Frontend
 
 - HTML
 - CSS
 - JavaScript
+- Responsive UI architecture
 
 ## Backend
 
 - Python
 - FastAPI
 - SQLAlchemy
-- SQLite
+- SQLite (MVP)
 
-## Artificial Intelligence
+## AI Integration
 
 ### AI Chat
 
 - OpenRouter
 - OpenAI-compatible API
 
-### AI Vision
+### Future AI Vision Enhancement
 
-- Google Gemini Vision
+- Google Gemini Vision integration planned for future wardrobe automation improvements
+
+## Deployment
+
+- Frontend: Render
+- Backend: Render
+
+---
+
+# 🤖 AI-Assisted Development
+
+WUTT was developed using an AI-assisted engineering workflow.
+
+## Tools Used
+
+- Claude Code
+- UI Reviewer Agent
+- WUTT UI Review Skill
+
+## Development Workflow
+
+
+Analyze Problem
+|
+↓
+Design Solution
+|
+↓
+Implement Changes
+|
+↓
+Review & Test
+|
+↓
+Improve Experience
+
+
+AI was used for:
+
+- Code analysis
+- Debugging
+- UI review
+- Development workflow support
 
 ---
 
 # 📸 Screenshots
 
-## Landing Page
+## Landing Experience
 
 ![Landing](screenshots/landing.png)
 
-## Wardrobe
+---
 
-| ![Wardrobe](screenshots/wardrobe.png)
+## AI Stylist Chat
 
-## AI Stylist
+![AI Stylist](screenshots/aistylistchat.png)
 
-| ![Profile](screenshots/profile.png)
+---
+
+## Digital Wardrobe
+
+![Wardrobe](screenshots/wardrobe.png)
 
 ---
 
 # 🚀 Local Development
 
-## Backend
+## Backend Setup
 
 ```bash
 cd backend
@@ -159,129 +194,60 @@ cd backend
 pip install -r requirements.txt
 
 uvicorn main:app --reload --port 8000
-```
 
 Backend runs at:
 
-```
 http://localhost:8000
-```
 
----
-
-## Frontend
+## Frontend Setup
 
 ```bash
 cd frontend
 
 python3 -m http.server 5500
-```
 
 Open:
 
-```
 http://localhost:5500
-```
+🔐 Environment Configuration
 
----
+Create your local environment file:
 
-# 🔐 Environment Variables
-
-Copy the environment template into the backend directory:
-
-```bash
 cp .env.example backend/.env
-```
 
-Then update `backend/.env` with your local values:
+Example:
 
-```env
-DEBUG=true
-FRONTEND_URL=http://localhost:5500
 DATABASE_URL=sqlite:///./wutt.db
-JWT_SECRET_KEY=generate-a-random-local-secret
 
-GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-web-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+JWT_SECRET_KEY=your-secret-key
 
-OPENROUTER_API_KEY=your_api_key
+OPENROUTER_API_KEY=your-api-key
 
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+GEMINI_API_KEY=your-api-key
 
-OPENROUTER_AI_MODEL=openai/gpt-oss-20b:free
+Never commit secret keys into the repository.
 
-GEMINI_API_KEY=your_api_key
-```
+🎯 Demo Experience
 
-## Google OAuth local setup
+WUTT includes a dedicated demo login flow for testing and presentation.
 
-1. In Google Cloud Console, create or select a project and configure its OAuth consent screen.
-2. Create an OAuth client with application type **Web application**.
-3. Add this exact authorized redirect URI:
+Demo users can explore:
 
-   ```text
-   http://localhost:8000/auth/google/callback
-   ```
+AI Stylist experience
+Wardrobe management
+Personal style features
+🌐 Live Demo
 
-4. Put the generated client ID and client secret in `backend/.env`. Never put either value in frontend files or commit them.
-5. Keep the local URLs consistent:
+Frontend:
 
-   ```env
-   FRONTEND_URL=http://localhost:5500
-   GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
-   DEBUG=true
-   ```
+https://wutt-frontend.onrender.com/
 
-6. If the Google consent screen is in **Testing** mode, add the Google account used for testing under **Test users**.
-7. From `backend/`, verify the non-secret configuration:
+Backend:
 
-   ```bash
-   python scripts/verify_google_oauth.py
-   ```
+https://wutt-api.onrender.com/
 
-8. Start both servers using the commands above, open `http://localhost:5500`, and choose **Continue with Google**.
-
-The expected browser flow is:
-
+📂 Project Structure
 ```text
-frontend → /auth/google/start → Google
-→ /auth/google/callback → frontend?auth=google
-→ /auth/me → authenticated application
-```
-
-OAuth tokens remain on the backend. WUTT stores only a revocable, HTTP-only session cookie in the browser. Email/password login remains available.
-
-If credentials are missing, the Google button returns to the login dialog with a configuration message. If Google reports `redirect_uri_mismatch`, compare the URI in Google Cloud with `GOOGLE_REDIRECT_URI` character-for-character, including scheme, port, path, and trailing slash.
-
-## Temporary Chapter 6 demo login
-
-Demo login is disabled by default. To enable one dedicated demo account, add
-the following to `backend/.env` and restart the backend:
-
-```env
-DEMO_LOGIN_ENABLED=true
-DEMO_LOGIN_EMAIL=demo@example.com
-DEMO_LOGIN_PASSWORD=use-a-unique-demo-password
-```
-
-Use those exact credentials in the existing email login form. On the first
-successful demo login, WUTT creates that one account with a bcrypt password
-hash and issues the normal authentication cookie. Other invented credentials
-remain invalid, and the configured demo email cannot be claimed through
-registration.
-
-Set `DEMO_LOGIN_ENABLED=false` while keeping `DEMO_LOGIN_EMAIL` configured to
-block new logins for the persisted demo account. Existing sessions should be
-logged out or allowed to expire. Google OAuth and regular email/password
-authentication are unaffected. Never reuse a personal password or commit the
-configured demo password.
-
----
-
-# 📂 Project Structure
-
-```
 wutt/
 
 ├── frontend/
@@ -299,34 +265,40 @@ wutt/
 │
 ├── slides/
 │
-├── report.md
-│
 └── LICENSE
-```
 
----
-
-# 🌱 Future Improvements
+## 🌱 Future Improvements
 
 Future versions of WUTT may include:
 
-- Smarter outfit planning
-- Fashion recommendation history
-- Shopping assistant
+
+## Smarter Fashion Intelligence
+
+- More accurate AI outfit recommendations
+- Weather-based outfit suggestions
+- Better personal style understanding
+
+## Advanced Wardrobe Features
+
+- Automatic clothing recognition
+- Advanced wardrobe analytics
+- Outfit history tracking
+- Smart wardrobe organization
+
+## New Experiences
+
 - Virtual try-on experience
-- Advanced personal style memory
+- Mobile application support
+- Shopping assistant features
+- Social style sharing
 
----
-
-# 📄 License
+📄 License
 
 This project is licensed under the MIT License.
 
----
+👨‍💻 Creator
 
-# 👨‍💻 Creator
-
-**Tain Sin Moe**
+Tain Sin Moe
 
 GitHub:
 
