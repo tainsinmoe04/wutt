@@ -89,7 +89,7 @@ AI Stylist Conversation
 |
 ↓
 Personalized Outfit Suggestions
-
+```  
 
 ---
 
