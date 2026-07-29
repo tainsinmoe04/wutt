@@ -75,7 +75,7 @@ This creates a more personalized styling experience.
 
 # 🧠 How WUTT Works
 
-
+```text
 Add Clothing Items
 |
 ↓
@@ -242,9 +242,7 @@ Frontend:
 
 https://wutt-frontend.onrender.com/
 
-Backend:
 
-https://wutt-api.onrender.com/
 
 📂 Project Structure
 ```text
